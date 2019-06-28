@@ -4,7 +4,6 @@
 [![Group Discussion](https://img.shields.io/badge/discussion-groups.io-blue.svg)](https://groups.io/g/CycloneDX)
 [![Twitter](https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Follow)](https://twitter.com/CycloneDX_Spec)
 
-
 # CycloneDX Gradle Plugin
 The CycloneDX Gradle plugin creates an aggregate of all dependencies and transitive dependencies of a project 
 and creates a valid CycloneDX bill-of-material document from the results. CycloneDX is a lightweight BoM 
@@ -31,15 +30,17 @@ __Execution:__
 gradle cyclonedxBom
 ```
 
-__Output CycloneDX BOM Generation Info:__
+__Output CycloneDX Generation Info:__
 ```bash
 gradle cyclonedxBom -info
 ```
 
 __Exclude BOM Serial Number:__
 ```bash
-gradle cyclonedxBom -Pcyclonedx.includeBomSerialNumber=true
+gradle cyclonedxBom -Pcyclonedx.includeBomSerialNumber=false
 ```
+
+Once a BOM is generated, it will reside at `./build/reports/bom.xml`
 
 ## Copyright & License
 CycloneDX Gradle Plugin is Copyright (c) Steve Springett. All Rights Reserved.
