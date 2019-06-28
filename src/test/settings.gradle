@@ -1,0 +1,15 @@
+pluginManagement {
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.toString() == 'org.cyclonedx.bom') {
+                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.0.0-SNAPSHOT')
+            }
+        }
+    }
+    repositories {
+        mavenCentral()
+        maven {
+            url 'https://oss.sonatype.org/content/repositories/snapshots'
+        }
+    }
+}

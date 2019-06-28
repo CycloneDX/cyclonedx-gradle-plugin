@@ -1,5 +1,5 @@
 plugins {
-    id 'cyclonedx-gradle-plugin' version '1.0.0-SNAPSHOT'
+    id 'org.cyclonedx.bom' version '1.0.0-SNAPSHOT' apply true
 }
 
 apply plugin: 'java'
