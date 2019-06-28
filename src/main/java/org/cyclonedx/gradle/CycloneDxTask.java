@@ -77,9 +77,14 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     private void initialize() {
+        schemaVersion = schemaVersion();
         mavenHelper = new MavenHelper(getLogger(), schemaVersion);
-        includeBomSerialNumber = getBooleanParameter("includeBomSerialNumber", true);
-        skip = getBooleanParameter("skip", false);
+        if (schemaVersion == CycloneDxSchema.Version.VERSION_10) {
+            includeBomSerialNumber = false;
+        } else {
+            includeBomSerialNumber = getBooleanParameter("cyclonedx.includeBomSerialNumber", true);
+        }
+        skip = getBooleanParameter("cyclonedx.skip", false);
     }
 
     @TaskAction
@@ -91,6 +96,7 @@ public class CycloneDxTask extends DefaultTask {
             return;
         }
         logParameters();
+        getLogger().info(MESSAGE_RESOLVING_DEPS);
         final Set<String> builtDependencies = getProject()
                 .getRootProject()
                 .getSubprojects()
@@ -264,6 +270,21 @@ public class CycloneDxTask extends DefaultTask {
             }
         }
         return defaultValue;
+    }
+
+    /**
+     * Resolves the CycloneDX schema the mojo has been requested to use.
+     * @return the CycloneDX schema to use
+     */
+    private CycloneDxSchema.Version schemaVersion() {
+        final Project project = super.getProject();
+        if (project.hasProperty("cyclonedx.schemaVersion")) {
+            final String s = (String)project.getProperties().get("cyclonedx.schemaVersion");
+            if ("1.0".equals(s)) {
+                return CycloneDxSchema.Version.VERSION_10;
+            }
+        }
+        return CycloneDxSchema.Version.VERSION_11;
     }
 
     protected void logParameters() {
