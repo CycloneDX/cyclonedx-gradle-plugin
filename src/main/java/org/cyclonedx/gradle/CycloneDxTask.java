@@ -17,10 +17,15 @@
  */
 package org.cyclonedx.gradle;
 
+import com.github.packageurl.MalformedPackageURLException;
+import com.github.packageurl.PackageURL;
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.project.MavenProject;
 import org.cyclonedx.BomGenerator;
+import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.BomParser;
+import org.cyclonedx.CycloneDxSchema;
+import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.License;
 import org.cyclonedx.util.BomUtils;
@@ -29,12 +34,10 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
-import org.gradle.api.artifacts.ResolvedModuleVersion;
 import org.gradle.api.tasks.TaskAction;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -42,11 +45,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class CycloneDxTask extends DefaultTask {
 
@@ -59,43 +64,55 @@ public class CycloneDxTask extends DefaultTask {
     private static final String MESSAGE_WRITING_BOM = "CycloneDX: Writing BOM";
     private static final String MESSAGE_VALIDATING_BOM = "CycloneDX: Validating BOM";
     private static final String MESSAGE_VALIDATION_FAILURE = "The BOM does not conform to the CycloneDX BOM standard as defined by the XSD";
+    private static final String MESSAGE_SKIPPING = "Skipping CycloneDX";
 
     private File buildDir;
+    private MavenHelper mavenHelper;
+    private CycloneDxSchema.Version schemaVersion = CycloneDxSchema.Version.VERSION_11;
+    private boolean includeBomSerialNumber;
+    private boolean skip;
 
     public void setBuildDir(File buildDir) {
         this.buildDir = buildDir;
     }
 
+    private void initialize() {
+        mavenHelper = new MavenHelper(getLogger(), schemaVersion);
+        includeBomSerialNumber = getBooleanParameter("includeBomSerialNumber", true);
+        skip = getBooleanParameter("skip", false);
+    }
+
     @TaskAction
+    @SuppressWarnings("unused")
     public void createBom() {
+        initialize();
+        if (skip) {
+            getLogger().info(MESSAGE_SKIPPING);
+            return;
+        }
+        logParameters();
+        final Set<String> builtDependencies = getProject()
+                .getRootProject()
+                .getSubprojects()
+                .stream()
+                .map(p -> p.getGroup() + ":" + p.getName() + ":" + p.getVersion())
+                .collect(Collectors.toSet());
 
-        Set<String> builtDependencies = getProject()
-            .getRootProject()
-            .getSubprojects()
-            .stream()
-            .map(p -> p.getGroup() + ":" + p.getName() + ":" + p.getVersion())
-            .collect(Collectors.toSet());
-
-        Set<Component> components = new LinkedHashSet<>();
-        for (Project p : getProject().getAllprojects()) {
-            for (Configuration configuration : p.getConfigurations()) {
+        final Set<Component> components = new LinkedHashSet<>();
+        for (final Project p : getProject().getAllprojects()) {
+            for (final Configuration configuration : p.getConfigurations()) {
                 if (!shouldSkipConfiguration(configuration)) {
-                    ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
+                    final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
                     if (resolvedConfiguration != null) {
-                        for (ResolvedArtifact artifact : resolvedConfiguration.getResolvedArtifacts()) {
-                            getLogger().debug("RESOLVED ARTIFACT: " + artifact.getName());
-                            getLogger().debug("TYPE: " + artifact.getType());
-                            getLogger().debug("CLASSIFIER: " + artifact.getClassifier());
-                            getLogger().debug("GROUP: " + artifact.getModuleVersion().getId().getGroup());
-
+                        for (final ResolvedArtifact artifact : resolvedConfiguration.getResolvedArtifacts()) {
                             // Don't include other resources built from this Gradle project.
-                            String dependencyName = getDependencyName(artifact);
+                            final String dependencyName = getDependencyName(artifact);
                             if(builtDependencies.stream().anyMatch(c -> c.equals(dependencyName))) {
                                 continue;
                             }
 
                             // Convert into a Component and augment with pom metadata if available.
-                            Component component = convertArtifact(artifact);
+                            final Component component = convertArtifact(artifact);
                             augmentComponentMetadata(component, dependencyName);
                             components.add(component);
                         }
@@ -106,23 +123,23 @@ public class CycloneDxTask extends DefaultTask {
         writeBom(components);
     }
 
-    public String getDependencyName(ResolvedArtifact artifact) {
-        ModuleVersionIdentifier m = artifact.getModuleVersion().getId();
+    private String getDependencyName(ResolvedArtifact artifact) {
+        final ModuleVersionIdentifier m = artifact.getModuleVersion().getId();
         return m.getGroup() + ":" + m.getName() + ":" + m.getVersion();
     }
 
-    public void augmentComponentMetadata(Component component, String dependencyName) {
-        Dependency pomDep = getProject()
+    private void augmentComponentMetadata(Component component, String dependencyName) {
+        final Dependency pomDep = getProject()
             .getDependencies()
             .create(dependencyName + "@pom");
-        Configuration pomCfg = getProject()
+        final Configuration pomCfg = getProject()
             .getConfigurations()
             .detachedConfiguration(pomDep);
         MavenProject project = null;
 
         try {
-            File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
-            project = MavenUtils.readPom(pomFile);
+            final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
+            project = mavenHelper.readPom(pomFile);
         } catch(IOException err) {
             getLogger().error("Unable to resolve POM for " + component + ": " + err);
         } catch(ResolveException err) {
@@ -136,8 +153,8 @@ public class CycloneDxTask extends DefaultTask {
             component.setDescription(project.getDescription());
             if(project.getLicenses() != null) {
                 final List<License> licenses = new ArrayList<>();
-                for(org.apache.maven.model.License artifactLicense : project.getLicenses()) {
-                    License license = new License();
+                for(final org.apache.maven.model.License artifactLicense : project.getLicenses()) {
+                    final License license = new License();
                     if(artifactLicense.getName() != null) {
                         license.setName(artifactLicense.getName());
                         licenses.add(license);
@@ -147,18 +164,18 @@ public class CycloneDxTask extends DefaultTask {
                     }
                 }
                 if(licenses.size() > 0) {
-                    component.setLicenses(licenses);
+                    //component.setLicenses(licenses);
                 }
             }
         }
     }
 
-    public Component convertArtifact(ResolvedArtifact artifact) {
+    private Component convertArtifact(ResolvedArtifact artifact) {
         final Component component = new Component();
         component.setGroup(artifact.getModuleVersion().getId().getGroup());
         component.setName(artifact.getModuleVersion().getId().getName());
         component.setVersion(artifact.getModuleVersion().getId().getVersion());
-        component.setType("library");
+        component.setType(Component.Type.LIBRARY);
         try {
             getLogger().debug(MESSAGE_CALCULATING_HASHES);
             component.setHashes(BomUtils.calculateHashes(artifact.getFile()));
@@ -166,9 +183,38 @@ public class CycloneDxTask extends DefaultTask {
             getLogger().error("Error encountered calculating hashes", e);
         }
 
+        if (CycloneDxSchema.Version.VERSION_10 == schemaVersion) {
+            component.setModified(false);
+        }
+
+        try {
+            TreeMap<String, String> qualifiers = null;
+            if (artifact.getType() != null || artifact.getClassifier() != null) {
+                qualifiers = new TreeMap<>();
+                if (artifact.getType() != null) {
+                    qualifiers.put("type", artifact.getType());
+                }
+                if (artifact.getClassifier() != null) {
+                    qualifiers.put("classifier", artifact.getClassifier());
+                }
+            }
+            final PackageURL purl = new PackageURL(PackageURL.StandardTypes.MAVEN,
+                    component.getGroup(), component.getName(), component.getVersion(), qualifiers, null);
+            component.setPurl(purl.canonicalize());
+
+        } catch (MalformedPackageURLException e) {
+            getLogger().warn("An unexpected issue occurred attempting to create a PackageURL for " + component.getName(), e);
+        }
+
+        if (mavenHelper.isDescribedArtifact(artifact)) {
+            final MavenProject project = mavenHelper.extractPom(artifact);
+            if (project != null) {
+                mavenHelper.getClosestMetadata(artifact, project, component);
+            }
+        }
+
         return component;
     }
-
 
     private boolean shouldSkipConfiguration(Configuration configuration) {
         final List<String> skipConfigs = Arrays.asList(
@@ -187,7 +233,12 @@ public class CycloneDxTask extends DefaultTask {
     protected void writeBom(Set<Component> components) throws GradleException{
         try {
             getLogger().info(MESSAGE_CREATING_BOM);
-            final BomGenerator bomGenerator = new BomGenerator(components);
+            final Bom bom = new Bom();
+            if (CycloneDxSchema.Version.VERSION_10 != schemaVersion && includeBomSerialNumber) {
+                bom.setSerialNumber("urn:uuid:" + UUID.randomUUID().toString());
+            }
+            bom.setComponents(new ArrayList<>(components));
+            final BomGenerator bomGenerator = BomGeneratorFactory.create(schemaVersion, bom);
             bomGenerator.generate();
             final String bomString = bomGenerator.toXmlString();
             final File bomFile = new File(buildDir, "reports/bom.xml");
@@ -201,6 +252,27 @@ public class CycloneDxTask extends DefaultTask {
 
         } catch (ParserConfigurationException | TransformerException | IOException e) {
             throw new GradleException("An error occurred executing " + this.getClass().getName(), e);
+        }
+    }
+
+    private boolean getBooleanParameter(String parameter, boolean defaultValue) {
+        final Project project = super.getProject();
+        if (project.hasProperty(parameter)) {
+            final Object o = project.getProperties().get(parameter);
+            if (o instanceof String) {
+                return Boolean.valueOf((String)o);
+            }
+        }
+        return defaultValue;
+    }
+
+    protected void logParameters() {
+        if (getLogger().isInfoEnabled()) {
+            getLogger().info("CycloneDX: Parameters");
+            getLogger().info("------------------------------------------------------------------------");
+            getLogger().info("schemaVersion          : " + schemaVersion.name());
+            getLogger().info("includeBomSerialNumber : " + includeBomSerialNumber);
+            getLogger().info("------------------------------------------------------------------------");
         }
     }
 }
