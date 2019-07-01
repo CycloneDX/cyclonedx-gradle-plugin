@@ -11,20 +11,6 @@ specification that is easily created, human readable, and simple to parse. The r
 with tools such as [OWASP Dependency-Track](https://dependencytrack.org/) for the continuous analysis of components.
 
 ## Usage
-__build.gradle__ (excerpt)
-```groovy
-plugins {
-    id 'org.cyclonedx.bom' version '1.0.0' apply true
-}
-
-apply plugin: 'java'
-apply plugin: 'maven'
-
-repositories {
-    mavenCentral()
-}
-```
-
 __Execution:__
 ```bash
 gradle cyclonedxBom
@@ -40,6 +26,35 @@ __Exclude BOM Serial Number:__
 gradle cyclonedxBom -Pcyclonedx.includeBomSerialNumber=false
 ```
 
+__build.gradle__ (excerpt)
+```groovy
+plugins {
+    id 'org.cyclonedx.bom' version '1.0.0' apply true
+}
+
+apply plugin: 'java'
+apply plugin: 'maven'
+
+repositories {
+    mavenCentral()
+}
+```
+
+__settings.gradle__ (excerpt)
+```groovy
+pluginManagement {
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.toString() == 'org.cyclonedx.bom') {
+                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.0.0')
+            }
+        }
+    }
+    repositories {
+        mavenCentral()
+    }
+}
+```
 Once a BOM is generated, it will reside at `./build/reports/bom.xml`
 
 ## Copyright & License
