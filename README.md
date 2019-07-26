@@ -63,11 +63,11 @@ You can control the configurations included in the BOM:
 ```groovy
 cyclonedxBom {
     // skipConfigs is a list of configuration names to exclude when generating the BOM
-	skipConfigs += ["compileClasspath"]
+	skipConfigs += ["compileClasspath", "testCompileClasspath"]
 }
 
+Run gradle with info logging (-i option) to see which configurations add to the BOM. 
 ```
-
 
 
 
