@@ -57,6 +57,20 @@ pluginManagement {
 ```
 Once a BOM is generated, it will reside at `./build/reports/bom.xml`
 
+
+__Configuration:__
+You can control the configurations included in the BOM:
+```groovy
+cyclonedxBom {
+    // skipConfigs is a list of configuration names to exclude when generating the BOM
+	skipConfigs += ["compileClasspath"]
+}
+
+```
+
+
+
+
 ## Copyright & License
 CycloneDX Gradle Plugin is Copyright (c) Steve Springett. All Rights Reserved.
 

@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -71,7 +72,23 @@ public class CycloneDxTask extends DefaultTask {
     private CycloneDxSchema.Version schemaVersion = CycloneDxSchema.Version.VERSION_11;
     private boolean includeBomSerialNumber;
     private boolean skip;
+    private final List<String> skipConfigs = new ArrayList<>(Arrays.asList(
+            "apiElements",
+            "implementation",
+            "runtimeElements",
+            "runtimeOnly",
+            "testImplementation",
+            "testRuntimeOnly"));
 
+    public List<String> getSkipConfigs() {
+    	return skipConfigs;
+    }
+    
+    public void setSkipConfigs(Collection<String> skipConfigs) {
+    	this.skipConfigs.clear();
+    	this.skipConfigs.addAll(skipConfigs);
+    }
+    
     public void setBuildDir(File buildDir) {
         this.buildDir = buildDir;
     }
@@ -223,13 +240,6 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     private boolean shouldSkipConfiguration(Configuration configuration) {
-        final List<String> skipConfigs = Arrays.asList(
-                "apiElements",
-                "implementation",
-                "runtimeElements",
-                "runtimeOnly",
-                "testImplementation",
-                "testRuntimeOnly");
         return skipConfigs.contains(configuration.getName());
     }
 
