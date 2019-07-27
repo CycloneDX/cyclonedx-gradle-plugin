@@ -29,7 +29,7 @@ gradle cyclonedxBom -Pcyclonedx.includeBomSerialNumber=false
 __build.gradle__ (excerpt)
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '1.0.0' apply true
+    id 'org.cyclonedx.bom' version '1.1.0' apply true
 }
 
 apply plugin: 'java'
