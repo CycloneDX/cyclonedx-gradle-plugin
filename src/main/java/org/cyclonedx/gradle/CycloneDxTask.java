@@ -46,6 +46,8 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -71,7 +73,23 @@ public class CycloneDxTask extends DefaultTask {
     private CycloneDxSchema.Version schemaVersion = CycloneDxSchema.Version.VERSION_11;
     private boolean includeBomSerialNumber;
     private boolean skip;
+    private final List<String> skipConfigs = new ArrayList<>(Arrays.asList(
+            "apiElements",
+            "implementation",
+            "runtimeElements",
+            "runtimeOnly",
+            "testImplementation",
+            "testRuntimeOnly"));
 
+    public List<String> getSkipConfigs() {
+    	return skipConfigs;
+    }
+    
+    public void setSkipConfigs(Collection<String> skipConfigs) {
+    	this.skipConfigs.clear();
+    	this.skipConfigs.addAll(skipConfigs);
+    }
+    
     public void setBuildDir(File buildDir) {
         this.buildDir = buildDir;
     }
@@ -110,18 +128,23 @@ public class CycloneDxTask extends DefaultTask {
                 if (!shouldSkipConfiguration(configuration)) {
                     final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
                     if (resolvedConfiguration != null) {
+                    	List<String> depsFromConfig = new ArrayList<>();
                         for (final ResolvedArtifact artifact : resolvedConfiguration.getResolvedArtifacts()) {
                             // Don't include other resources built from this Gradle project.
                             final String dependencyName = getDependencyName(artifact);
                             if(builtDependencies.stream().anyMatch(c -> c.equals(dependencyName))) {
                                 continue;
                             }
+                            
+                            depsFromConfig.add(dependencyName);
 
                             // Convert into a Component and augment with pom metadata if available.
                             final Component component = convertArtifact(artifact);
                             augmentComponentMetadata(component, dependencyName);
                             components.add(component);
                         }
+                        Collections.sort(depsFromConfig);
+                        getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
                     }
                 }
             }
@@ -223,13 +246,6 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     private boolean shouldSkipConfiguration(Configuration configuration) {
-        final List<String> skipConfigs = Arrays.asList(
-                "apiElements",
-                "implementation",
-                "runtimeElements",
-                "runtimeOnly",
-                "testImplementation",
-                "testRuntimeOnly");
         return skipConfigs.contains(configuration.getName());
     }
 
