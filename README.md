@@ -29,33 +29,24 @@ gradle cyclonedxBom -Pcyclonedx.includeBomSerialNumber=false
 
 __build.gradle__ (excerpt)
 ```groovy
-plugins {
-    id 'org.cyclonedx.bom' version '1.1.0' apply true
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.1.0"
+    }
 }
 
 apply plugin: 'java'
 apply plugin: 'maven'
+apply plugin: 'org.cyclonedx.bom'
 
 repositories {
     mavenCentral()
 }
 ```
 
-__settings.gradle__ (excerpt)
-```groovy
-pluginManagement {
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.toString() == 'org.cyclonedx.bom') {
-                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.1.0')
-            }
-        }
-    }
-    repositories {
-        mavenCentral()
-    }
-}
-```
 Once a BOM is generated, it will reside at `./build/reports/bom.xml`
 
 
@@ -64,7 +55,7 @@ You can control the configurations included in the BOM:
 ```groovy
 cyclonedxBom {
     // skipConfigs is a list of configuration names to exclude when generating the BOM
-    skipConfigs += ["compileClasspath", "testCompileClasspath"]
+    skipConfigs += ["testImplementation", "testRuntimeOnly"]
 }
 ```
 
