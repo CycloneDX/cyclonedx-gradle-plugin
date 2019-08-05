@@ -39,7 +39,6 @@ buildscript {
 }
 
 apply plugin: 'java'
-apply plugin: 'maven'
 apply plugin: 'org.cyclonedx.bom'
 
 repositories {
