@@ -6,10 +6,9 @@
 [![Twitter](https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Follow)](https://twitter.com/CycloneDX_Spec)
 
 # CycloneDX Gradle Plugin
-The CycloneDX Gradle plugin creates an aggregate of all dependencies and transitive dependencies of a project 
-and creates a valid CycloneDX bill-of-material document from the results. CycloneDX is a lightweight BoM 
-specification that is easily created, human readable, and simple to parse. The resulting bom.xml can be used
-with tools such as [OWASP Dependency-Track](https://dependencytrack.org/) for the continuous analysis of components.
+The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project 
+and creates a valid CycloneDX bill-of-materials document from the results. CycloneDX is a lightweight BOM 
+specification that is easily created, human readable, and simple to parse.
 
 ## Usage
 __Execution:__
@@ -30,7 +29,7 @@ gradle cyclonedxBom -Pcyclonedx.includeBomSerialNumber=false
 __build.gradle__ (excerpt)
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '1.1.0' apply true
+    id 'org.cyclonedx.bom' version '1.1.1' apply true
 }
 
 apply plugin: 'java'
@@ -47,7 +46,7 @@ pluginManagement {
     resolutionStrategy {
         eachPlugin {
             if (requested.id.toString() == 'org.cyclonedx.bom') {
-                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.1.0')
+                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.1.1')
             }
         }
     }
