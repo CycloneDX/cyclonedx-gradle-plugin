@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/CycloneDX/cyclonedx-gradle-plugin.svg?branch=master)](https://travis-ci.org/CycloneDX/cyclonedx-gradle-plugin)
+[![Build Status](https://github.com/CycloneDX/cyclonedx-gradle-plugin/workflows/Maven%20CI/badge.svg)](https://github.com/CycloneDX/cyclonedx-gradle-plugin/actions?workflow=Maven+CI)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.cyclonedx/cyclonedx-gradle-plugin/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.cyclonedx/cyclonedx-gradle-plugin)
 [![License](https://img.shields.io/badge/license-Apache%202.0-brightgreen.svg)][License]
 [![Website](https://img.shields.io/badge/https://-cyclonedx.org-blue.svg)](https://cyclonedx.org/)
