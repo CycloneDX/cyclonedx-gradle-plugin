@@ -183,9 +183,9 @@ public class CycloneDxTask extends DefaultTask {
             final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
             project = mavenHelper.readPom(pomFile);
         } catch(IOException err) {
-            getLogger().error("Unable to resolve POM for " + component + ": " + err);
+            getLogger().error("Unable to resolve POM for " + component.getPurl() + ": " + err);
         } catch(ResolveException err) {
-            getLogger().error("Unable to resolve POM for " + component + ": " + err);
+            getLogger().error("Unable to resolve POM for " + component.getPurl() + ": " + err);
         }
 
         if(project != null) {
@@ -264,6 +264,7 @@ public class CycloneDxTask extends DefaultTask {
 
     /**
      * Ported from Maven plugin.
+     * @param components The CycloneDX components extracted from gradle dependencies
      */
     protected void writeBom(Set<Component> components) throws GradleException{
         try {
