@@ -38,6 +38,7 @@ import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -76,6 +77,7 @@ public class CycloneDxTask extends DefaultTask {
     private boolean skip;
     private final List<String> skipConfigs = new ArrayList<>();
 
+    @Input
     public List<String> getSkipConfigs() {
     	return skipConfigs;
     }
