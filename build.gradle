@@ -38,7 +38,7 @@ pluginBundle {
 gradlePlugin {
     plugins {
         cycloneDxPlugin {
-            id = 'name.richardlee.cyclonedx.bom'
+            id = 'org.cyclonedx.bom'
             displayName = 'CycloneDX BOM Generator'
             description = 'The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project and creates a valid CycloneDX bill-of-materials document from the results. CycloneDX is a lightweight BOM specification that is easily created, human readable, and simple to parse.'
             implementationClass = 'org.cyclonedx.gradle.CycloneDxPlugin'
