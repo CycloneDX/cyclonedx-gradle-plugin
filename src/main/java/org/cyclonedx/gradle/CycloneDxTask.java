@@ -78,7 +78,7 @@ public class CycloneDxTask extends DefaultTask {
     private boolean includeBomSerialNumber;
     private boolean skip;
     private final List<String> skipConfigs = new ArrayList<>();
-    private final Map<String, File> resolvedPoms = Collections.synchronizedMap(new HashMap<>());
+    private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
 
     @Input
     public List<String> getSkipConfigs() {
@@ -179,12 +179,12 @@ public class CycloneDxTask extends DefaultTask {
 
     /**
      * @param dependencyName coordinate of a module dependency in the group:name:version format
-     * @return the resolved POM file, or null upon resolve error
+     * @return the resolved maven POM file, or null upon resolve error
      */
-    private File getResolvedPom(String dependencyName) {
-        synchronized(resolvedPoms) {
-            if(resolvedPoms.containsKey(dependencyName)) {
-                return resolvedPoms.get(dependencyName);
+    private MavenProject getResolvedMavenProject(String dependencyName) {
+        synchronized(resolvedMavenProjects) {
+            if(resolvedMavenProjects.containsKey(dependencyName)) {
+                return resolvedMavenProjects.get(dependencyName);
             }
         }
         final Dependency pomDep = getProject()
@@ -196,25 +196,20 @@ public class CycloneDxTask extends DefaultTask {
 
         try {
             final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
-            resolvedPoms.put(dependencyName, pomFile);
-            return pomFile;
-        } catch(ResolveException err) {
-            getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
-        }
-        resolvedPoms.put(dependencyName, null);
-        return null;
-    }
-
-    private void augmentComponentMetadata(Component component, String dependencyName) {
-        MavenProject project = null;
-        try {
-            final File pomFile = getResolvedPom(dependencyName);
             if(pomFile != null) {
-                project = mavenHelper.readPom(pomFile);
+                final MavenProject project = mavenHelper.readPom(pomFile);
+                resolvedMavenProjects.put(dependencyName, project);
+                return project;
             }
         } catch(Exception err) {
             getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
         }
+        resolvedMavenProjects.put(dependencyName, null);
+        return null;
+    }
+
+    private void augmentComponentMetadata(Component component, String dependencyName) {
+        final MavenProject project = getResolvedMavenProject(dependencyName);
 
         if(project != null) {
             if(project.getOrganization() != null) {
