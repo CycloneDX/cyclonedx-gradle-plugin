@@ -122,33 +122,34 @@ public class CycloneDxTask extends DefaultTask {
                 .map(p -> p.getGroup() + ":" + p.getName() + ":" + p.getVersion())
                 .collect(Collectors.toSet());
 
-        final Set<Component> components = Collections.synchronizedSet(new LinkedHashSet<>());
-        getProject().getAllprojects().parallelStream()
+        final Set<Component> components = getProject().getAllprojects().stream()
             .flatMap(p -> p.getConfigurations().stream())
-            .forEach(configuration -> {
-                if (!shouldSkipConfiguration(configuration) && canBeResolved(configuration)) {
-                    final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
-                    if (resolvedConfiguration != null) {
-                    	List<String> depsFromConfig = new ArrayList<>();
-                        for (final ResolvedArtifact artifact : resolvedConfiguration.getResolvedArtifacts()) {
-                            // Don't include other resources built from this Gradle project.
-                            final String dependencyName = getDependencyName(artifact);
-                            if(builtDependencies.stream().anyMatch(c -> c.equals(dependencyName))) {
-                                continue;
-                            }
-                            
-                            depsFromConfig.add(dependencyName);
-
-                            // Convert into a Component and augment with pom metadata if available.
-                            final Component component = convertArtifact(artifact);
-                            augmentComponentMetadata(component, dependencyName);
-                            components.add(component);
+            .filter(configuration -> !shouldSkipConfiguration(configuration) && canBeResolved(configuration))
+            .flatMap(configuration -> {
+                final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
+                final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
+                if(resolvedConfiguration != null) {
+                    final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
+                    resolvedConfiguration.getResolvedArtifacts().parallelStream().forEach(artifact -> {
+                        // Don't include other resources built from this Gradle project.
+                        final String dependencyName = getDependencyName(artifact);
+                        if(builtDependencies.contains(dependencyName)) {
+                            return;
                         }
-                        Collections.sort(depsFromConfig);
-                        getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
-                    }
+
+                        depsFromConfig.add(dependencyName);
+
+                        // Convert into a Component and augment with pom metadata if available.
+                        final Component component = convertArtifact(artifact);
+                        augmentComponentMetadata(component, dependencyName);
+                        componentsFromConfig.add(component);
+                    });
+                    Collections.sort(depsFromConfig);
+                    getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
                 }
-            });
+                return componentsFromConfig.stream();
+            })
+            .collect(Collectors.toSet());
 
         writeBom(components);
     }
@@ -182,23 +183,26 @@ public class CycloneDxTask extends DefaultTask {
      */
     private File getResolvedPom(String dependencyName) {
         synchronized(resolvedPoms) {
-            if(!resolvedPoms.containsKey(dependencyName)) {
-                resolvedPoms.put(dependencyName, null);
-                final Dependency pomDep = getProject()
-                    .getDependencies()
-                    .create(dependencyName + "@pom");
-                final Configuration pomCfg = getProject()
-                    .getConfigurations()
-                    .detachedConfiguration(pomDep);
-                try {
-                    final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
-                    resolvedPoms.put(dependencyName, pomFile);
-                } catch(ResolveException err) {
-                    getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
-                }
+            if(resolvedPoms.containsKey(dependencyName)) {
+                return resolvedPoms.get(dependencyName);
             }
-            return resolvedPoms.get(dependencyName);
         }
+        final Dependency pomDep = getProject()
+            .getDependencies()
+            .create(dependencyName + "@pom");
+        final Configuration pomCfg = getProject()
+            .getConfigurations()
+            .detachedConfiguration(pomDep);
+
+        try {
+            final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
+            resolvedPoms.put(dependencyName, pomFile);
+            return pomFile;
+        } catch(ResolveException err) {
+            getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
+        }
+        resolvedPoms.put(dependencyName, null);
+        return null;
     }
 
     private void augmentComponentMetadata(Component component, String dependencyName) {
