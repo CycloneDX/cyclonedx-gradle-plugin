@@ -122,7 +122,7 @@ public class CycloneDxTask extends DefaultTask {
                 .map(p -> p.getGroup() + ":" + p.getName() + ":" + p.getVersion())
                 .collect(Collectors.toSet());
 
-        final Set<Component> components = getProject().getAllprojects().stream()
+        final Set<Component> components = getProject().getAllprojects().parallelStream()
             .flatMap(p -> p.getConfigurations().stream())
             .filter(configuration -> !shouldSkipConfiguration(configuration) && canBeResolved(configuration))
             .flatMap(configuration -> {
