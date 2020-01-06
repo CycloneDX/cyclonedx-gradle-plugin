@@ -78,7 +78,7 @@ public class CycloneDxTask extends DefaultTask {
     private boolean includeBomSerialNumber;
     private boolean skip;
     private final List<String> skipConfigs = new ArrayList<>();
-    private final Map<String, File> resolvedPoms = new HashMap<>();
+    private final Map<String, File> resolvedPoms = Collections.synchronizedMap(new HashMap<>());
 
     @Input
     public List<String> getSkipConfigs() {
@@ -122,9 +122,10 @@ public class CycloneDxTask extends DefaultTask {
                 .map(p -> p.getGroup() + ":" + p.getName() + ":" + p.getVersion())
                 .collect(Collectors.toSet());
 
-        final Set<Component> components = new LinkedHashSet<>();
-        for (final Project p : getProject().getAllprojects()) {
-            for (final Configuration configuration : p.getConfigurations()) {
+        final Set<Component> components = Collections.synchronizedSet(new LinkedHashSet<>());
+        getProject().getAllprojects().parallelStream()
+            .flatMap(p -> p.getConfigurations().stream())
+            .forEach(configuration -> {
                 if (!shouldSkipConfiguration(configuration) && canBeResolved(configuration)) {
                     final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
                     if (resolvedConfiguration != null) {
@@ -147,8 +148,8 @@ public class CycloneDxTask extends DefaultTask {
                         getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
                     }
                 }
-            }
-        }
+            });
+
         writeBom(components);
     }
 
@@ -180,22 +181,24 @@ public class CycloneDxTask extends DefaultTask {
      * @return the resolved POM file, or null upon resolve error
      */
     private File getResolvedPom(String dependencyName) {
-        if(!resolvedPoms.containsKey(dependencyName)) {
-            resolvedPoms.put(dependencyName, null);
-            final Dependency pomDep = getProject()
-                .getDependencies()
-                .create(dependencyName + "@pom");
-            final Configuration pomCfg = getProject()
-                .getConfigurations()
-                .detachedConfiguration(pomDep);
-            try {
-                final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
-                resolvedPoms.put(dependencyName, pomFile);
-            } catch(ResolveException err) {
-                getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
+        synchronized(resolvedPoms) {
+            if(!resolvedPoms.containsKey(dependencyName)) {
+                resolvedPoms.put(dependencyName, null);
+                final Dependency pomDep = getProject()
+                    .getDependencies()
+                    .create(dependencyName + "@pom");
+                final Configuration pomCfg = getProject()
+                    .getConfigurations()
+                    .detachedConfiguration(pomDep);
+                try {
+                    final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
+                    resolvedPoms.put(dependencyName, pomFile);
+                } catch(ResolveException err) {
+                    getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
+                }
             }
+            return resolvedPoms.get(dependencyName);
         }
-        return resolvedPoms.get(dependencyName);
     }
 
     private void augmentComponentMetadata(Component component, String dependencyName) {
@@ -205,7 +208,7 @@ public class CycloneDxTask extends DefaultTask {
             if(pomFile != null) {
                 project = mavenHelper.readPom(pomFile);
             }
-        } catch(IOException err) {
+        } catch(Exception err) {
             getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
         }
 
