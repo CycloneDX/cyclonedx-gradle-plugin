@@ -201,7 +201,10 @@ public class CycloneDxTask extends DefaultTask {
     private void augmentComponentMetadata(Component component, String dependencyName) {
         MavenProject project = null;
         try {
-            project = mavenHelper.readPom(getResolvedPom(dependencyName));
+            final File pomFile = getResolvedPom(dependencyName);
+            if(pomFile != null) {
+                project = mavenHelper.readPom(pomFile);
+            }
         } catch(IOException err) {
             getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
         }
