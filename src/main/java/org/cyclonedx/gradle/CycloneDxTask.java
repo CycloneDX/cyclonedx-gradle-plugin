@@ -27,6 +27,7 @@ import org.cyclonedx.BomParser;
 import org.cyclonedx.CycloneDxSchema;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
+import org.cyclonedx.model.Hash;
 import org.cyclonedx.model.License;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.DefaultTask;
@@ -78,6 +79,7 @@ public class CycloneDxTask extends DefaultTask {
     private boolean includeBomSerialNumber;
     private boolean skip;
     private final List<String> skipConfigs = new ArrayList<>();
+    private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
 
     @Input
@@ -241,12 +243,16 @@ public class CycloneDxTask extends DefaultTask {
         component.setName(artifact.getModuleVersion().getId().getName());
         component.setVersion(artifact.getModuleVersion().getId().getVersion());
         component.setType(Component.Type.LIBRARY);
-        try {
-            getLogger().debug(MESSAGE_CALCULATING_HASHES);
-            component.setHashes(BomUtils.calculateHashes(artifact.getFile()));
-        } catch(IOException e) {
-            getLogger().error("Error encountered calculating hashes", e);
-        }
+        getLogger().debug(MESSAGE_CALCULATING_HASHES);
+        List<Hash> hashes = artifactHashes.computeIfAbsent(artifact.getFile(), f -> {
+            try {
+                return BomUtils.calculateHashes(f);
+            } catch(IOException e) {
+                getLogger().error("Error encountered calculating hashes", e);
+            }
+            return Collections.emptyList();
+        });
+        component.setHashes(hashes);
 
         if (CycloneDxSchema.Version.VERSION_10 == schemaVersion) {
             component.setModified(false);
