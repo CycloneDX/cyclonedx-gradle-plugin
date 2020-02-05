@@ -40,6 +40,7 @@ import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
+import org.xml.sax.SAXException;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 import java.io.File;
@@ -81,12 +82,12 @@ public class CycloneDxTask extends DefaultTask {
     public List<String> getSkipConfigs() {
     	return skipConfigs;
     }
-    
+
     public void setSkipConfigs(Collection<String> skipConfigs) {
     	this.skipConfigs.clear();
     	this.skipConfigs.addAll(skipConfigs);
     }
-    
+
     public void setBuildDir(File buildDir) {
         this.buildDir = buildDir;
     }
@@ -132,7 +133,7 @@ public class CycloneDxTask extends DefaultTask {
                             if(builtDependencies.stream().anyMatch(c -> c.equals(dependencyName))) {
                                 continue;
                             }
-                            
+
                             depsFromConfig.add(dependencyName);
 
                             // Convert into a Component and augment with pom metadata if available.
@@ -284,8 +285,12 @@ public class CycloneDxTask extends DefaultTask {
             FileUtils.write(bomFile, bomString, Charset.forName("UTF-8"), false);
             getLogger().info(MESSAGE_VALIDATING_BOM);
             final BomParser bomParser = new BomParser();
-            if (!bomParser.isValid(bomFile)) {
-                throw new GradleException(MESSAGE_VALIDATION_FAILURE);
+            try {
+                if (!bomParser.isValid(bomFile)) {
+                    throw new GradleException(MESSAGE_VALIDATION_FAILURE);
+                }
+            } catch (IOException | SAXException e) {
+                throw new GradleException(MESSAGE_VALIDATION_FAILURE, e);
             }
 
         } catch (ParserConfigurationException | TransformerException | IOException e) {
