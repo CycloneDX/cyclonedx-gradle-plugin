@@ -289,7 +289,8 @@ public class CycloneDxTask extends DefaultTask {
                 if (!bomParser.isValid(bomFile)) {
                     throw new GradleException(MESSAGE_VALIDATION_FAILURE);
                 }
-            } catch (IOException | SAXException e) {
+            } catch (Exception e) { // Changed to Exception.
+                // Gradle will erroneously report "exception IOException is never thrown in body of corresponding try statement"
                 throw new GradleException(MESSAGE_VALIDATION_FAILURE, e);
             }
 
