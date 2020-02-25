@@ -263,7 +263,6 @@ public class CycloneDxTask extends DefaultTask {
      */
     protected void writeBom(Set<Component> components) throws GradleException{
         try {
-            getLogger().info("BOOOOOOOOOOO");
             getLogger().info(MESSAGE_CREATING_BOM);
             final Bom bom = new Bom();
             if (CycloneDxSchema.Version.VERSION_10 != schemaVersion && includeBomSerialNumber) {
