@@ -27,7 +27,6 @@ import org.cyclonedx.BomParser;
 import org.cyclonedx.CycloneDxSchema;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
-import org.cyclonedx.model.License;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
@@ -40,7 +39,6 @@ import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
-import org.xml.sax.SAXException;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 import java.io.File;
@@ -196,22 +194,7 @@ public class CycloneDxTask extends DefaultTask {
                 component.setPublisher(project.getOrganization().getName());
             }
             component.setDescription(project.getDescription());
-            if(project.getLicenses() != null) {
-                final List<License> licenses = new ArrayList<>();
-                for(final org.apache.maven.model.License artifactLicense : project.getLicenses()) {
-                    final License license = new License();
-                    if(artifactLicense.getName() != null) {
-                        license.setName(artifactLicense.getName());
-                        licenses.add(license);
-                    } else if(artifactLicense.getUrl() != null) {
-                        license.setName(artifactLicense.getUrl());
-                        licenses.add(license);
-                    }
-                }
-                if(licenses.size() > 0) {
-                    //component.setLicenses(licenses);
-                }
-            }
+            component.setLicenseChoice(mavenHelper.resolveMavenLicenses(project.getLicenses()));
         }
     }
 
@@ -227,30 +210,13 @@ public class CycloneDxTask extends DefaultTask {
         } catch(IOException e) {
             getLogger().error("Error encountered calculating hashes", e);
         }
-
-        if (CycloneDxSchema.Version.VERSION_10 == schemaVersion) {
-            component.setModified(false);
+        if (CycloneDxSchema.Version.VERSION_10 == schemaVersion()) {
+            component.setModified(mavenHelper.isModified(artifact));
         }
-
-        try {
-            TreeMap<String, String> qualifiers = null;
-            if (artifact.getType() != null || artifact.getClassifier() != null) {
-                qualifiers = new TreeMap<>();
-                if (artifact.getType() != null) {
-                    qualifiers.put("type", artifact.getType());
-                }
-                if (artifact.getClassifier() != null) {
-                    qualifiers.put("classifier", artifact.getClassifier());
-                }
-            }
-            final PackageURL purl = new PackageURL(PackageURL.StandardTypes.MAVEN,
-                    component.getGroup(), component.getName(), component.getVersion(), qualifiers, null);
-            component.setPurl(purl.canonicalize());
-
-        } catch (MalformedPackageURLException e) {
-            getLogger().warn("An unexpected issue occurred attempting to create a PackageURL for " + component.getName(), e);
-        }
-
+        component.setPurl(generatePackageUrl(artifact));
+        //if (CycloneDxSchema.Version.VERSION_10 != schemaVersion()) {
+        //    component.setBomRef(component.getPurl());
+        //}
         if (mavenHelper.isDescribedArtifact(artifact)) {
             final MavenProject project = mavenHelper.extractPom(artifact);
             if (project != null) {
@@ -265,12 +231,39 @@ public class CycloneDxTask extends DefaultTask {
         return skipConfigs.contains(configuration.getName());
     }
 
+    private String generatePackageUrl(final ResolvedArtifact artifact) {
+        try {
+            TreeMap<String, String> qualifiers = null;
+            if (artifact.getType() != null || artifact.getClassifier() != null) {
+                qualifiers = new TreeMap<>();
+                if (artifact.getType() != null) {
+                    qualifiers.put("type", artifact.getType());
+                }
+                if (artifact.getClassifier() != null) {
+                    qualifiers.put("classifier", artifact.getClassifier());
+                }
+            }
+            return new PackageURL(PackageURL.StandardTypes.MAVEN,
+                    artifact.getModuleVersion().getId().getGroup(),
+                    artifact.getModuleVersion().getId().getName(),
+                    artifact.getModuleVersion().getId().getVersion(),
+                    qualifiers, null).canonicalize();
+        } catch (MalformedPackageURLException e) {
+            getLogger().warn("An unexpected issue occurred attempting to create a PackageURL for "
+                    + artifact.getModuleVersion().getId().getGroup() + ":"
+                    + artifact.getModuleVersion().getId().getName()
+                    + ":" + artifact.getModuleVersion().getId().getVersion(), e);
+        }
+        return null;
+    }
+
     /**
      * Ported from Maven plugin.
      * @param components The CycloneDX components extracted from gradle dependencies
      */
     protected void writeBom(Set<Component> components) throws GradleException{
         try {
+            getLogger().info("BOOOOOOOOOOO");
             getLogger().info(MESSAGE_CREATING_BOM);
             final Bom bom = new Bom();
             if (CycloneDxSchema.Version.VERSION_10 != schemaVersion && includeBomSerialNumber) {

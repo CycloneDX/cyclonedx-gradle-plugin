@@ -5,11 +5,14 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.model.License;
+import org.apache.maven.model.MailingList;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
@@ -17,6 +20,7 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.cyclonedx.CycloneDxSchema;
 import org.cyclonedx.model.Component;
+import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.util.LicenseResolver;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
@@ -78,14 +82,83 @@ class MavenHelper {
                 component.setLicenseChoice(resolveMavenLicenses(project.getLicenses()));
             }
         }
+        if (CycloneDxSchema.Version.VERSION_10 != schemaVersion) {
+            if (project.getOrganization() != null && project.getOrganization().getUrl() != null) {
+                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.WEBSITE)) {
+                    addExternalReference(ExternalReference.Type.WEBSITE, project.getOrganization().getUrl(), component);
+                }
+            }
+            if (project.getCiManagement() != null && project.getCiManagement().getUrl() != null) {
+                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.BUILD_SYSTEM)) {
+                    addExternalReference(ExternalReference.Type.BUILD_SYSTEM, project.getCiManagement().getUrl(), component);
+                }
+            }
+            if (project.getDistributionManagement() != null && project.getDistributionManagement().getDownloadUrl() != null) {
+                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
+                    addExternalReference(ExternalReference.Type.DISTRIBUTION, project.getDistributionManagement().getDownloadUrl(), component);
+                }
+            }
+            if (project.getDistributionManagement() != null && project.getDistributionManagement().getRepository() != null) {
+                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
+                    addExternalReference(ExternalReference.Type.DISTRIBUTION, project.getDistributionManagement().getRepository().getUrl(), component);
+                }
+            }
+            if (project.getIssueManagement() != null && project.getIssueManagement().getUrl() != null) {
+                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.ISSUE_TRACKER)) {
+                    addExternalReference(ExternalReference.Type.ISSUE_TRACKER, project.getIssueManagement().getUrl(), component);
+                }
+            }
+            if (project.getMailingLists() != null && project.getMailingLists().size() > 0) {
+                for (MailingList list : project.getMailingLists()) {
+                    if (list.getArchive() != null) {
+                        if (!doesComponentHaveExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
+                            addExternalReference(ExternalReference.Type.MAILING_LIST, list.getArchive(), component);
+                        }
+                    } else if (list.getSubscribe() != null) {
+                        if (!doesComponentHaveExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
+                            addExternalReference(ExternalReference.Type.MAILING_LIST, list.getSubscribe(), component);
+                        }
+                    }
+                }
+            }
+            if (project.getScm() != null && project.getScm().getUrl() != null) {
+                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.VCS)) {
+                    addExternalReference(ExternalReference.Type.VCS, project.getScm().getUrl(), component);
+                }
+            }
+        }
     }
 
-    private LicenseChoice resolveMavenLicenses(final List<License> projectLicenses) {
+    private void addExternalReference(final ExternalReference.Type referenceType, final String url, final Component component) {
+        final ExternalReference ref = new ExternalReference();
+        ref.setType(referenceType);
+        ref.setUrl(url);
+        try {
+            new URL(ref.getUrl());
+            component.addExternalReference(ref);
+        } catch (MalformedURLException e) {
+            // throw it away
+        }
+    }
+
+    private boolean doesComponentHaveExternalReference(final Component component, final ExternalReference.Type type) {
+        if (component.getExternalReferences() != null && !component.getExternalReferences().isEmpty()) {
+            for (final ExternalReference ref : component.getExternalReferences()) {
+                if (type == ref.getType()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    LicenseChoice resolveMavenLicenses(final List<org.apache.maven.model.License> projectLicenses) {
+        final boolean includeLicenseText = true; // TODO: Make this configurable
         final LicenseChoice licenseChoice = new LicenseChoice();
         for (org.apache.maven.model.License artifactLicense : projectLicenses) {
             boolean resolved = false;
             if (artifactLicense.getName() != null) {
-                final LicenseChoice resolvedByName = LicenseResolver.resolve(artifactLicense.getName());
+                final LicenseChoice resolvedByName = LicenseResolver.resolve(artifactLicense.getName(), includeLicenseText);
                 if (resolvedByName != null) {
                     if (resolvedByName.getLicenses() != null && !resolvedByName.getLicenses().isEmpty()) {
                         resolved = true;
@@ -97,7 +170,7 @@ class MavenHelper {
                 }
             }
             if (artifactLicense.getUrl() != null && !resolved) {
-                final LicenseChoice resolvedByUrl = LicenseResolver.resolve(artifactLicense.getUrl());
+                final LicenseChoice resolvedByUrl = LicenseResolver.resolve(artifactLicense.getUrl(), includeLicenseText);
                 if (resolvedByUrl != null) {
                     if (resolvedByUrl.getLicenses() != null && !resolvedByUrl.getLicenses().isEmpty()) {
                         resolved = true;
@@ -110,7 +183,15 @@ class MavenHelper {
             }
             if (artifactLicense.getName() != null && !resolved) {
                 final org.cyclonedx.model.License license = new org.cyclonedx.model.License();;
-                license.setName(artifactLicense.getName());
+                license.setName(artifactLicense.getName().trim());
+                if (StringUtils.isNotBlank(artifactLicense.getUrl())) {
+                    try {
+                        new URL(artifactLicense.getUrl());
+                        license.setUrl(artifactLicense.getUrl().trim());
+                    } catch (MalformedURLException e) {
+                        // throw it away
+                    }
+                }
                 licenseChoice.addLicense(license);
             }
         }
@@ -211,7 +292,7 @@ class MavenHelper {
      * @param artifact the artifact
      * @return true if artifact will have a POM, false if not
      */
-    private boolean isDescribedArtifact(Artifact artifact) {
+    boolean isDescribedArtifact(Artifact artifact) {
         return artifact.getType().equalsIgnoreCase("jar");
     }
 
@@ -223,5 +304,10 @@ class MavenHelper {
      */
     boolean isDescribedArtifact(ResolvedArtifact artifact) {
         return artifact.getType().equalsIgnoreCase("jar");
+    }
+
+    boolean isModified(ResolvedArtifact artifact) {
+        //todo: compare hashes + GAV with what the artifact says against Maven Central to determine if component has been modified.
+        return false;
     }
 }
