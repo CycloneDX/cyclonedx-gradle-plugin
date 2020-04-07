@@ -111,7 +111,7 @@ public class CycloneDxTask extends DefaultTask {
         }
         logParameters();
         getLogger().info(MESSAGE_RESOLVING_DEPS);
-        final Set<String> builtDependencies = getProject()
+        final Set<String> analysedDependencies = getProject()
                 .getRootProject()
                 .getSubprojects()
                 .stream()
@@ -128,9 +128,10 @@ public class CycloneDxTask extends DefaultTask {
                         for (final ResolvedArtifact artifact : resolvedConfiguration.getResolvedArtifacts()) {
                             // Don't include other resources built from this Gradle project.
                             final String dependencyName = getDependencyName(artifact);
-                            if(builtDependencies.stream().anyMatch(c -> c.equals(dependencyName))) {
+                            if(analysedDependencies.contains(dependencyName)) {
                                 continue;
                             }
+                            analysedDependencies.add(dependencyName);
 
                             depsFromConfig.add(dependencyName);
 
