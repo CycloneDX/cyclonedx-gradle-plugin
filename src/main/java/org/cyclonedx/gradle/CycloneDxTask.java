@@ -258,6 +258,7 @@ public class CycloneDxTask extends DefaultTask {
 
     private Component convertArtifact(ResolvedArtifact artifact) {
         final Component component = new Component();
+        getLogger().debug("convertArtifact: working on " + artifact.getModuleVersion().getId().getName());
         component.setGroup(artifact.getModuleVersion().getId().getGroup());
         component.setName(artifact.getModuleVersion().getId().getName());
         component.setVersion(artifact.getModuleVersion().getId().getVersion());
