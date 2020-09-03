@@ -1,7 +1,7 @@
 
 plugins {
     id 'java-gradle-plugin'
-    id 'com.gradle.plugin-publish' version '0.10.1'
+    id 'com.gradle.plugin-publish' version '0.12.0'
     id 'maven-publish'
 }
 
@@ -24,7 +24,7 @@ dependencies {
 }
 
 group = 'com.cyclonedx'
-version = '1.2.0-SNAPSHOT'
+version = '1.2.0'
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
