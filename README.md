@@ -47,7 +47,7 @@ pluginManagement {
     resolutionStrategy {
         eachPlugin {
             if (requested.id.toString() == 'org.cyclonedx.bom') {
-                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.1.4')
+                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.2.0')
             }
         }
     }
@@ -56,7 +56,7 @@ pluginManagement {
     }
 }
 ```
-Once a BOM is generated, it will reside at `./build/reports/bom.xml`
+Once a BOM is generated, it will reside at `./build/reports/bom.xml` and `./build/reports/bom.json`
 
 
 __Configuration:__
@@ -65,12 +65,26 @@ You can control the configurations included in the BOM:
 cyclonedxBom {
     // skipConfigs is a list of configuration names to exclude when generating the BOM
     skipConfigs += ["compileClasspath", "testCompileClasspath"]
+    // Specified the type of project being built. Defaults to 'library' 
+    projectType = "application"
+    // Specified the version of the CycloneDX specification to use. Defaults to 1.2.
+    schemaVersion = "1.2"
 }
 ```
 
 Run gradle with info logging (-i option) to see which configurations add to the BOM. 
 
+## CycloneDX Schema Support
 
+The following table provides information on the version of this node module, the CycloneDX schema version supported, 
+as well as the output format options. Use the latest possible version of this node module that is the compatible with 
+the CycloneDX version supported by the target system.
+
+| Version | Schema Version | Format(s) |
+| ------- | ----------------- | --------- |
+| 1.2.x | CycloneDX v1.2 | XML/JSON |
+| 1.1.x | CycloneDX v1.1 | XML |
+| 1.0x | CycloneDX v1.0 | XML |
 
 ## Copyright & License
 CycloneDX Gradle Plugin is Copyright (c) Steve Springett. All Rights Reserved.
