@@ -19,8 +19,8 @@ dependencies {
         // gradle-api already includes an slf4j binding
         exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j-impl'
     }
-    compile 'commons-codec:commons-codec:1.13'
-    compile 'commons-io:commons-io:2.6'
+    compile 'commons-codec:commons-codec:1.15'
+    compile 'commons-io:commons-io:2.7'
     compile 'org.apache.maven:maven-core:3.5.0'
 }
 
