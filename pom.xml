@@ -67,6 +67,7 @@
         <maven.javadoc.plugin.version>3.1.1</maven.javadoc.plugin.version>
         <maven.source.plugin.version>3.2.1</maven.source.plugin.version>
         <maven.jar.plugin.version>3.0.2</maven.jar.plugin.version>
+        <maven.cyclonedx.plugin.version>2.0.3</maven.cyclonedx.plugin.version>
         <maven.github.release.plugin.version>1.4.0</maven.github.release.plugin.version>
     </properties>
 
@@ -186,6 +187,19 @@
                         <id>attach-javadocs</id>
                         <goals>
                             <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <version>${maven.cyclonedx.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>makeBom</goal>
                         </goals>
                     </execution>
                 </executions>
