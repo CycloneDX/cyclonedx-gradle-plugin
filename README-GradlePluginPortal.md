@@ -60,14 +60,14 @@ in the mavenLocal() repository.
 pluginManagement {
     resolutionStrategy {
         eachPlugin {
-            if (requested.id.toString() == 'com.cyclonedx.bom') {
-                useModule('com.cyclonedx:cyclonedx-gradle-plugin:1.1.2-SNAPSHOT')
+            if (requested.id.toString() == 'org.cyclonedx.bom') {
+                useModule('org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:1.2.1-SNAPSHOT')
             }
         }
     }
     repositories {
-        mavenCentral()
         mavenLocal()
+        mavenCentral()
     }
 }
 ```
@@ -103,6 +103,6 @@ portal plugins _must_ specify the desired version in the DSL.
 
 ```
 plugins {
-    id 'com.cyclonedx.bom' version '1.1.2'
+    id 'org.cyclonedx.bom' version '1.2.1'
 }
 ```
