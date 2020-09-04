@@ -318,6 +318,7 @@ public class CycloneDxTask extends DefaultTask {
 
     /**
      * Ported from Maven plugin.
+     * @param metadata The CycloneDX metadata object
      * @param components The CycloneDX components extracted from gradle dependencies
      */
     protected void writeBom(Metadata metadata, Set<Component> components) throws GradleException{
