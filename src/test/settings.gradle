@@ -2,7 +2,7 @@ pluginManagement {
     resolutionStrategy {
         eachPlugin {
             if (requested.id.toString() == 'org.cyclonedx.bom') {
-                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.2.0')
+                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.2.0-SNAPSHOT')
             }
         }
     }
