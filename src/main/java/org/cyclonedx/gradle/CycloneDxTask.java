@@ -33,6 +33,7 @@ import org.cyclonedx.model.Tool;
 import org.cyclonedx.parsers.JsonParser;
 import org.cyclonedx.parsers.Parser;
 import org.cyclonedx.parsers.XmlParser;
+import org.cyclonedx.model.Hash;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
@@ -40,7 +41,6 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
-import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.tasks.Input;
@@ -55,9 +55,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -84,6 +86,8 @@ public class CycloneDxTask extends DefaultTask {
     private boolean skip;
     private String projectType;
     private final List<String> skipConfigs = new ArrayList<>();
+    private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
+    private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
 
     @Input
     public List<String> getSkipConfigs() {
@@ -129,33 +133,35 @@ public class CycloneDxTask extends DefaultTask {
                 .collect(Collectors.toSet());
 
         final Metadata metadata = createMetadata();
-        final Set<Component> components = new LinkedHashSet<>();
-        for (final Project p : getProject().getAllprojects()) {
-            for (final Configuration configuration : p.getConfigurations()) {
-                if (!shouldSkipConfiguration(configuration) && canBeResolved(configuration)) {
-                    final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
-                    if (resolvedConfiguration != null) {
-                    	List<String> depsFromConfig = new ArrayList<>();
-                        for (final ResolvedArtifact artifact : resolvedConfiguration.getResolvedArtifacts()) {
-                            // Don't include other resources built from this Gradle project.
-                            final String dependencyName = getDependencyName(artifact);
-                            if(builtDependencies.stream().anyMatch(c -> c.equals(dependencyName))) {
-                                continue;
-                            }
-
-                            depsFromConfig.add(dependencyName);
-
-                            // Convert into a Component and augment with pom metadata if available.
-                            final Component component = convertArtifact(artifact);
-                            augmentComponentMetadata(component, dependencyName);
-                            components.add(component);
+        final Set<Component> components = getProject().getAllprojects().stream()
+            .flatMap(p -> p.getConfigurations().stream())
+            .filter(configuration -> !shouldSkipConfiguration(configuration) && canBeResolved(configuration))
+            .flatMap(configuration -> {
+                final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
+                final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
+                if (resolvedConfiguration != null) {
+                    final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
+                    resolvedConfiguration.getResolvedArtifacts().stream().forEach(artifact -> {
+                        // Don't include other resources built from this Gradle project.
+                        final String dependencyName = getDependencyName(artifact);
+                        if (builtDependencies.contains(dependencyName)) {
+                            return;
                         }
-                        Collections.sort(depsFromConfig);
-                        getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
-                    }
+
+                        depsFromConfig.add(dependencyName);
+
+                        // Convert into a Component and augment with pom metadata if available.
+                        final Component component = convertArtifact(artifact);
+                        augmentComponentMetadata(component, dependencyName);
+                        componentsFromConfig.add(component);
+                    });
+                    Collections.sort(depsFromConfig);
+                    getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
                 }
-            }
-        }
+                return componentsFromConfig.stream();
+            })
+            .collect(Collectors.toSet());
+
         writeBom(metadata, components);
     }
 
@@ -182,21 +188,39 @@ public class CycloneDxTask extends DefaultTask {
         return m.getGroup() + ":" + m.getName() + ":" + m.getVersion();
     }
 
-    private void augmentComponentMetadata(Component component, String dependencyName) {
+    /**
+     * @param dependencyName coordinate of a module dependency in the group:name:version format
+     * @return the resolved maven POM file, or null upon resolve error
+     */
+    private MavenProject getResolvedMavenProject(String dependencyName) {
+        synchronized(resolvedMavenProjects) {
+            if(resolvedMavenProjects.containsKey(dependencyName)) {
+                return resolvedMavenProjects.get(dependencyName);
+            }
+        }
         final Dependency pomDep = getProject()
             .getDependencies()
             .create(dependencyName + "@pom");
         final Configuration pomCfg = getProject()
             .getConfigurations()
             .detachedConfiguration(pomDep);
-        MavenProject project = null;
 
         try {
             final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
-            project = mavenHelper.readPom(pomFile);
-        } catch(ResolveException | IOException err) {
-            getLogger().error("Unable to resolve POM for " + component.getPurl() + ": " + err);
+            if(pomFile != null) {
+                final MavenProject project = mavenHelper.readPom(pomFile);
+                resolvedMavenProjects.put(dependencyName, project);
+                return project;
+            }
+        } catch(Exception err) {
+            getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
         }
+        resolvedMavenProjects.put(dependencyName, null);
+        return null;
+    }
+
+    private void augmentComponentMetadata(Component component, String dependencyName) {
+        final MavenProject project = getResolvedMavenProject(dependencyName);
 
         if(project != null) {
             if(project.getOrganization() != null) {
@@ -262,15 +286,21 @@ public class CycloneDxTask extends DefaultTask {
         component.setName(artifact.getModuleVersion().getId().getName());
         component.setVersion(artifact.getModuleVersion().getId().getVersion());
         component.setType(Component.Type.LIBRARY);
-        try {
-            getLogger().debug(MESSAGE_CALCULATING_HASHES);
-            component.setHashes(BomUtils.calculateHashes(artifact.getFile(), schemaVersion));
-        } catch(IOException e) {
-            getLogger().error("Error encountered calculating hashes", e);
-        }
+        getLogger().debug(MESSAGE_CALCULATING_HASHES);
+        List<Hash> hashes = artifactHashes.computeIfAbsent(artifact.getFile(), f -> {
+            try {
+                return BomUtils.calculateHashes(f, schemaVersion);
+            } catch(IOException e) {
+                getLogger().error("Error encountered calculating hashes", e);
+            }
+            return Collections.emptyList();
+        });
+        component.setHashes(hashes);
+
         if (schemaVersion().getVersion() >= 1.1) {
             component.setModified(mavenHelper.isModified(artifact));
         }
+
         component.setPurl(generatePackageUrl(artifact));
         //if (CycloneDxSchema.Version.VERSION_10 != schemaVersion()) {
         //    component.setBomRef(component.getPurl());
