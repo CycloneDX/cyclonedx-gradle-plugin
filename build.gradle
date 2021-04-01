@@ -8,13 +8,10 @@ plugins {
 repositories {
     jcenter()
     mavenCentral()
-    maven {
-        url 'https://jitpack.io'
-    }
 }
 
 dependencies {
-    compile(group: 'org.cyclonedx', name: 'cyclonedx-core-java', version: '3.0.5') {
+    compile(group: 'org.cyclonedx', name: 'cyclonedx-core-java', version: '4.1.0') {
         // gradle-api already includes an slf4j binding
         exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j-impl'
     }
@@ -24,7 +21,7 @@ dependencies {
 }
 
 group = 'com.cyclonedx'
-version = '1.2.1'
+version = '1.2.2-SNAPSHOT'
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
@@ -36,11 +33,11 @@ tasks.withType(JavaCompile) {
 pluginBundle {
     website = 'http://cyclonedx.org'
     vcsUrl = 'https://github.com/CycloneDX/cyclonedx-gradle-plugin.git'
-    tags = [ 'cyclonedx', 'dependency', 'dependencies', 'owasp', 'bom' ]
+    tags = [ 'cyclonedx', 'dependency', 'dependencies', 'owasp', 'inventory', 'bom', 'sbom' ]
     plugins {
         cycloneDxPlugin {
             displayName = 'CycloneDX BOM Generator'
-            description = 'The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project and creates a valid CycloneDX bill-of-materials document from the results. CycloneDX is a lightweight BOM specification that is easily created, human readable, and simple to parse.'
+            description = 'The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project and creates a valid CycloneDX Software Bill of Materials (SBOM).'
         }
     }
 }

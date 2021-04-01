@@ -24,6 +24,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.project.MavenProject;
 import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
+import org.cyclonedx.exception.GeneratorException;
 import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
 import org.cyclonedx.model.Bom;
@@ -364,13 +365,13 @@ public class CycloneDxTask extends DefaultTask {
             if (schemaVersion().getVersion() >= 1.2) {
                 writeJSONBom(schemaVersion, bom);
             }
-        } catch (ParserConfigurationException | TransformerException | IOException e) {
+        } catch (GeneratorException | ParserConfigurationException | TransformerException | IOException e) {
             throw new GradleException("An error occurred executing " + this.getClass().getName(), e);
         }
     }
 
     private void writeXMLBom(final CycloneDxSchema.Version schemaVersion, final Bom bom)
-            throws ParserConfigurationException, TransformerException, IOException {
+            throws GeneratorException, ParserConfigurationException, TransformerException, IOException {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         bomGenerator.generate();
         final String bomString = bomGenerator.toXmlString();
@@ -391,7 +392,6 @@ public class CycloneDxTask extends DefaultTask {
 
     private void writeJSONBom(final CycloneDxSchema.Version schemaVersion, final Bom bom) throws IOException {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
-        bomGenerator.generate();
         final String bomString = bomGenerator.toJsonString();
         final File bomFile = new File(buildDir, "reports/bom.json");
         getLogger().info(MESSAGE_WRITING_BOM_JSON);

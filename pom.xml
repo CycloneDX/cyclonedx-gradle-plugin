@@ -26,7 +26,7 @@
     <version>1.2.2-SNAPSHOT</version>
 
     <name>CycloneDX Gradle Plugin</name>
-    <description>The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project and creates a valid CycloneDX bill-of-materials document from the results. CycloneDX is a lightweight BOM specification that is easily created, human readable, and simple to parse.</description>
+    <description>The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project and creates a valid CycloneDX Software Bill of Materials (SBOM).</description>
     <url>https://github.com/CycloneDX/cyclonedx-gradle-plugin</url>
     <inceptionYear>2017</inceptionYear>
     <organization>
@@ -67,7 +67,7 @@
         <maven.javadoc.plugin.version>3.1.1</maven.javadoc.plugin.version>
         <maven.source.plugin.version>3.2.1</maven.source.plugin.version>
         <maven.jar.plugin.version>3.0.2</maven.jar.plugin.version>
-        <maven.cyclonedx.plugin.version>2.0.3</maven.cyclonedx.plugin.version>
+        <maven.cyclonedx.plugin.version>2.4.0</maven.cyclonedx.plugin.version>
         <maven.github.release.plugin.version>1.4.0</maven.github.release.plugin.version>
     </properties>
 
@@ -103,7 +103,14 @@
         <dependency>
             <groupId>org.cyclonedx</groupId>
             <artifactId>cyclonedx-core-java</artifactId>
-            <version>3.0.5</version>
+            <version>4.1.0</version>
+        </dependency>
+        <!-- This is already a dependency of CycloneDX Java Core, but due to some Maven configurations,
+        an older version may be resolved instead which may lead to sha3 methods not being available. -->
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.15</version>
         </dependency>
         <dependency>
             <groupId>commons-codec</groupId>
