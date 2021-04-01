@@ -6,7 +6,7 @@ read -p "Really deploy to Maven Central repository (Y/N)? "
 if ( [ "$REPLY" == "Y" ] ) then
 
   mvn clean
-  mvn release:clean release:prepare release:perform -Prelease -X -e | tee release.log
+  mvn release:clean release:prepare release:perform -Prelease -e | tee release.log
 
 else
   echo -e "Exit without deploy"
