@@ -7,9 +7,10 @@
 [![Twitter](https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Follow)](https://twitter.com/CycloneDX_Spec)
 
 # CycloneDX Gradle Plugin
-The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project 
-and creates a valid CycloneDX bill-of-materials document from the results. CycloneDX is a lightweight BOM 
-specification that is easily created, human readable, and simple to parse.
+
+The CycloneDX Maven plugin creates an aggregate of all direct and transitive dependencies of a project
+and creates a valid CycloneDX SBOM. CycloneDX is a lightweight software bill of materials
+(SBOM) specification designed for use in application security contexts and supply chain component analysis.
 
 ## Usage
 __Execution:__
@@ -47,7 +48,7 @@ pluginManagement {
     resolutionStrategy {
         eachPlugin {
             if (requested.id.toString() == 'org.cyclonedx.bom') {
-                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.2.0')
+                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.3.0')
             }
         }
     }
