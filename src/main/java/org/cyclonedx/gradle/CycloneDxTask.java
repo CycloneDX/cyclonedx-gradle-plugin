@@ -29,12 +29,12 @@ import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
+import org.cyclonedx.model.Hash;
 import org.cyclonedx.model.Metadata;
 import org.cyclonedx.model.Tool;
 import org.cyclonedx.parsers.JsonParser;
 import org.cyclonedx.parsers.Parser;
 import org.cyclonedx.parsers.XmlParser;
-import org.cyclonedx.model.Hash;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
@@ -46,8 +46,8 @@ import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
+
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.TransformerException;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -59,8 +59,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Properties;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -251,7 +251,7 @@ public class CycloneDxTask extends DefaultTask {
         component.setName(project.getName());
         component.setVersion(project.getVersion().toString());
         component.setType(resolveProjectType());
-        component.setPurl(generatePackageUrl(project.getGroup().toString(), project.getName(), project.getVersion().toString(), null, null));
+        component.setPurl(generatePackageUrl(project.getGroup().toString(), project.getName(), project.getVersion().toString(), null ));
         component.setBomRef(component.getPurl());
         metadata.setComponent(component);
         return metadata;
@@ -334,12 +334,12 @@ public class CycloneDxTask extends DefaultTask {
         return generatePackageUrl(artifact.getModuleVersion().getId().getGroup(),
                 artifact.getModuleVersion().getId().getName(),
                 artifact.getModuleVersion().getId().getVersion(),
-                qualifiers, null);
+                qualifiers );
     }
 
-    private String generatePackageUrl(String groupId, String artifactId, String version, TreeMap<String, String> qualifiers, String subpath) {
+    private String generatePackageUrl(String groupId, String artifactId, String version, TreeMap<String, String> qualifiers) {
         try {
-            return new PackageURL(PackageURL.StandardTypes.MAVEN, groupId, artifactId, version, qualifiers, subpath).canonicalize();
+            return new PackageURL(PackageURL.StandardTypes.MAVEN, groupId, artifactId, version, qualifiers, null).canonicalize();
         } catch(MalformedPackageURLException e) {
             getLogger().warn("An unexpected issue occurred attempting to create a PackageURL for "
                     + groupId + ":" + artifactId + ":" + version, e);
