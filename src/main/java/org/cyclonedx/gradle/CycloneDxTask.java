@@ -140,25 +140,23 @@ public class CycloneDxTask extends DefaultTask {
             .flatMap(configuration -> {
                 final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
                 final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
-                if (resolvedConfiguration != null) {
-                    final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
-                    resolvedConfiguration.getResolvedArtifacts().stream().forEach(artifact -> {
-                        // Don't include other resources built from this Gradle project.
-                        final String dependencyName = getDependencyName(artifact);
-                        if (builtDependencies.contains(dependencyName)) {
-                            return;
-                        }
+                final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
+                resolvedConfiguration.getResolvedArtifacts().forEach(artifact -> {
+                    // Don't include other resources built from this Gradle project.
+                    final String dependencyName = getDependencyName(artifact);
+                    if (builtDependencies.contains(dependencyName)) {
+                        return;
+                    }
 
-                        depsFromConfig.add(dependencyName);
+                    depsFromConfig.add(dependencyName);
 
-                        // Convert into a Component and augment with pom metadata if available.
-                        final Component component = convertArtifact(artifact);
-                        augmentComponentMetadata(component, dependencyName);
-                        componentsFromConfig.add(component);
-                    });
-                    Collections.sort(depsFromConfig);
-                    getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
-                }
+                    // Convert into a Component and augment with pom metadata if available.
+                    final Component component = convertArtifact(artifact);
+                    augmentComponentMetadata(component, dependencyName);
+                    componentsFromConfig.add(component);
+                });
+                Collections.sort(depsFromConfig);
+                getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
                 return componentsFromConfig.stream();
             })
             .collect(Collectors.toSet());
@@ -321,15 +319,10 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     private String generatePackageUrl(final ResolvedArtifact artifact) {
-        TreeMap<String, String> qualifiers = null;
-        if (artifact.getType() != null || artifact.getClassifier() != null) {
-            qualifiers = new TreeMap<>();
-            if (artifact.getType() != null) {
-                qualifiers.put("type", artifact.getType());
-            }
-            if (artifact.getClassifier() != null) {
-                qualifiers.put("classifier", artifact.getClassifier());
-            }
+        TreeMap<String, String> qualifiers = new TreeMap<>();
+        qualifiers.put("type", artifact.getType());
+        if (artifact.getClassifier() != null) {
+            qualifiers.put("classifier", artifact.getClassifier());
         }
         return generatePackageUrl(artifact.getModuleVersion().getId().getGroup(),
                 artifact.getModuleVersion().getId().getName(),
