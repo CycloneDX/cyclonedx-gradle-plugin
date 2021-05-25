@@ -365,13 +365,13 @@ public class CycloneDxTask extends DefaultTask {
             if (schemaVersion().getVersion() >= 1.2) {
                 writeJSONBom(schemaVersion, bom);
             }
-        } catch (GeneratorException | ParserConfigurationException | TransformerException | IOException e) {
+        } catch (GeneratorException | ParserConfigurationException | IOException e) {
             throw new GradleException("An error occurred executing " + this.getClass().getName(), e);
         }
     }
 
     private void writeXMLBom(final CycloneDxSchema.Version schemaVersion, final Bom bom)
-            throws GeneratorException, ParserConfigurationException, TransformerException, IOException {
+            throws GeneratorException, ParserConfigurationException, IOException {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         bomGenerator.generate();
         final String bomString = bomGenerator.toXmlString();
