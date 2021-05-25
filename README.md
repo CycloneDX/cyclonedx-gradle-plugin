@@ -64,6 +64,8 @@ __Configuration:__
 You can control the configurations included in the BOM:
 ```groovy
 cyclonedxBom {
+    // includeConfigs is the list of configuration names to include when generating the BOM (leave empty to include every configuration)
+    includeConfigs += ["runtimeClasspath"]
     // skipConfigs is a list of configuration names to exclude when generating the BOM
     skipConfigs += ["compileClasspath", "testCompileClasspath"]
     // Specified the type of project being built. Defaults to 'library' 

@@ -86,9 +86,20 @@ public class CycloneDxTask extends DefaultTask {
     private boolean includeBomSerialNumber;
     private boolean skip;
     private String projectType;
+    private final List<String> includeConfigs = new ArrayList<>();
     private final List<String> skipConfigs = new ArrayList<>();
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
+
+    @Input
+    public List<String> getIncludeConfigs() {
+        return includeConfigs;
+    }
+
+    public void setIncludeConfigs(Collection<String> includeConfigs) {
+        this.includeConfigs.clear();
+        this.includeConfigs.addAll(includeConfigs);
+    }
 
     @Input
     public List<String> getSkipConfigs() {
@@ -136,7 +147,7 @@ public class CycloneDxTask extends DefaultTask {
         final Metadata metadata = createMetadata();
         final Set<Component> components = getProject().getAllprojects().stream()
             .flatMap(p -> p.getConfigurations().stream())
-            .filter(configuration -> !shouldSkipConfiguration(configuration) && canBeResolved(configuration))
+            .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && canBeResolved(configuration))
             .flatMap(configuration -> {
                 final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
                 final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
@@ -312,6 +323,10 @@ public class CycloneDxTask extends DefaultTask {
         }
 
         return component;
+    }
+
+    private boolean shouldIncludeConfiguration(Configuration configuration) {
+        return includeConfigs.isEmpty() || includeConfigs.contains(configuration.getName());
     }
 
     private boolean shouldSkipConfiguration(Configuration configuration) {
