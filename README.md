@@ -88,7 +88,8 @@ the CycloneDX version supported by the target system.
 | 1.0x | CycloneDX v1.0 | XML |
 
 ## Copyright & License
-CycloneDX Gradle Plugin is Copyright (c) Steve Springett. All Rights Reserved.
+
+CycloneDX Gradle Plugin is Copyright (c) OWASP Foundation. All Rights Reserved.
 
 Permission to modify and redistribute is granted under the terms of the Apache 2.0 license. See the [LICENSE] file for the full license.
 
