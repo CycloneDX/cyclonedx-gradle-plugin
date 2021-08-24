@@ -8,7 +8,7 @@
 
 # CycloneDX Gradle Plugin
 
-The CycloneDX Maven plugin creates an aggregate of all direct and transitive dependencies of a project
+The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project
 and creates a valid CycloneDX SBOM. CycloneDX is a lightweight software bill of materials
 (SBOM) specification designed for use in application security contexts and supply chain component analysis.
 
