@@ -85,7 +85,7 @@ the CycloneDX version supported by the target system.
 
 | Version | Schema Version | Format(s) |
 | ------- | ----------------- | --------- |
-| 1.3.x | CycloneDX v1.3 | XML/JSON |
+| 1.4.x | CycloneDX v1.3 | XML/JSON |
 | 1.2.x | CycloneDX v1.2 | XML/JSON |
 | 1.1.x | CycloneDX v1.1 | XML |
 | 1.0x | CycloneDX v1.0 | XML |
