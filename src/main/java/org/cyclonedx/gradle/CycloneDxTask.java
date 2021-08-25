@@ -350,7 +350,7 @@ public class CycloneDxTask extends DefaultTask {
         try {
             return new PackageURL(PackageURL.StandardTypes.MAVEN, groupId, artifactId, version, qualifiers, null).canonicalize();
         } catch(MalformedPackageURLException e) {
-            getLogger().warn("An unexpected issue occurred attempting to create a PackageURL for "
+            getLogger().debug("An unexpected issue occurred attempting to create a PackageURL for "
                     + groupId + ":" + artifactId + ":" + version, e);
         }
         return null;
