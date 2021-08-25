@@ -30,12 +30,12 @@ import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
+import org.cyclonedx.model.Hash;
 import org.cyclonedx.model.Metadata;
 import org.cyclonedx.model.Tool;
 import org.cyclonedx.parsers.JsonParser;
 import org.cyclonedx.parsers.Parser;
 import org.cyclonedx.parsers.XmlParser;
-import org.cyclonedx.model.Hash;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
@@ -47,8 +47,8 @@ import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
+
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.TransformerException;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -60,8 +60,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Properties;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -87,9 +87,20 @@ public class CycloneDxTask extends DefaultTask {
     private boolean includeBomSerialNumber;
     private boolean skip;
     private String projectType;
+    private final List<String> includeConfigs = new ArrayList<>();
     private final List<String> skipConfigs = new ArrayList<>();
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
+
+    @Input
+    public List<String> getIncludeConfigs() {
+        return includeConfigs;
+    }
+
+    public void setIncludeConfigs(Collection<String> includeConfigs) {
+        this.includeConfigs.clear();
+        this.includeConfigs.addAll(includeConfigs);
+    }
 
     @Input
     public List<String> getSkipConfigs() {
@@ -137,29 +148,27 @@ public class CycloneDxTask extends DefaultTask {
         final Metadata metadata = createMetadata();
         final Set<Component> components = getProject().getAllprojects().stream()
             .flatMap(p -> p.getConfigurations().stream())
-            .filter(configuration -> !shouldSkipConfiguration(configuration) && canBeResolved(configuration))
+            .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && canBeResolved(configuration))
             .flatMap(configuration -> {
                 final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
                 final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
-                if (resolvedConfiguration != null) {
-                    final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
-                    resolvedConfiguration.getResolvedArtifacts().stream().forEach(artifact -> {
-                        // Don't include other resources built from this Gradle project.
-                        final String dependencyName = getDependencyName(artifact);
-                        if (builtDependencies.contains(dependencyName)) {
-                            return;
-                        }
+                final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
+                resolvedConfiguration.getResolvedArtifacts().forEach(artifact -> {
+                    // Don't include other resources built from this Gradle project.
+                    final String dependencyName = getDependencyName(artifact);
+                    if (builtDependencies.contains(dependencyName)) {
+                        return;
+                    }
 
-                        depsFromConfig.add(dependencyName);
+                    depsFromConfig.add(dependencyName);
 
-                        // Convert into a Component and augment with pom metadata if available.
-                        final Component component = convertArtifact(artifact);
-                        augmentComponentMetadata(component, dependencyName);
-                        componentsFromConfig.add(component);
-                    });
-                    Collections.sort(depsFromConfig);
-                    getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
-                }
+                    // Convert into a Component and augment with pom metadata if available.
+                    final Component component = convertArtifact(artifact);
+                    augmentComponentMetadata(component, dependencyName);
+                    componentsFromConfig.add(component);
+                });
+                Collections.sort(depsFromConfig);
+                getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
                 return componentsFromConfig.stream();
             })
             .collect(Collectors.toSet());
@@ -252,7 +261,7 @@ public class CycloneDxTask extends DefaultTask {
         component.setName(project.getName());
         component.setVersion(project.getVersion().toString());
         component.setType(resolveProjectType());
-        component.setPurl(generatePackageUrl(project.getGroup().toString(), project.getName(), project.getVersion().toString(), null, null));
+        component.setPurl(generatePackageUrl(project.getGroup().toString(), project.getName(), project.getVersion().toString(), null ));
         component.setBomRef(component.getPurl());
         metadata.setComponent(component);
         return metadata;
@@ -317,30 +326,29 @@ public class CycloneDxTask extends DefaultTask {
         return component;
     }
 
+    private boolean shouldIncludeConfiguration(Configuration configuration) {
+        return includeConfigs.isEmpty() || includeConfigs.contains(configuration.getName());
+    }
+
     private boolean shouldSkipConfiguration(Configuration configuration) {
         return skipConfigs.contains(configuration.getName());
     }
 
     private String generatePackageUrl(final ResolvedArtifact artifact) {
-        TreeMap<String, String> qualifiers = null;
-        if (artifact.getType() != null || artifact.getClassifier() != null) {
-            qualifiers = new TreeMap<>();
-            if (artifact.getType() != null) {
-                qualifiers.put("type", artifact.getType());
-            }
-            if (artifact.getClassifier() != null) {
-                qualifiers.put("classifier", artifact.getClassifier());
-            }
+        TreeMap<String, String> qualifiers = new TreeMap<>();
+        qualifiers.put("type", artifact.getType());
+        if (artifact.getClassifier() != null) {
+            qualifiers.put("classifier", artifact.getClassifier());
         }
         return generatePackageUrl(artifact.getModuleVersion().getId().getGroup(),
                 artifact.getModuleVersion().getId().getName(),
                 artifact.getModuleVersion().getId().getVersion(),
-                qualifiers, null);
+                qualifiers );
     }
 
-    private String generatePackageUrl(String groupId, String artifactId, String version, TreeMap<String, String> qualifiers, String subpath) {
+    private String generatePackageUrl(String groupId, String artifactId, String version, TreeMap<String, String> qualifiers) {
         try {
-            return new PackageURL(PackageURL.StandardTypes.MAVEN, groupId, artifactId, version, qualifiers, subpath).canonicalize();
+            return new PackageURL(PackageURL.StandardTypes.MAVEN, groupId, artifactId, version, qualifiers, null).canonicalize();
         } catch(MalformedPackageURLException e) {
             getLogger().warn("An unexpected issue occurred attempting to create a PackageURL for "
                     + groupId + ":" + artifactId + ":" + version, e);
@@ -366,13 +374,13 @@ public class CycloneDxTask extends DefaultTask {
             if (schemaVersion().getVersion() >= 1.2) {
                 writeJSONBom(schemaVersion, bom);
             }
-        } catch (GeneratorException | ParserConfigurationException | TransformerException | IOException e) {
+        } catch (GeneratorException | ParserConfigurationException | IOException e) {
             throw new GradleException("An error occurred executing " + this.getClass().getName(), e);
         }
     }
 
     private void writeXMLBom(final CycloneDxSchema.Version schemaVersion, final Bom bom)
-            throws GeneratorException, ParserConfigurationException, TransformerException, IOException {
+            throws GeneratorException, ParserConfigurationException, IOException {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         bomGenerator.generate();
         final String bomString = bomGenerator.toXmlString();
