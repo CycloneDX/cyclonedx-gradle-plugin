@@ -83,7 +83,7 @@ public class CycloneDxTask extends DefaultTask {
 
     private File buildDir;
     private MavenHelper mavenHelper;
-    private CycloneDxSchema.Version schemaVersion = CycloneDxSchema.Version.VERSION_12;
+    private CycloneDxSchema.Version schemaVersion = CycloneDxSchema.Version.VERSION_13;
     private boolean includeBomSerialNumber;
     private boolean skip;
     private String projectType;
@@ -441,14 +441,16 @@ public class CycloneDxTask extends DefaultTask {
         if (project.hasProperty("cyclonedx.schemaVersion")) {
             version = (String)project.getProperties().get("cyclonedx.schemaVersion");
         } else {
-            version = getStringParameter("schemaVersion", CycloneDxSchema.Version.VERSION_12.getVersionString());
+            version = getStringParameter("schemaVersion", CycloneDxSchema.Version.VERSION_13.getVersionString());
         }
         if ("1.0".equals(version)) {
             return CycloneDxSchema.Version.VERSION_10;
         } else if ("1.1".equals(version)) {
             return CycloneDxSchema.Version.VERSION_11;
+        } else if ("1.2".equals(version)) {
+            return CycloneDxSchema.Version.VERSION_12;
         }
-        return CycloneDxSchema.Version.VERSION_12;
+        return CycloneDxSchema.Version.VERSION_13;
     }
 
     protected void logParameters() {
