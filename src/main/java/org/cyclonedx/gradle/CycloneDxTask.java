@@ -382,7 +382,7 @@ public class CycloneDxTask extends DefaultTask {
         getLogger().info(MESSAGE_VALIDATING_BOM);
         final Parser bomParser = new XmlParser();
         try {
-            if (!bomParser.isValid(bomFile)) {
+            if (!bomParser.isValid(bomFile, schemaVersion)) {
                 throw new GradleException(MESSAGE_VALIDATION_FAILURE);
             }
         } catch (Exception e) { // Changed to Exception.
@@ -400,7 +400,7 @@ public class CycloneDxTask extends DefaultTask {
         getLogger().info(MESSAGE_VALIDATING_BOM);
         final Parser bomParser = new JsonParser();
         try {
-            if (!bomParser.isValid(bomFile)) {
+            if (!bomParser.isValid(bomFile, schemaVersion)) {
                 throw new GradleException(MESSAGE_VALIDATION_FAILURE);
             }
         } catch (Exception e) { // Changed to Exception.
