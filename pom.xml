@@ -23,7 +23,7 @@
     <groupId>org.cyclonedx</groupId>
     <artifactId>cyclonedx-gradle-plugin</artifactId>
     <packaging>jar</packaging>
-    <version>1.4.0-SNAPSHOT</version>
+    <version>1.4.0</version>
 
     <name>CycloneDX Gradle Plugin</name>
     <description>The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project and creates a valid CycloneDX Software Bill of Materials (SBOM).</description>
@@ -75,7 +75,7 @@
         <connection>scm:git:git@github.com:CycloneDX/cyclonedx-gradle-plugin.git</connection>
         <url>https://github.com/CycloneDX/cyclonedx-gradle-plugin.git</url>
         <developerConnection>scm:git:git@github.com:CycloneDX/cyclonedx-gradle-plugin.git</developerConnection>
-        <tag>cyclonedx-gradle-plugin-1.1.3</tag>
+        <tag>cyclonedx-gradle-plugin-1.4.0</tag>
     </scm>
 
     <issueManagement>
