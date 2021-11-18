@@ -3,6 +3,7 @@ plugins {
     id 'java-gradle-plugin'
     id 'com.gradle.plugin-publish' version '0.12.0'
     id 'maven-publish'
+    id 'groovy'
 }
 
 repositories {
@@ -18,6 +19,11 @@ dependencies {
     compile 'commons-codec:commons-codec:1.15'
     compile 'commons-io:commons-io:2.8.0'
     compile 'org.apache.maven:maven-core:3.5.0'
+
+    testImplementation gradleTestKit()
+    testImplementation("org.spockframework:spock-core:1.1-groovy-2.4") {
+        exclude module: 'groovy-all'
+    }
 }
 
 group = 'com.cyclonedx'
