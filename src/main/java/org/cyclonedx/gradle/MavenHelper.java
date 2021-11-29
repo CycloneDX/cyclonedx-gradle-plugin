@@ -23,8 +23,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -148,13 +148,13 @@ class MavenHelper {
     }
 
     private void addExternalReference(final ExternalReference.Type referenceType, final String url, final Component component) {
-        final ExternalReference ref = new ExternalReference();
-        ref.setType(referenceType);
-        ref.setUrl(url);
         try {
-            new URL(ref.getUrl());
+            final URI uri = new URI(url.trim());
+            final ExternalReference ref = new ExternalReference();
+            ref.setType(referenceType);
+            ref.setUrl(uri.toString());
             component.addExternalReference(ref);
-        } catch (MalformedURLException e) {
+        } catch (URISyntaxException e) {
             // throw it away
         }
     }
@@ -204,9 +204,9 @@ class MavenHelper {
                 license.setName(artifactLicense.getName().trim());
                 if (StringUtils.isNotBlank(artifactLicense.getUrl())) {
                     try {
-                        new URL(artifactLicense.getUrl());
-                        license.setUrl(artifactLicense.getUrl().trim());
-                    } catch (MalformedURLException e) {
+                        final URI uri = new URI(artifactLicense.getUrl().trim());
+                        license.setUrl(uri.toString());
+                    } catch (URISyntaxException  e) {
                         // throw it away
                     }
                 }
