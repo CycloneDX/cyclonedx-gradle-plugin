@@ -22,6 +22,7 @@ import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.maven.model.Model;
 import org.apache.maven.project.MavenProject;
 import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
@@ -221,6 +222,12 @@ public class CycloneDxTask extends DefaultTask {
             if(pomFile != null) {
                 final MavenProject project = mavenHelper.readPom(pomFile);
                 resolvedMavenProjects.put(dependencyName, project);
+
+                Model model = mavenHelper.resolveEffectivePom(pomFile, getProject());
+                if (model != null) {
+                    project.setLicenses(model.getLicenses());
+                }
+
                 return project;
             }
         } catch(Exception err) {
