@@ -23,8 +23,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -33,7 +33,9 @@ import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.MailingList;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
+import org.apache.maven.model.building.*;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.apache.maven.model.resolution.ModelResolver;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.cyclonedx.CycloneDxSchema;
@@ -41,6 +43,7 @@ import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.util.LicenseResolver;
+import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.logging.Logger;
@@ -148,13 +151,13 @@ class MavenHelper {
     }
 
     private void addExternalReference(final ExternalReference.Type referenceType, final String url, final Component component) {
-        final ExternalReference ref = new ExternalReference();
-        ref.setType(referenceType);
-        ref.setUrl(url);
         try {
-            new URL(ref.getUrl());
+            final URI uri = new URI(url.trim());
+            final ExternalReference ref = new ExternalReference();
+            ref.setType(referenceType);
+            ref.setUrl(uri.toString());
             component.addExternalReference(ref);
-        } catch (MalformedURLException e) {
+        } catch (URISyntaxException e) {
             // throw it away
         }
     }
@@ -204,9 +207,9 @@ class MavenHelper {
                 license.setName(artifactLicense.getName().trim());
                 if (StringUtils.isNotBlank(artifactLicense.getUrl())) {
                     try {
-                        new URL(artifactLicense.getUrl());
-                        license.setUrl(artifactLicense.getUrl().trim());
-                    } catch (MalformedURLException e) {
+                        final URI uri = new URI(artifactLicense.getUrl().trim());
+                        license.setUrl(uri.toString());
+                    } catch (URISyntaxException  e) {
                         // throw it away
                     }
                 }
@@ -302,6 +305,33 @@ class MavenHelper {
             logger.error("An error occurred attempting to read POM", e);
         }
         return null;
+    }
+
+    /**
+     * Resolves an effective pom, including properties inherited from parent hierarchy.
+     * @param pomFile the dependency pomFile
+     * @param gradleProject the current gradle project which gets used as the base resolver
+     * @return model for effective pom
+     */
+    Model resolveEffectivePom(File pomFile, Project gradleProject) {
+        // force the parent POMs and BOMs to be resolved
+        ModelResolver modelResolver = new GradleAssistedMavenModelResolverImpl(gradleProject);
+        ModelBuildingRequest req = new DefaultModelBuildingRequest();
+        req.setModelResolver(modelResolver);
+        req.setPomFile(pomFile);
+        req.getSystemProperties().putAll(System.getProperties());
+        req.setValidationLevel(ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL);
+
+        // execute the model building request
+        DefaultModelBuilderFactory factory = new DefaultModelBuilderFactory();
+        DefaultModelBuilder builder = factory.newInstance();
+        Model effectiveModel = null;
+        try {
+            effectiveModel = builder.build(req).getEffectiveModel();
+        } catch (ModelBuildingException e) {
+            logger.error("An error occurred attempting to resolve effective POM", e);
+        }
+        return effectiveModel;
     }
 
     /**
