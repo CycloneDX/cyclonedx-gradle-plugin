@@ -31,7 +31,7 @@ tasks.withType(JavaCompile) {
 }
 
 pluginBundle {
-    website = 'http://cyclonedx.org'
+    website = 'https://cyclonedx.org'
     vcsUrl = 'https://github.com/CycloneDX/cyclonedx-gradle-plugin.git'
     tags = [ 'cyclonedx', 'dependency', 'dependencies', 'owasp', 'inventory', 'bom', 'sbom' ]
     plugins {
