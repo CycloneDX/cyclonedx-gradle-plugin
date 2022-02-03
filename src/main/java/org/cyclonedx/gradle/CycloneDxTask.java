@@ -254,7 +254,7 @@ public class CycloneDxTask extends DefaultTask {
      * @return a CycloneDX Metadata object
      */
     protected Metadata createMetadata() {
-        final Project project = getProject().getRootProject();
+        final Project project = getProject();
         final Properties properties = readPluginProperties();
         final Metadata metadata = new Metadata();
         final Tool tool = new Tool();
