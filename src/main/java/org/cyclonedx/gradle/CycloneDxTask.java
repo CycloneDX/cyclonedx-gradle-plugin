@@ -404,8 +404,7 @@ public class CycloneDxTask extends DefaultTask {
             if (!bomParser.isValid(bomFile, schemaVersion)) {
                 throw new GradleException(MESSAGE_VALIDATION_FAILURE);
             }
-        } catch (Exception e) { // Changed to Exception.
-            // Gradle will erroneously report "exception IOException is never thrown in body of corresponding try statement"
+        } catch (IOException e) {
             throw new GradleException(MESSAGE_VALIDATION_FAILURE, e);
         }
     }
@@ -423,8 +422,7 @@ public class CycloneDxTask extends DefaultTask {
             if (!bomParser.isValid(bomFile, schemaVersion)) {
                 throw new GradleException(MESSAGE_VALIDATION_FAILURE);
             }
-        } catch (Exception e) { // Changed to Exception.
-            // Gradle will erroneously report "exception IOException is never thrown in body of corresponding try statement"
+        } catch (IOException e) {
             throw new GradleException(MESSAGE_VALIDATION_FAILURE, e);
         }
     }
