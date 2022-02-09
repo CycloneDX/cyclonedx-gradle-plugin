@@ -147,10 +147,12 @@ public class CycloneDxTask extends DefaultTask {
                 .collect(Collectors.toSet());
 
         final Metadata metadata = createMetadata();
-        final Set<Component> components = getProject().getAllprojects().stream()
-            .flatMap(p -> p.getConfigurations().stream())
-            .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && canBeResolved(configuration))
-            .flatMap(configuration -> {
+        final Set<Configuration> configurations = getProject().getAllprojects().stream()
+                .flatMap(p -> p.getConfigurations().stream())
+                .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && canBeResolved(configuration))
+                .collect(Collectors.toSet());
+
+        final Set<Component> components = configurations.stream().flatMap(configuration -> {
                 final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
                 final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
                 final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
