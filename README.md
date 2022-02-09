@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/CycloneDX/cyclonedx-gradle-plugin/workflows/Maven%20CI/badge.svg)](https://github.com/CycloneDX/cyclonedx-gradle-plugin/actions?workflow=Maven+CI)
+[![Build Status](https://github.com/CycloneDX/cyclonedx-gradle-plugin/workflows/Build%20CI/badge.svg)](https://github.com/CycloneDX/cyclonedx-gradle-plugin/actions?workflow=Build+CI)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.cyclonedx/cyclonedx-gradle-plugin/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.cyclonedx/cyclonedx-gradle-plugin)
 [![License](https://img.shields.io/badge/license-Apache%202.0-brightgreen.svg)][License]
 [![Website](https://img.shields.io/badge/https://-cyclonedx.org-blue.svg)](https://cyclonedx.org/)
@@ -8,7 +8,7 @@
 
 # CycloneDX Gradle Plugin
 
-The CycloneDX Maven plugin creates an aggregate of all direct and transitive dependencies of a project
+The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project
 and creates a valid CycloneDX SBOM. CycloneDX is a lightweight software bill of materials
 (SBOM) specification designed for use in application security contexts and supply chain component analysis.
 
