@@ -2,11 +2,13 @@
 export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
 export PATH=JAVA_HOME/bin:$PATH
 
-read -p "Really deploy to Maven Central repository (Y/N)? "
+read -p "Really deploy to Gradle plugin repository and Maven Central (Y/N)? "
 if ( [ "$REPLY" == "Y" ] ) then
 
-  mvn clean
-  mvn release:clean release:prepare release:perform -Prelease -e | tee release.log
+  ./gradlew clean build
+  ./gradlew publishToMavenLocal
+  ./gradlew publish
+  ./gradlew publishPlugins
 
 else
   echo -e "Exit without deploy"
