@@ -20,7 +20,6 @@ package org.cyclonedx.gradle;
 
 import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Model;
 import org.apache.maven.project.MavenProject;
@@ -55,6 +54,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -395,7 +396,8 @@ public class CycloneDxTask extends DefaultTask {
         final String bomString = bomGenerator.toXmlString();
         final File bomFile = new File(buildDir, "reports/bom.xml");
         getLogger().info(MESSAGE_WRITING_BOM_XML);
-        FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
+        Files.createDirectories(bomFile.getParentFile().toPath());
+        Files.write(bomFile.toPath(), bomString.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         getLogger().info(MESSAGE_VALIDATING_BOM);
         final Parser bomParser = new XmlParser();
         try {
@@ -413,7 +415,8 @@ public class CycloneDxTask extends DefaultTask {
         final String bomString = bomGenerator.toJsonString();
         final File bomFile = new File(buildDir, "reports/bom.json");
         getLogger().info(MESSAGE_WRITING_BOM_JSON);
-        FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
+        Files.createDirectories(bomFile.getParentFile().toPath());
+        Files.write(bomFile.toPath(), bomString.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         getLogger().info(MESSAGE_VALIDATING_BOM);
         final Parser bomParser = new JsonParser();
         try {
