@@ -428,23 +428,17 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     private boolean getBooleanParameter(String parameter, boolean defaultValue) {
-        final Project project = super.getProject();
-        if (project.hasProperty(parameter)) {
-            final Object o = project.getProperties().get(parameter);
-            if (o instanceof String) {
-                return Boolean.parseBoolean((String)o);
-            }
+        final Object o = super.getProject().findProperty(parameter);
+        if (o instanceof String) {
+            return Boolean.parseBoolean((String) o);
         }
         return defaultValue;
     }
 
     private String getStringParameter(String parameter, String defaultValue) {
-        final Project project = super.getProject();
-        if (project.hasProperty(parameter)) {
-            final Object o = project.getProperties().get(parameter);
-            if (o instanceof String) {
-                return (String)o;
-            }
+        final Object o = super.getProject().findProperty(parameter);
+        if (o instanceof String) {
+            return (String) o;
         }
         return defaultValue;
     }
@@ -457,7 +451,7 @@ public class CycloneDxTask extends DefaultTask {
         final Project project = super.getProject();
         final String version;
         if (project.hasProperty("cyclonedx.schemaVersion")) {
-            version = (String)project.getProperties().get("cyclonedx.schemaVersion");
+            version = (String) project.property("cyclonedx.schemaVersion");
         } else {
             version = getStringParameter("schemaVersion", CycloneDxSchema.Version.VERSION_13.getVersionString());
         }
