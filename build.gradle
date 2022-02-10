@@ -1,4 +1,3 @@
-
 plugins {
     id 'java-gradle-plugin'
     id 'com.gradle.plugin-publish' version '0.12.0'
@@ -35,6 +34,22 @@ targetCompatibility = JavaVersion.VERSION_1_8
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
+
+def pluginProperties = [
+        'vendor': 'CycloneDX',
+        'name': 'CycloneDX Gradle plugin',
+        'version': project.version,
+        'groupId': project.group,
+        'artifactId': project.name,
+] as Properties
+
+def filterPluginProperties = tasks.register('filterPluginProperties', Copy) {
+    destinationDir = file("$buildDir/resources/filter")
+    inputs.properties pluginProperties
+    from('src/main/filter')
+    expand(pluginProperties)
+}
+sourceSets.main.resources.srcDirs filterPluginProperties
 
 pluginBundle {
     website = 'https://cyclonedx.org'
