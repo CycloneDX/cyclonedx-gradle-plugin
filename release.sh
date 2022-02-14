@@ -7,7 +7,6 @@ if ( [ "$REPLY" == "Y" ] ) then
 
   ./gradlew clean build cyclonedx
   ./gradlew publishToMavenLocal
-  ./gradlew publish
   ./gradlew publishPlugins
 
 else
