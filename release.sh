@@ -5,7 +5,7 @@ export PATH=JAVA_HOME/bin:$PATH
 read -p "Really deploy to Gradle plugin repository and Maven Central (Y/N)? "
 if ( [ "$REPLY" == "Y" ] ) then
 
-  ./gradlew clean build
+  ./gradlew clean build cyclonedx
   ./gradlew publishToMavenLocal
   ./gradlew publish
   ./gradlew publishPlugins
