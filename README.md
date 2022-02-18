@@ -48,7 +48,7 @@ pluginManagement {
     resolutionStrategy {
         eachPlugin {
             if (requested.id.toString() == 'org.cyclonedx.bom') {
-                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.5.0')
+                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.5.1')
             }
         }
     }

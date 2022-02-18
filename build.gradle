@@ -28,7 +28,7 @@ dependencies {
 }
 
 group = 'org.cyclonedx'
-version = '1.5.1-SNAPSHOT'
+version = '1.5.1'
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
