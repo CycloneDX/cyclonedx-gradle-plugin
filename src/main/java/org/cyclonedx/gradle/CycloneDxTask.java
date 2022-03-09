@@ -47,6 +47,7 @@ import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -106,6 +107,11 @@ public class CycloneDxTask extends DefaultTask {
     @Input
     public List<String> getSkipConfigs() {
     	return skipConfigs;
+    }
+
+    @OutputDirectory
+    public File getOutputDir() {
+        return new File(this.buildDir, "reports");
     }
 
     public void setSkipConfigs(Collection<String> skipConfigs) {
@@ -395,7 +401,7 @@ public class CycloneDxTask extends DefaultTask {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         bomGenerator.generate();
         final String bomString = bomGenerator.toXmlString();
-        final File bomFile = new File(buildDir, "reports/bom.xml");
+        final File bomFile = new File(getOutputDir(), "bom.xml");
         getLogger().info(MESSAGE_WRITING_BOM_XML);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
@@ -413,7 +419,7 @@ public class CycloneDxTask extends DefaultTask {
     private void writeJSONBom(final CycloneDxSchema.Version schemaVersion, final Bom bom) throws IOException {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
         final String bomString = bomGenerator.toJsonString();
-        final File bomFile = new File(buildDir, "reports/bom.json");
+        final File bomFile = new File(getOutputDir(), "bom.json");
         getLogger().info(MESSAGE_WRITING_BOM_JSON);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
