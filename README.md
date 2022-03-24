@@ -70,8 +70,8 @@ cyclonedxBom {
     skipConfigs += ["compileClasspath", "testCompileClasspath"]
     // Specified the type of project being built. Defaults to 'library' 
     projectType = "application"
-    // Specified the version of the CycloneDX specification to use. Defaults to 1.2.
-    schemaVersion = "1.2"
+    // Specified the version of the CycloneDX specification to use. Defaults to 1.3.
+    schemaVersion = "1.3"
 }
 ```
 
