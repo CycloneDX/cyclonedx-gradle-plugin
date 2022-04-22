@@ -86,7 +86,7 @@ class MavenHelper {
      * @param project the project to extract data from
      * @param component the component to add data to
      */
-    private void extractMetadata(MavenProject project, Component component) {
+    public void extractMetadata(MavenProject project, Component component) {
         if (component.getPublisher() == null) {
             // If we don't already have publisher information, retrieve it.
             if (project.getOrganization() != null) {

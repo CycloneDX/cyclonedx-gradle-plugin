@@ -248,6 +248,8 @@ public class CycloneDxTask extends DefaultTask {
             }
             component.setDescription(project.getDescription());
             component.setLicenseChoice(mavenHelper.resolveMavenLicenses(project.getLicenses()));
+            // Update external references by the resolved POM
+            mavenHelper.extractMetadata(project, component);
         }
     }
 
