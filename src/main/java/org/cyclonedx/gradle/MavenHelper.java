@@ -55,6 +55,7 @@ class MavenHelper {
 
     private Logger logger;
     private CycloneDxSchema.Version schemaVersion;
+    private ScmUrlConverter converter = new ScmUrlConverter();
 
     public MavenHelper(Logger logger, CycloneDxSchema.Version schemaVersion) {
         this.logger = logger;
@@ -144,7 +145,7 @@ class MavenHelper {
             }
             if (project.getScm() != null && project.getScm().getUrl() != null) {
                 if (!doesComponentHaveExternalReference(component, ExternalReference.Type.VCS)) {
-                    addExternalReference(ExternalReference.Type.VCS, project.getScm().getUrl(), component);
+                    addExternalReference(ExternalReference.Type.VCS, converter.convert(project.getScm().getUrl()), component);
                 }
             }
         }
