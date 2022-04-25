@@ -16,10 +16,11 @@ public class ScmUrlConverter {
 
 	/**
 	 * Convert Maven SCM URL to HTTPS URL.
-	 * Mapping:
-	 * - scm:git:git@github.com:user/repo.git -> https://github.com/user/repo.git
-	 * - scm:git:git://github.com/user/repo.git -> https://github.com/user/repo.git
-	 * - git@github.com:user/repo.git -> https://github.com/user/repo.git
+
+	 * Mappings:
+	 * scm:git:git@github.com:user/repo.git to https://github.com/user/repo.git
+	 * scm:git:git://github.com/user/repo.git to https://github.com/user/repo.git
+	 * git@github.com:user/repo.git to https://github.com/user/repo.git
 	 *
 	 * @param link original scm url
 	 * @return HTTPS URI string
