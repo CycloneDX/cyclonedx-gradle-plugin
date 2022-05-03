@@ -20,7 +20,6 @@ package org.cyclonedx.gradle;
 
 import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Model;
 import org.apache.maven.project.MavenProject;
@@ -55,6 +54,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -281,9 +282,9 @@ public class CycloneDxTask extends DefaultTask {
     private Properties readPluginProperties() {
         final Properties props = new Properties();
         try {
-            props.load(this.getClass().getClassLoader().getResourceAsStream("plugin.properties"));
+            props.load(this.getClass().getClassLoader().getResourceAsStream("cyclonedx-gradle-plugin.properties"));
         } catch (NullPointerException | IOException e) {
-            getLogger().warn("Unable to load plugin.properties", e);
+            getLogger().warn("cyclonedx-gradle-plugin.properties", e);
         }
         return props;
     }
@@ -397,15 +398,15 @@ public class CycloneDxTask extends DefaultTask {
         final String bomString = bomGenerator.toXmlString();
         final File bomFile = new File(buildDir, "reports/bom.xml");
         getLogger().info(MESSAGE_WRITING_BOM_XML);
-        FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
+        Files.createDirectories(bomFile.getParentFile().toPath());
+        Files.write(bomFile.toPath(), bomString.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         getLogger().info(MESSAGE_VALIDATING_BOM);
         final Parser bomParser = new XmlParser();
         try {
             if (!bomParser.isValid(bomFile, schemaVersion)) {
                 throw new GradleException(MESSAGE_VALIDATION_FAILURE);
             }
-        } catch (Exception e) { // Changed to Exception.
-            // Gradle will erroneously report "exception IOException is never thrown in body of corresponding try statement"
+        } catch (IOException e) {
             throw new GradleException(MESSAGE_VALIDATION_FAILURE, e);
         }
     }
@@ -415,37 +416,31 @@ public class CycloneDxTask extends DefaultTask {
         final String bomString = bomGenerator.toJsonString();
         final File bomFile = new File(buildDir, "reports/bom.json");
         getLogger().info(MESSAGE_WRITING_BOM_JSON);
-        FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
+        Files.createDirectories(bomFile.getParentFile().toPath());
+        Files.write(bomFile.toPath(), bomString.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         getLogger().info(MESSAGE_VALIDATING_BOM);
         final Parser bomParser = new JsonParser();
         try {
             if (!bomParser.isValid(bomFile, schemaVersion)) {
                 throw new GradleException(MESSAGE_VALIDATION_FAILURE);
             }
-        } catch (Exception e) { // Changed to Exception.
-            // Gradle will erroneously report "exception IOException is never thrown in body of corresponding try statement"
+        } catch (IOException e) {
             throw new GradleException(MESSAGE_VALIDATION_FAILURE, e);
         }
     }
 
     private boolean getBooleanParameter(String parameter, boolean defaultValue) {
-        final Project project = super.getProject();
-        if (project.hasProperty(parameter)) {
-            final Object o = project.getProperties().get(parameter);
-            if (o instanceof String) {
-                return Boolean.parseBoolean((String)o);
-            }
+        final Object o = super.getProject().findProperty(parameter);
+        if (o instanceof String) {
+            return Boolean.parseBoolean((String) o);
         }
         return defaultValue;
     }
 
     private String getStringParameter(String parameter, String defaultValue) {
-        final Project project = super.getProject();
-        if (project.hasProperty(parameter)) {
-            final Object o = project.getProperties().get(parameter);
-            if (o instanceof String) {
-                return (String)o;
-            }
+        final Object o = super.getProject().findProperty(parameter);
+        if (o instanceof String) {
+            return (String) o;
         }
         return defaultValue;
     }
@@ -458,7 +453,7 @@ public class CycloneDxTask extends DefaultTask {
         final Project project = super.getProject();
         final String version;
         if (project.hasProperty("cyclonedx.schemaVersion")) {
-            version = (String)project.getProperties().get("cyclonedx.schemaVersion");
+            version = (String) project.property("cyclonedx.schemaVersion");
         } else {
             version = getStringParameter("schemaVersion", CycloneDxSchema.Version.VERSION_13.getVersionString());
         }
