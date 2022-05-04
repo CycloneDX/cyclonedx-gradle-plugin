@@ -31,32 +31,10 @@ gradle cyclonedxBom -Pcyclonedx.includeBomSerialNumber=false
 __build.gradle__ (excerpt)
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom'
-}
-
-apply plugin: 'java'
-apply plugin: 'maven'
-
-repositories {
-    mavenCentral()
+    id 'org.cyclonedx.bom' version '1.5.0'
 }
 ```
 
-__settings.gradle__ (excerpt)
-```groovy
-pluginManagement {
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.toString() == 'org.cyclonedx.bom') {
-                useModule('org.cyclonedx:cyclonedx-gradle-plugin:1.5.1')
-            }
-        }
-    }
-    repositories {
-        mavenCentral()
-    }
-}
-```
 Once a BOM is generated, it will reside at `./build/reports/bom.xml` and `./build/reports/bom.json`
 
 
