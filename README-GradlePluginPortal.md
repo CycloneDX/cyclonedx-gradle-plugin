@@ -52,22 +52,15 @@ To use the gradle build to publish the plugin locally for testing, use
 ./gradlew publishToMavenLocal
 ```
 
-In order to use this locally published plugin in another build, you will need to add a
-`settings.gradle` file to that build with a pluginManagement resolutionPolicy that looks
-in the mavenLocal() repository.
+In order to use this locally published plugin, you must declare `mavenLocal()` as repository in the `pluginManagement` section
+of your `settings.gradle` file:
+
 
 ```
 pluginManagement {
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.toString() == 'org.cyclonedx.bom') {
-                useModule('org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:1.2.1-SNAPSHOT')
-            }
-        }
-    }
     repositories {
         mavenLocal()
-        mavenCentral()
+        gradlePluginPortal()
     }
 }
 ```
