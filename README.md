@@ -50,6 +50,8 @@ cyclonedxBom {
     projectType = "application"
     // Specified the version of the CycloneDX specification to use. Defaults to 1.2.
     schemaVersion = "1.2"
+    // Boms destination directory (defaults to build/reports)
+    destination = file("build/reports")
 }
 ```
 
