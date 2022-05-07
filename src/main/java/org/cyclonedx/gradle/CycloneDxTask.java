@@ -47,6 +47,7 @@ import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -82,7 +83,7 @@ public class CycloneDxTask extends DefaultTask {
     private static final String MESSAGE_VALIDATION_FAILURE = "The BOM does not conform to the CycloneDX BOM standard";
     private static final String MESSAGE_SKIPPING = "Skipping CycloneDX";
 
-    private File buildDir;
+    private File destination;
     private MavenHelper mavenHelper;
     private CycloneDxSchema.Version schemaVersion = CycloneDxSchema.Version.VERSION_13;
     private boolean includeBomSerialNumber;
@@ -92,6 +93,10 @@ public class CycloneDxTask extends DefaultTask {
     private final List<String> skipConfigs = new ArrayList<>();
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
+
+    public CycloneDxTask() {
+        this.destination = new File(getProject().getBuildDir(), "reports");
+    }
 
     @Input
     public List<String> getIncludeConfigs() {
@@ -113,9 +118,15 @@ public class CycloneDxTask extends DefaultTask {
     	this.skipConfigs.addAll(skipConfigs);
     }
 
-    public void setBuildDir(File buildDir) {
-        this.buildDir = buildDir;
+    @OutputDirectory
+    public File getDestination() {
+        return destination;
     }
+
+    public void setDestination(File destination) {
+        this.destination = destination;
+    }
+
 
     private void initialize() {
         schemaVersion = schemaVersion();
@@ -395,7 +406,7 @@ public class CycloneDxTask extends DefaultTask {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         bomGenerator.generate();
         final String bomString = bomGenerator.toXmlString();
-        final File bomFile = new File(buildDir, "reports/bom.xml");
+        final File bomFile = new File(destination, "bom.xml");
         getLogger().info(MESSAGE_WRITING_BOM_XML);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
@@ -413,7 +424,7 @@ public class CycloneDxTask extends DefaultTask {
     private void writeJSONBom(final CycloneDxSchema.Version schemaVersion, final Bom bom) throws IOException {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
         final String bomString = bomGenerator.toJsonString();
-        final File bomFile = new File(buildDir, "reports/bom.json");
+        final File bomFile = new File(destination, "bom.json");
         getLogger().info(MESSAGE_WRITING_BOM_JSON);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
