@@ -28,6 +28,8 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+
+import org.apache.commons.io.input.BOMInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.MailingList;
@@ -283,10 +285,17 @@ class MavenHelper {
      * @return a MavenProject
      * @throws IOException oops
      */
-    MavenProject readPom(File file) throws IOException {
-        try (final FileInputStream in = new FileInputStream(file)) {
-            return readPom(in);
+    MavenProject readPom(File file) {
+        try {
+            final MavenXpp3Reader mavenreader = new MavenXpp3Reader();
+            try (final InputStreamReader reader = new InputStreamReader(new BOMInputStream(new FileInputStream(file)))) {
+                final Model model = mavenreader.read(reader);
+                return new MavenProject(model);
+            }
+        } catch (XmlPullParserException | IOException e) {
+            logger.error("An error occurred attempting to read POM", e);
         }
+        return null;
     }
 
     /**
