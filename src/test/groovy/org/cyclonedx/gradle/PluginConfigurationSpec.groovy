@@ -42,4 +42,26 @@ class PluginConfigurationSpec extends Specification {
         assert reportDir.exists()
         reportDir.listFiles().length == 2
     }
+
+    def "kotlin-dsl-project should allow configuring all properties"() {
+        given:
+        File testDir = TestUtils.duplicate("kotlin-dsl-project")
+
+        when:
+        def result = GradleRunner.create()
+                .withProjectDir(testDir)
+                .withArguments("cyclonedxBom")
+                .withPluginClasspath()
+                .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        assert !jsonBom.text.contains("serialNumber")
+    }
+
 }

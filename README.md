@@ -23,11 +23,6 @@ __Output CycloneDX Generation Info:__
 gradle cyclonedxBom -info
 ```
 
-__Exclude BOM Serial Number:__
-```bash
-gradle cyclonedxBom -Pcyclonedx.includeBomSerialNumber=false
-```
-
 __build.gradle__ (excerpt)
 ```groovy
 plugins {
@@ -40,6 +35,8 @@ Once a BOM is generated, it will reside at `./build/reports/bom.xml` and `./buil
 
 __Configuration:__
 You can control the configurations included in the BOM:
+
+
 ```groovy
 cyclonedxBom {
     // includeConfigs is the list of configuration names to include when generating the BOM (leave empty to include every configuration)
@@ -52,7 +49,21 @@ cyclonedxBom {
     schemaVersion = "1.2"
     // Boms destination directory (defaults to build/reports)
     destination = file("build/reports")
+    // Exclude BOM Serial Number
+    includeBomSerialNumber = false
 }
+```
+
+If you are using the Kotlin DSL, the plugin can be configured as following:
+
+```
+tasks.cyclonedxBom {
+    setIncludeConfigs(["runtimeClasspath"])
+    setSkipConfigs(["compileClasspath", "testCompileClasspath"])
+    setProjectType("application")
+    setSchemaVersion("1.4")
+    setDestination(project.file("build/reports"))
+    setincludeBomSerialNumber(false)
 ```
 
 Run gradle with info logging (-i option) to see which configurations add to the BOM. 

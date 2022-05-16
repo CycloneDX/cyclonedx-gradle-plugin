@@ -26,6 +26,10 @@ dependencies {
     }
 }
 
+test {
+    useJUnit()
+}
+
 group = 'org.cyclonedx'
 version = '1.5.1'
 
