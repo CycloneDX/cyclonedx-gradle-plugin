@@ -16,14 +16,20 @@ dependencies {
         // gradle-api already includes an slf4j binding
         exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j-impl'
     }
+    
     implementation 'commons-codec:commons-codec:1.15'
-    implementation 'commons-io:commons-io:2.8.0'
+    implementation 'commons-io:commons-io:2.11.0'
     implementation 'org.apache.maven:maven-core:3.5.0'
+
 
     testImplementation gradleTestKit()
     testImplementation("org.spockframework:spock-core:1.1-groovy-2.4") {
         exclude module: 'groovy-all'
     }
+}
+
+test {
+    useJUnit()
 }
 
 group = 'org.cyclonedx'

@@ -47,6 +47,8 @@ import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -82,16 +84,26 @@ public class CycloneDxTask extends DefaultTask {
     private static final String MESSAGE_VALIDATION_FAILURE = "The BOM does not conform to the CycloneDX BOM standard";
     private static final String MESSAGE_SKIPPING = "Skipping CycloneDX";
 
-    private File buildDir;
+    private static final String DEFAULT_PROJECT_TYPE = "library";
+
+    private File destination;
     private MavenHelper mavenHelper;
-    private CycloneDxSchema.Version schemaVersion = CycloneDxSchema.Version.VERSION_13;
+
     private boolean includeBomSerialNumber;
-    private boolean skip;
+
+    private String schemaVersion;
     private String projectType;
     private final List<String> includeConfigs = new ArrayList<>();
     private final List<String> skipConfigs = new ArrayList<>();
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
+
+    public CycloneDxTask() {
+        this.destination = new File(getProject().getBuildDir(), "reports");
+        this.schemaVersion = CycloneDxSchema.Version.VERSION_13.getVersionString();
+        this.projectType = DEFAULT_PROJECT_TYPE;
+        this.includeBomSerialNumber = true;
+    }
 
     @Input
     public List<String> getIncludeConfigs() {
@@ -113,30 +125,56 @@ public class CycloneDxTask extends DefaultTask {
     	this.skipConfigs.addAll(skipConfigs);
     }
 
-    public void setBuildDir(File buildDir) {
-        this.buildDir = buildDir;
+    @Input
+    public String getSchemaVersion() {
+        return schemaVersion;
     }
 
-    private void initialize() {
-        schemaVersion = schemaVersion();
-        mavenHelper = new MavenHelper(getLogger(), schemaVersion);
-        if (schemaVersion == CycloneDxSchema.Version.VERSION_10) {
-            includeBomSerialNumber = false;
-        } else {
-            includeBomSerialNumber = getBooleanParameter("cyclonedx.includeBomSerialNumber", true);
+    public void setSchemaVersion(String schemaVersion) {
+        this.schemaVersion = schemaVersion;
+    }
+
+    @Input
+    public String getProjectType() {
+        return projectType;
+    }
+
+    public void setProjectType(String projectType) {
+        this.projectType = projectType;
+    }
+
+    @Input
+    public boolean getIncludeBomSerialNumber() {
+        return this.includeBomSerialNumber;
+    }
+
+    public void setIncludeBomSerialNumber(boolean includeBomSerialNumber) {
+        this.includeBomSerialNumber = includeBomSerialNumber;
+    }
+
+    @OutputDirectory
+    public File getDestination() {
+        return destination;
+    }
+
+    public void setDestination(File destination) {
+        this.destination = destination;
+    }
+
+
+    private CycloneDxSchema.Version computeSchemaVersion() {
+        CycloneDxSchema.Version version = schemaVersion();
+        mavenHelper = new MavenHelper(getLogger(), version);
+        if (version == CycloneDxSchema.Version.VERSION_10) {
+             setIncludeBomSerialNumber(false);
         }
-        skip = getBooleanParameter("cyclonedx.skip", false);
-        projectType = getStringParameter("projectType", "library");
+        return version;
     }
 
     @TaskAction
     @SuppressWarnings("unused")
     public void createBom() {
-        initialize();
-        if (skip) {
-            getLogger().info(MESSAGE_SKIPPING);
-            return;
-        }
+        CycloneDxSchema.Version version = computeSchemaVersion();
         logParameters();
         getLogger().info(MESSAGE_RESOLVING_DEPS);
         final Set<String> builtDependencies = getProject()
@@ -166,7 +204,7 @@ public class CycloneDxTask extends DefaultTask {
                     depsFromConfig.add(dependencyName);
 
                     // Convert into a Component and augment with pom metadata if available.
-                    final Component component = convertArtifact(artifact);
+                    final Component component = convertArtifact(artifact, version);
                     augmentComponentMetadata(component, dependencyName);
                     componentsFromConfig.add(component);
                 });
@@ -176,7 +214,7 @@ public class CycloneDxTask extends DefaultTask {
             })
             .collect(Collectors.toSet());
 
-        writeBom(metadata, components);
+        writeBom(metadata, components, version);
     }
 
     private boolean canBeResolved(Configuration configuration) {
@@ -290,7 +328,7 @@ public class CycloneDxTask extends DefaultTask {
 
     private Component.Type resolveProjectType() {
         for (Component.Type type: Component.Type.values()) {
-            if (type.getTypeName().equalsIgnoreCase(this.projectType)) {
+            if (type.getTypeName().equalsIgnoreCase(getProjectType())) {
                 return type;
             }
         }
@@ -302,7 +340,7 @@ public class CycloneDxTask extends DefaultTask {
         return Component.Type.LIBRARY;
     }
 
-    private Component convertArtifact(ResolvedArtifact artifact) {
+    private Component convertArtifact(ResolvedArtifact artifact, CycloneDxSchema.Version version) {
         final Component component = new Component();
         component.setGroup(artifact.getModuleVersion().getId().getGroup());
         component.setName(artifact.getModuleVersion().getId().getName());
@@ -311,7 +349,7 @@ public class CycloneDxTask extends DefaultTask {
         getLogger().debug(MESSAGE_CALCULATING_HASHES);
         List<Hash> hashes = artifactHashes.computeIfAbsent(artifact.getFile(), f -> {
             try {
-                return BomUtils.calculateHashes(f, schemaVersion);
+                return BomUtils.calculateHashes(f, version);
             } catch(IOException e) {
                 getLogger().error("Error encountered calculating hashes", e);
             }
@@ -372,18 +410,21 @@ public class CycloneDxTask extends DefaultTask {
      * @param metadata The CycloneDX metadata object
      * @param components The CycloneDX components extracted from gradle dependencies
      */
-    protected void writeBom(Metadata metadata, Set<Component> components) throws GradleException{
+    protected void writeBom(Metadata metadata, Set<Component> components, CycloneDxSchema.Version version) throws GradleException{
         try {
             getLogger().info(MESSAGE_CREATING_BOM);
             final Bom bom = new Bom();
-            if (CycloneDxSchema.Version.VERSION_10 != schemaVersion && includeBomSerialNumber) {
+            
+            boolean includeSerialNumber = getBooleanParameter("cyclonedx.includeBomSerialNumber", includeBomSerialNumber);
+
+            if (CycloneDxSchema.Version.VERSION_10 != version && includeSerialNumber) {
                 bom.setSerialNumber("urn:uuid:" + UUID.randomUUID().toString());
             }
             bom.setMetadata(metadata);
             bom.setComponents(new ArrayList<>(components));
-            writeXMLBom(schemaVersion, bom);
+            writeXMLBom(version, bom);
             if (schemaVersion().getVersion() >= 1.2) {
-                writeJSONBom(schemaVersion, bom);
+                writeJSONBom(version, bom);
             }
         } catch (GeneratorException | ParserConfigurationException | IOException e) {
             throw new GradleException("An error occurred executing " + this.getClass().getName(), e);
@@ -395,7 +436,7 @@ public class CycloneDxTask extends DefaultTask {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         bomGenerator.generate();
         final String bomString = bomGenerator.toXmlString();
-        final File bomFile = new File(buildDir, "reports/bom.xml");
+        final File bomFile = new File(destination, "bom.xml");
         getLogger().info(MESSAGE_WRITING_BOM_XML);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
@@ -413,7 +454,7 @@ public class CycloneDxTask extends DefaultTask {
     private void writeJSONBom(final CycloneDxSchema.Version schemaVersion, final Bom bom) throws IOException {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
         final String bomString = bomGenerator.toJsonString();
-        final File bomFile = new File(buildDir, "reports/bom.json");
+        final File bomFile = new File(destination, "bom.json");
         getLogger().info(MESSAGE_WRITING_BOM_JSON);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
@@ -428,6 +469,22 @@ public class CycloneDxTask extends DefaultTask {
         }
     }
 
+    /**
+     * Resolves the CycloneDX schema the mojo has been requested to use.
+     * @return the CycloneDX schema to use
+     */
+    private CycloneDxSchema.Version schemaVersion() {
+        final String version = getSchemaVersion();
+        if ("1.0".equals(version)) {
+            return CycloneDxSchema.Version.VERSION_10;
+        } else if ("1.1".equals(version)) {
+            return CycloneDxSchema.Version.VERSION_11;
+        } else if ("1.2".equals(version)) {
+            return CycloneDxSchema.Version.VERSION_12;
+        }
+        return CycloneDxSchema.Version.VERSION_13;
+    }
+
     private boolean getBooleanParameter(String parameter, boolean defaultValue) {
         final Project project = super.getProject();
         if (project.hasProperty(parameter)) {
@@ -439,44 +496,11 @@ public class CycloneDxTask extends DefaultTask {
         return defaultValue;
     }
 
-    private String getStringParameter(String parameter, String defaultValue) {
-        final Project project = super.getProject();
-        if (project.hasProperty(parameter)) {
-            final Object o = project.getProperties().get(parameter);
-            if (o instanceof String) {
-                return (String)o;
-            }
-        }
-        return defaultValue;
-    }
-
-    /**
-     * Resolves the CycloneDX schema the mojo has been requested to use.
-     * @return the CycloneDX schema to use
-     */
-    private CycloneDxSchema.Version schemaVersion() {
-        final Project project = super.getProject();
-        final String version;
-        if (project.hasProperty("cyclonedx.schemaVersion")) {
-            version = (String)project.getProperties().get("cyclonedx.schemaVersion");
-        } else {
-            version = getStringParameter("schemaVersion", CycloneDxSchema.Version.VERSION_13.getVersionString());
-        }
-        if ("1.0".equals(version)) {
-            return CycloneDxSchema.Version.VERSION_10;
-        } else if ("1.1".equals(version)) {
-            return CycloneDxSchema.Version.VERSION_11;
-        } else if ("1.2".equals(version)) {
-            return CycloneDxSchema.Version.VERSION_12;
-        }
-        return CycloneDxSchema.Version.VERSION_13;
-    }
-
     protected void logParameters() {
         if (getLogger().isInfoEnabled()) {
             getLogger().info("CycloneDX: Parameters");
             getLogger().info("------------------------------------------------------------------------");
-            getLogger().info("schemaVersion          : " + schemaVersion.name());
+            getLogger().info("schemaVersion          : " + schemaVersion);
             getLogger().info("includeBomSerialNumber : " + includeBomSerialNumber);
             getLogger().info("------------------------------------------------------------------------");
         }
