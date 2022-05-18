@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    implementation(group: 'org.cyclonedx', name: 'cyclonedx-core-java', version: '5.0.4') {
+    implementation(group: 'org.cyclonedx', name: 'cyclonedx-core-java', version: '7.1.4') {
         // gradle-api already includes an slf4j binding
         exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j-impl'
     }
