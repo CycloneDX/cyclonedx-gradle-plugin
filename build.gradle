@@ -23,7 +23,7 @@ dependencies {
 
 
     testImplementation gradleTestKit()
-    testImplementation("org.spockframework:spock-core:1.1-groovy-2.4") {
+    testImplementation("org.spockframework:spock-core:2.1-groovy-3.0") {
         exclude module: 'groovy-all'
     }
 }
