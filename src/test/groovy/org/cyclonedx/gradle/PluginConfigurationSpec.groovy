@@ -43,6 +43,23 @@ class PluginConfigurationSpec extends Specification {
         reportDir.listFiles().length == 2
     }
 
+    def "custom-output project should write boms under my-bom"() {
+        given:
+        File testDir = TestUtils.duplicate("custom-outputname")
+
+        when:
+        def result = GradleRunner.create()
+                .withProjectDir(testDir)
+                .withArguments("cyclonedxBom")
+                .withPluginClasspath()
+                .build()
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+
+        assert new File(testDir, "build/reports/my-bom.json").exists()
+        assert new File(testDir, "build/reports/my-bom.xml").exists()
+    }
+
     def "kotlin-dsl-project should allow configuring all properties"() {
         given:
         File testDir = TestUtils.duplicate("kotlin-dsl-project")

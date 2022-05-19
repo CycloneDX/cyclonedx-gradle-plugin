@@ -92,6 +92,7 @@ public class CycloneDxTask extends DefaultTask {
     private boolean includeBomSerialNumber;
 
     private String schemaVersion;
+    private String outputName;
     private String projectType;
     private final List<String> includeConfigs = new ArrayList<>();
     private final List<String> skipConfigs = new ArrayList<>();
@@ -99,10 +100,20 @@ public class CycloneDxTask extends DefaultTask {
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
 
     public CycloneDxTask() {
+        this.outputName = "bom";
         this.destination = new File(getProject().getBuildDir(), "reports");
         this.schemaVersion = CycloneDxSchema.Version.VERSION_13.getVersionString();
         this.projectType = DEFAULT_PROJECT_TYPE;
         this.includeBomSerialNumber = true;
+    }
+
+    @Input
+    public String getOutputName() {
+        return outputName;
+    }
+
+    public void setOutputName(String outputName) {
+        this.outputName = outputName;
     }
 
     @Input
@@ -414,7 +425,7 @@ public class CycloneDxTask extends DefaultTask {
         try {
             getLogger().info(MESSAGE_CREATING_BOM);
             final Bom bom = new Bom();
-            
+
             boolean includeSerialNumber = getBooleanParameter("cyclonedx.includeBomSerialNumber", includeBomSerialNumber);
 
             if (CycloneDxSchema.Version.VERSION_10 != version && includeSerialNumber) {
@@ -436,7 +447,7 @@ public class CycloneDxTask extends DefaultTask {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         bomGenerator.generate();
         final String bomString = bomGenerator.toXmlString();
-        final File bomFile = new File(destination, "bom.xml");
+        final File bomFile = new File(destination, outputName + ".xml");
         getLogger().info(MESSAGE_WRITING_BOM_XML);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
@@ -454,7 +465,7 @@ public class CycloneDxTask extends DefaultTask {
     private void writeJSONBom(final CycloneDxSchema.Version schemaVersion, final Bom bom) throws IOException {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
         final String bomString = bomGenerator.toJsonString();
-        final File bomFile = new File(destination, "bom.json");
+        final File bomFile = new File(destination, outputName + ".json");
         getLogger().info(MESSAGE_WRITING_BOM_JSON);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
@@ -502,6 +513,10 @@ public class CycloneDxTask extends DefaultTask {
             getLogger().info("------------------------------------------------------------------------");
             getLogger().info("schemaVersion          : " + schemaVersion);
             getLogger().info("includeBomSerialNumber : " + includeBomSerialNumber);
+            getLogger().info("includeConfigs         : " + includeConfigs);
+            getLogger().info("skipConfigs            : " + skipConfigs);
+            getLogger().info("destination            : " + destination);
+            getLogger().info("outputName             : " + outputName);
             getLogger().info("------------------------------------------------------------------------");
         }
     }

@@ -30,7 +30,7 @@ plugins {
 }
 ```
 
-Once a BOM is generated, it will reside at `./build/reports/bom.xml` and `./build/reports/bom.json`
+Once a BOM is generated, by default it will reside at `./build/reports/bom.xml` and `./build/reports/bom.json`
 
 
 __Configuration:__
@@ -43,12 +43,14 @@ cyclonedxBom {
     includeConfigs += ["runtimeClasspath"]
     // skipConfigs is a list of configuration names to exclude when generating the BOM
     skipConfigs += ["compileClasspath", "testCompileClasspath"]
-    // Specified the type of project being built. Defaults to 'library' 
+    // Specified the type of project being built. Defaults to 'library'
     projectType = "application"
     // Specified the version of the CycloneDX specification to use. Defaults to 1.2.
     schemaVersion = "1.2"
     // Boms destination directory (defaults to build/reports)
     destination = file("build/reports")
+    // The file name for the generated BOMs (before the file format suffix). Defaults to 'bom'
+    outputName = "bom"
     // Exclude BOM Serial Number
     includeBomSerialNumber = false
 }
@@ -63,15 +65,16 @@ tasks.cyclonedxBom {
     setProjectType("application")
     setSchemaVersion("1.4")
     setDestination(project.file("build/reports"))
+    setOutputName("bom")
     setincludeBomSerialNumber(false)
 ```
 
-Run gradle with info logging (-i option) to see which configurations add to the BOM. 
+Run gradle with info logging (-i option) to see which configurations add to the BOM.
 
 ## CycloneDX Schema Support
 
-The following table provides information on the version of this node module, the CycloneDX schema version supported, 
-as well as the output format options. Use the latest possible version of this node module that is the compatible with 
+The following table provides information on the version of this node module, the CycloneDX schema version supported,
+as well as the output format options. Use the latest possible version of this node module that is the compatible with
 the CycloneDX version supported by the target system.
 
 | Version | Schema Version | Format(s) |
