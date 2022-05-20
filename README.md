@@ -73,8 +73,8 @@ Run gradle with info logging (-i option) to see which configurations add to the 
 
 ## CycloneDX Schema Support
 
-The following table provides information on the version of this node module, the CycloneDX schema version supported,
-as well as the output format options. Use the latest possible version of this node module that is the compatible with
+The following table provides information on the version of this gradle plugin, the CycloneDX schema version supported,
+as well as the output format options. Use the latest possible version of this plugin that is the compatible with
 the CycloneDX version supported by the target system.
 
 | Version | Schema Version | Format(s) |
