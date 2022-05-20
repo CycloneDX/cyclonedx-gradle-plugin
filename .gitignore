@@ -4,3 +4,4 @@
 *~
 /build/
 /.gradle/
+/src/main/resources/plugin.properties

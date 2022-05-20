@@ -30,8 +30,16 @@ test {
     useJUnit()
 }
 
+project.ext.organization = 'CycloneDX'
 group = 'org.cyclonedx'
 version = '1.5.1'
+
+// populate properties into plugin.properties at build time
+ant.propertyfile(file: "src/main/resources/plugin.properties") {
+  entry(key: "vendor", value: project.ext.organization)
+  entry(key: "name", value: project.name)
+  entry(key: "version", value: project.version)
+}
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
