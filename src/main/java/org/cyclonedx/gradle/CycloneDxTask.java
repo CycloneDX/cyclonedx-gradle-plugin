@@ -273,13 +273,14 @@ public class CycloneDxTask extends DefaultTask {
             if(pomFile != null) {
                 final MavenProject project = mavenHelper.readPom(pomFile);
                 resolvedMavenProjects.put(dependencyName, project);
+                if (project != null) {
+                    Model model = mavenHelper.resolveEffectivePom(pomFile, getProject());
+                    if (model != null) {
+                        project.setLicenses(model.getLicenses());
+                    }
 
-                Model model = mavenHelper.resolveEffectivePom(pomFile, getProject());
-                if (model != null) {
-                    project.setLicenses(model.getLicenses());
+                    return project;
                 }
-
-                return project;
             }
         } catch(Exception err) {
             getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
