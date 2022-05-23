@@ -45,8 +45,8 @@ cyclonedxBom {
     skipConfigs += ["compileClasspath", "testCompileClasspath"]
     // Specified the type of project being built. Defaults to 'library'
     projectType = "application"
-    // Specified the version of the CycloneDX specification to use. Defaults to 1.2.
-    schemaVersion = "1.2"
+    // Specified the version of the CycloneDX specification to use. Defaults to 1.4.
+    schemaVersion = "1.4"
     // Boms destination directory (defaults to build/reports)
     destination = file("build/reports")
     // The file name for the generated BOMs (before the file format suffix). Defaults to 'bom'
@@ -79,6 +79,8 @@ the CycloneDX version supported by the target system.
 
 | Version | Schema Version | Format(s) |
 | ------- | ----------------- | --------- |
+| 1.6.x | CycloneDX v1.4 | XML/JSON |
+| 1.5.x | CycloneDX v1.3 | XML/JSON |
 | 1.4.x | CycloneDX v1.3 | XML/JSON |
 | 1.2.x | CycloneDX v1.2 | XML/JSON |
 | 1.1.x | CycloneDX v1.1 | XML |
