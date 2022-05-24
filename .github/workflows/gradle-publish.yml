@@ -34,12 +34,11 @@ jobs:
       with:
         arguments: build
 
-    # The USERNAME and TOKEN need to correspond to the credentials environment variables used in
-    # the publishing section of your build.gradle
-    - name: Publish to GitHub Packages
+    - name: Publish to Gradle portal
       uses: gradle/gradle-build-action@0d13054264b0bb894ded474f08ebb30921341cee
       with:
-        arguments: publish
-      env:
-        USERNAME: ${{ secrets.GRADLE_PUBLISH_KEY }}
-        TOKEN: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+        arguments: |
+          publishPlugin
+          -Pgradle.publish.key=${{ secrets.GRADLE_PUBLISH_KEY }}
+          -Pgradle.publish.secret=${{ secrets.GRADLE_PUBLISH_SECRET }}
+
