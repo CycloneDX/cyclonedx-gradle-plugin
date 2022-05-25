@@ -23,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -39,6 +40,7 @@ import org.apache.maven.model.building.*;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.resolution.ModelResolver;
 import org.apache.maven.project.MavenProject;
+import org.codehaus.plexus.util.ReaderFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.cyclonedx.CycloneDxSchema;
 import org.cyclonedx.model.Component;
@@ -288,7 +290,7 @@ class MavenHelper {
     MavenProject readPom(File file) {
         try {
             final MavenXpp3Reader mavenreader = new MavenXpp3Reader();
-            try (final InputStreamReader reader = new InputStreamReader(new BOMInputStream(new FileInputStream(file)))) {
+            try (final Reader reader = ReaderFactory.newXmlReader(file)) {
                 final Model model = mavenreader.read(reader);
                 return new MavenProject(model);
             }
@@ -306,7 +308,7 @@ class MavenHelper {
     MavenProject readPom(InputStream in) {
         try {
             final MavenXpp3Reader mavenreader = new MavenXpp3Reader();
-            try (final InputStreamReader reader = new InputStreamReader(in)) {
+            try (final Reader reader = ReaderFactory.newXmlReader(in)) {
                 final Model model = mavenreader.read(reader);
                 return new MavenProject(model);
             }
