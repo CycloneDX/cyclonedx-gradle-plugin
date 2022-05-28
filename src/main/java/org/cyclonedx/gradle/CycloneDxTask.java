@@ -102,7 +102,7 @@ public class CycloneDxTask extends DefaultTask {
     public CycloneDxTask() {
         this.outputName = "bom";
         this.destination = new File(getProject().getBuildDir(), "reports");
-        this.schemaVersion = CycloneDxSchema.Version.VERSION_13.getVersionString();
+        this.schemaVersion = CycloneDxSchema.Version.VERSION_14.getVersionString();
         this.projectType = DEFAULT_PROJECT_TYPE;
         this.includeBomSerialNumber = true;
     }
