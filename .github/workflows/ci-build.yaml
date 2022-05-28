@@ -36,3 +36,9 @@ jobs:
         uses: gradle/gradle-build-action@116ac10f8131939c7e405884cb2456067b0479e9
         with:
           arguments: build
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3.0.0
+        with:
+          name: assembled-plugin-jdk_${{ matrix.java-version }}
+          path: build/
