@@ -1,0 +1,38 @@
+name: Build CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java-version:
+          - 8
+          - 11
+          - 17
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3.0.2
+
+      - name: Set up JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v3.3.0
+        with:
+          distribution: "temurin"
+          java-version: "${{ matrix.java-version }}"
+          cache: "gradle"
+
+      - name: Validate Gradle wrapper
+        uses: gradle/wrapper-validation-action@e6e38bacfdf1a337459f332974bb2327a31aaf4b
+
+      - name: Build with Gradle
+        uses: gradle/gradle-build-action@116ac10f8131939c7e405884cb2456067b0479e9
+        with:
+          arguments: build
