@@ -60,8 +60,8 @@ If you are using the Kotlin DSL, the plugin can be configured as following:
 
 ```kotlin
 tasks.cyclonedxBom {
-    setIncludeConfigs(["runtimeClasspath"])
-    setSkipConfigs(["compileClasspath", "testCompileClasspath"])
+    setIncludeConfigs(listOf("runtimeClasspath"))
+    setSkipConfigs(listOf("compileClasspath", "testCompileClasspath"))
     setProjectType("application")
     setSchemaVersion("1.4")
     setDestination(project.file("build/reports"))
