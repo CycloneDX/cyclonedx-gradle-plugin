@@ -487,20 +487,11 @@ public class CycloneDxTask extends DefaultTask {
      */
     private CycloneDxSchema.Version schemaVersion() {
         switch (getSchemaVersion()) {
-          case "1.0":
-            return CycloneDxSchema.Version.VERSION_10;
-            break;
-          case "1.1":
-            return CycloneDxSchema.Version.VERSION_11;
-            break;
-          case "1.2":
-            return CycloneDxSchema.Version.VERSION_12;
-            break;
-          case "1.3":
-            return CycloneDxSchema.Version.VERSION_13;
-            break;
-          default:
-            return CycloneDxSchema.Version.VERSION_14;
+          case "1.0": return CycloneDxSchema.Version.VERSION_10;
+          case "1.1": return CycloneDxSchema.Version.VERSION_11;
+          case "1.2": return CycloneDxSchema.Version.VERSION_12;
+          case "1.3": return CycloneDxSchema.Version.VERSION_13;
+          default: return CycloneDxSchema.Version.VERSION_14;
         }
     }
 
