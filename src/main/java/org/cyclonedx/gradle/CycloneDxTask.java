@@ -486,15 +486,22 @@ public class CycloneDxTask extends DefaultTask {
      * @return the CycloneDX schema to use
      */
     private CycloneDxSchema.Version schemaVersion() {
-        final String version = getSchemaVersion();
-        if ("1.0".equals(version)) {
+        switch (getSchemaVersion()) {
+          case "1.0":
             return CycloneDxSchema.Version.VERSION_10;
-        } else if ("1.1".equals(version)) {
+            break;
+          case "1.1":
             return CycloneDxSchema.Version.VERSION_11;
-        } else if ("1.2".equals(version)) {
+            break;
+          case "1.2":
             return CycloneDxSchema.Version.VERSION_12;
+            break;
+          case "1.3":
+            return CycloneDxSchema.Version.VERSION_13;
+            break;
+          default:
+            return CycloneDxSchema.Version.VERSION_14;
         }
-        return CycloneDxSchema.Version.VERSION_13;
     }
 
     private boolean getBooleanParameter(String parameter, boolean defaultValue) {

@@ -58,7 +58,7 @@ cyclonedxBom {
 
 If you are using the Kotlin DSL, the plugin can be configured as following:
 
-```
+```kotlin
 tasks.cyclonedxBom {
     setIncludeConfigs(["runtimeClasspath"])
     setSkipConfigs(["compileClasspath", "testCompileClasspath"])
@@ -67,6 +67,7 @@ tasks.cyclonedxBom {
     setDestination(project.file("build/reports"))
     setOutputName("bom")
     setincludeBomSerialNumber(false)
+}
 ```
 
 Run gradle with info logging (-i option) to see which configurations add to the BOM.
