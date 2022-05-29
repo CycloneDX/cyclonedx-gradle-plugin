@@ -81,4 +81,23 @@ class PluginConfigurationSpec extends Specification {
         assert !jsonBom.text.contains("serialNumber")
     }
 
+    def "pom-xml-encoding project should not output errors to console"() {
+        given:
+        File testDir = TestUtils.duplicate("pom-xml-encoding")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+        assert reportDir.exists()
+        reportDir.listFiles().length == 2
+
+        assert !result.output.contains("An error occurred attempting to read POM")
+    }
 }

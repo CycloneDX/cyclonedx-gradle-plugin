@@ -1,0 +1,19 @@
+// https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/107
+
+plugins {
+    id 'org.cyclonedx.bom'
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+dependencies {
+    // Has declaration with encoding: <?xml version="1.0" encoding="ISO-8859-1"?>
+    implementation group: 'org.easymock', name: 'easymock', version: '3.4'
+}
