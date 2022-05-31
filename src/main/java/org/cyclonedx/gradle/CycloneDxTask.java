@@ -46,6 +46,11 @@ import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.MapProperty;
+import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputDirectory;
@@ -82,96 +87,104 @@ public class CycloneDxTask extends DefaultTask {
     private static final String MESSAGE_WRITING_BOM_JSON = "CycloneDX: Writing BOM JSON";
     private static final String MESSAGE_VALIDATING_BOM = "CycloneDX: Validating BOM";
     private static final String MESSAGE_VALIDATION_FAILURE = "The BOM does not conform to the CycloneDX BOM standard";
-    private static final String MESSAGE_SKIPPING = "Skipping CycloneDX";
 
     private static final String DEFAULT_PROJECT_TYPE = "library";
 
-    private File destination;
     private MavenHelper mavenHelper;
 
-    private boolean includeBomSerialNumber;
+    private final Property<String> schemaVersion;
+    private final Property<String> outputName;
+    private final Property<String> projectType;
+    private final Property<Boolean> includeBomSerialNumber;
+    private final ListProperty<String> includeConfigs;
+    private final ListProperty<String> skipConfigs;
+    private final Property<File> destination;
 
-    private String schemaVersion;
-    private String outputName;
-    private String projectType;
-    private final List<String> includeConfigs = new ArrayList<>();
-    private final List<String> skipConfigs = new ArrayList<>();
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
 
     public CycloneDxTask() {
-        this.outputName = "bom";
-        this.destination = new File(getProject().getBuildDir(), "reports");
-        this.schemaVersion = CycloneDxSchema.Version.VERSION_14.getVersionString();
-        this.projectType = DEFAULT_PROJECT_TYPE;
-        this.includeBomSerialNumber = true;
+        schemaVersion = getProject().getObjects().property(String.class);
+        schemaVersion.convention(CycloneDxSchema.Version.VERSION_14.getVersionString());
+
+        outputName = getProject().getObjects().property(String.class);
+        outputName.convention("bom");
+
+        projectType = getProject().getObjects().property(String.class);
+        projectType.convention(DEFAULT_PROJECT_TYPE);
+
+        includeBomSerialNumber = getProject().getObjects().property(Boolean.class);
+        includeBomSerialNumber.convention(true);
+
+        includeConfigs = getProject().getObjects().listProperty(String.class);
+        skipConfigs = getProject().getObjects().listProperty(String.class);
+
+        destination = getProject().getObjects().property(File.class);
+        destination.convention(getProject().getLayout().getBuildDirectory().dir("reports").get().getAsFile());
     }
 
     @Input
-    public String getOutputName() {
+    public Property<String> getOutputName() {
         return outputName;
     }
 
-    public void setOutputName(String outputName) {
-        this.outputName = outputName;
+    public void setOutputName(String output) {
+        this.outputName.set(output);
     }
 
     @Input
-    public List<String> getIncludeConfigs() {
+    public ListProperty<String> getIncludeConfigs() {
         return includeConfigs;
     }
 
     public void setIncludeConfigs(Collection<String> includeConfigs) {
-        this.includeConfigs.clear();
         this.includeConfigs.addAll(includeConfigs);
     }
 
     @Input
-    public List<String> getSkipConfigs() {
+    public ListProperty<String> getSkipConfigs() {
     	return skipConfigs;
     }
 
     public void setSkipConfigs(Collection<String> skipConfigs) {
-    	this.skipConfigs.clear();
     	this.skipConfigs.addAll(skipConfigs);
     }
 
     @Input
-    public String getSchemaVersion() {
+    public Property<String> getSchemaVersion() {
         return schemaVersion;
     }
 
     public void setSchemaVersion(String schemaVersion) {
-        this.schemaVersion = schemaVersion;
+        this.schemaVersion.set(schemaVersion);
     }
 
     @Input
-    public String getProjectType() {
+    public Property<String> getProjectType() {
         return projectType;
     }
 
     public void setProjectType(String projectType) {
-        this.projectType = projectType;
+        this.projectType.set(projectType);
     }
 
     @Input
-    public boolean getIncludeBomSerialNumber() {
-        return this.includeBomSerialNumber;
+    public Property<Boolean> getIncludeBomSerialNumber() {
+        return includeBomSerialNumber;
     }
 
     public void setIncludeBomSerialNumber(boolean includeBomSerialNumber) {
-        this.includeBomSerialNumber = includeBomSerialNumber;
+        this.includeBomSerialNumber.set(includeBomSerialNumber);
     }
 
     @OutputDirectory
-    public File getDestination() {
+    public Property<File> getDestination() {
         return destination;
     }
 
     public void setDestination(File destination) {
-        this.destination = destination;
+        this.destination.set(destination);
     }
-
 
     private CycloneDxSchema.Version computeSchemaVersion() {
         CycloneDxSchema.Version version = schemaVersion();
@@ -340,7 +353,7 @@ public class CycloneDxTask extends DefaultTask {
 
     private Component.Type resolveProjectType() {
         for (Component.Type type: Component.Type.values()) {
-            if (type.getTypeName().equalsIgnoreCase(getProjectType())) {
+            if (type.getTypeName().equalsIgnoreCase(getProjectType().get())) {
                 return type;
             }
         }
@@ -388,11 +401,11 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     private boolean shouldIncludeConfiguration(Configuration configuration) {
-        return includeConfigs.isEmpty() || includeConfigs.contains(configuration.getName());
+        return getIncludeConfigs().get().isEmpty() || getIncludeConfigs().get().contains(configuration.getName());
     }
 
     private boolean shouldSkipConfiguration(Configuration configuration) {
-        return skipConfigs.contains(configuration.getName());
+        return getSkipConfigs().get().contains(configuration.getName());
     }
 
     private String generatePackageUrl(final ResolvedArtifact artifact) {
@@ -427,10 +440,10 @@ public class CycloneDxTask extends DefaultTask {
             getLogger().info(MESSAGE_CREATING_BOM);
             final Bom bom = new Bom();
 
-            boolean includeSerialNumber = getBooleanParameter("cyclonedx.includeBomSerialNumber", includeBomSerialNumber);
+            boolean includeSerialNumber = getBooleanParameter("cyclonedx.includeBomSerialNumber", getIncludeBomSerialNumber().get());
 
             if (CycloneDxSchema.Version.VERSION_10 != version && includeSerialNumber) {
-                bom.setSerialNumber("urn:uuid:" + UUID.randomUUID().toString());
+                bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
             }
             bom.setMetadata(metadata);
             bom.setComponents(new ArrayList<>(components));
@@ -448,7 +461,7 @@ public class CycloneDxTask extends DefaultTask {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         bomGenerator.generate();
         final String bomString = bomGenerator.toXmlString();
-        final File bomFile = new File(destination, outputName + ".xml");
+        final File bomFile = new File(getDestination().get(), getOutputName().get() + ".xml");
         getLogger().info(MESSAGE_WRITING_BOM_XML);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
@@ -466,7 +479,7 @@ public class CycloneDxTask extends DefaultTask {
     private void writeJSONBom(final CycloneDxSchema.Version schemaVersion, final Bom bom) throws IOException {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
         final String bomString = bomGenerator.toJsonString();
-        final File bomFile = new File(destination, outputName + ".json");
+        final File bomFile = new File(getDestination().get(), getOutputName().get() + ".json");
         getLogger().info(MESSAGE_WRITING_BOM_JSON);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
@@ -486,7 +499,7 @@ public class CycloneDxTask extends DefaultTask {
      * @return the CycloneDX schema to use
      */
     private CycloneDxSchema.Version schemaVersion() {
-        switch (getSchemaVersion()) {
+        switch (getSchemaVersion().get()) {
           case "1.0": return CycloneDxSchema.Version.VERSION_10;
           case "1.1": return CycloneDxSchema.Version.VERSION_11;
           case "1.2": return CycloneDxSchema.Version.VERSION_12;
@@ -510,12 +523,12 @@ public class CycloneDxTask extends DefaultTask {
         if (getLogger().isInfoEnabled()) {
             getLogger().info("CycloneDX: Parameters");
             getLogger().info("------------------------------------------------------------------------");
-            getLogger().info("schemaVersion          : " + schemaVersion);
-            getLogger().info("includeBomSerialNumber : " + includeBomSerialNumber);
-            getLogger().info("includeConfigs         : " + includeConfigs);
-            getLogger().info("skipConfigs            : " + skipConfigs);
-            getLogger().info("destination            : " + destination);
-            getLogger().info("outputName             : " + outputName);
+            getLogger().info("schemaVersion          : " + schemaVersion.get());
+            getLogger().info("includeBomSerialNumber : " + includeBomSerialNumber.get());
+            getLogger().info("includeConfigs         : " + includeConfigs.get());
+            getLogger().info("skipConfigs            : " + skipConfigs.get());
+            getLogger().info("destination            : " + destination.get());
+            getLogger().info("outputName             : " + outputName.get());
             getLogger().info("------------------------------------------------------------------------");
         }
     }

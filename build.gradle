@@ -21,7 +21,6 @@ dependencies {
     implementation 'commons-io:commons-io:2.11.0'
     implementation 'org.apache.maven:maven-core:3.8.5'
 
-
     testImplementation gradleTestKit()
     testImplementation("org.spockframework:spock-core:2.2-M1-groovy-3.0") {
         exclude module: 'groovy-all'
@@ -34,7 +33,7 @@ test {
 
 project.ext.organization = 'CycloneDX'
 group = 'org.cyclonedx'
-version = '1.6.1'
+version = '1.7.0'
 
 // populate properties into plugin.properties at build time
 ant.propertyfile(file: "src/main/resources/plugin.properties") {
