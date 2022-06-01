@@ -138,6 +138,42 @@ class PluginConfigurationSpec extends Specification {
         reportDir.listFiles().length == 2
         File jsonBom = new File(reportDir, "bom.json")
         assert jsonBom.text.contains("\"specVersion\" : \"1.3\"")
+    }
 
+    def "should use configured outputFormat to limit generated file"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                outputFormat = 'json'
+            }
+            dependencies {
+                implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
+                implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 1
+        File jsonBom = new File(reportDir, "bom.json")
+        assert jsonBom.exists()
     }
 }
