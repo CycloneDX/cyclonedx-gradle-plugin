@@ -4,3 +4,12 @@ updates:
     directory: /
     schedule:
       interval: daily
+    ignore:
+      - dependency-name: org.spockframework:spock-core
+        versions:
+          # groovy 4.0 is not yet supported by Gradle
+          - 2.2-M1-groovy-4.0
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily

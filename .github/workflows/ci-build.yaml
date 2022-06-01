@@ -2,6 +2,8 @@ name: Build CI
 
 on:
   push:
+    branches:
+      - master
   pull_request:
     branches:
       - master

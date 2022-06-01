@@ -1,4 +1,3 @@
-
 plugins {
     id 'java-gradle-plugin'
     id 'com.gradle.plugin-publish' version '0.21.0'
@@ -53,18 +52,14 @@ pluginBundle {
     website = 'https://cyclonedx.org'
     vcsUrl = 'https://github.com/CycloneDX/cyclonedx-gradle-plugin.git'
     tags = [ 'cyclonedx', 'dependency', 'dependencies', 'owasp', 'inventory', 'bom', 'sbom' ]
-    plugins {
-        cycloneDxPlugin {
-            displayName = 'CycloneDX BOM Generator'
-            description = 'The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project and creates a valid CycloneDX Software Bill of Materials (SBOM).'
-        }
-    }
 }
 
 gradlePlugin {
     plugins {
         cycloneDxPlugin {
             id = 'org.cyclonedx.bom'
+            displayName = 'CycloneDX BOM Generator'
+            description = 'The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project and creates a valid CycloneDX Software Bill of Materials (SBOM).'
             implementationClass = 'org.cyclonedx.gradle.CycloneDxPlugin'
         }
     }
