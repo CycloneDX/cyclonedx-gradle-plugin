@@ -20,4 +20,13 @@ class TestUtils {
         return tmpDir
     }
 
+    static File createFromString(String buildContent, String settingsContent) {
+        def tmpDir = File.createTempDir( "from-literal")
+        def settingsFile = new File(tmpDir, "settings.gradle")
+        settingsFile << settingsContent
+        def buildFile = new File(tmpDir, "build.gradle")
+        buildFile << buildContent
+        return tmpDir
+    }
+
 }

@@ -7,7 +7,7 @@ import spock.lang.Specification
 
 class PluginConfigurationSpec extends Specification {
 
-    def "simple-project should output boms in build/reports"() {
+    def "simple-project should output boms in build/reports with version 1.4"() {
         given:
           File testDir = TestUtils.duplicate("simple-project")
 
@@ -23,6 +23,8 @@ class PluginConfigurationSpec extends Specification {
 
             assert reportDir.exists()
             reportDir.listFiles().length == 2
+            File jsonBom = new File(reportDir, "bom.json")
+            assert jsonBom.text.contains("\"specVersion\" : \"1.4\"")
     }
 
     def "custom-destination project should output boms in output-dir"() {
@@ -99,5 +101,43 @@ class PluginConfigurationSpec extends Specification {
         reportDir.listFiles().length == 2
 
         assert !result.output.contains("An error occurred attempting to read POM")
+    }
+
+    def "should use configured schemaVersion"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                schemaVersion = '1.3'
+            }
+            dependencies {
+                implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
+                implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        assert jsonBom.text.contains("\"specVersion\" : \"1.3\"")
+
     }
 }
