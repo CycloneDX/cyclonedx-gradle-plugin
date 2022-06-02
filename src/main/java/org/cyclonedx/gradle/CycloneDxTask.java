@@ -94,6 +94,7 @@ public class CycloneDxTask extends DefaultTask {
 
     private final Property<String> schemaVersion;
     private final Property<String> outputName;
+    private final Property<String> outputFormat;
     private final Property<String> projectType;
     private final Property<Boolean> includeBomSerialNumber;
     private final ListProperty<String> includeConfigs;
@@ -109,6 +110,9 @@ public class CycloneDxTask extends DefaultTask {
 
         outputName = getProject().getObjects().property(String.class);
         outputName.convention("bom");
+
+        outputFormat = getProject().getObjects().property(String.class);
+        outputFormat.convention("all");
 
         projectType = getProject().getObjects().property(String.class);
         projectType.convention(DEFAULT_PROJECT_TYPE);
@@ -130,6 +134,15 @@ public class CycloneDxTask extends DefaultTask {
 
     public void setOutputName(String output) {
         this.outputName.set(output);
+    }
+
+    @Input
+    public Property<String> getOutputFormat() {
+        return outputFormat;
+    }
+
+    public void setOutputFormat(String format) {
+        this.outputFormat.set(format);
     }
 
     @Input
@@ -198,6 +211,12 @@ public class CycloneDxTask extends DefaultTask {
     @TaskAction
     @SuppressWarnings("unused")
     public void createBom() {
+        if (!outputFormat.get().trim().equalsIgnoreCase("all")
+            && !outputFormat.get().trim().equalsIgnoreCase("xml")
+            && !outputFormat.get().trim().equalsIgnoreCase("json")) {
+            throw new GradleException("Unsupported output format. Must be one of all, xml, or json");
+        }
+
         CycloneDxSchema.Version version = computeSchemaVersion();
         logParameters();
         getLogger().info(MESSAGE_RESOLVING_DEPS);
@@ -447,8 +466,10 @@ public class CycloneDxTask extends DefaultTask {
             }
             bom.setMetadata(metadata);
             bom.setComponents(new ArrayList<>(components));
-            writeXMLBom(version, bom);
-            if (schemaVersion().getVersion() >= 1.2) {
+            if (outputFormat.get().equals("all") || outputFormat.get().equals("xml")) {
+                writeXMLBom(version, bom);
+            }
+            if (schemaVersion().getVersion() >= 1.2 && (outputFormat.get().equals("all") || outputFormat.get().equals("json"))) {
                 writeJSONBom(version, bom);
             }
         } catch (GeneratorException | ParserConfigurationException | IOException e) {

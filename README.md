@@ -51,6 +51,8 @@ cyclonedxBom {
     destination = file("build/reports")
     // The file name for the generated BOMs (before the file format suffix). Defaults to 'bom'
     outputName = "bom"
+    // The file format generated, can be xml, json or all for generating both
+    outputFormat = "json"
     // Exclude BOM Serial Number
     includeBomSerialNumber = false
 }
@@ -66,6 +68,7 @@ tasks.cyclonedxBom {
     setSchemaVersion("1.4")
     setDestination(project.file("build/reports"))
     setOutputName("bom")
+    setOutputFormat("json")
     setincludeBomSerialNumber(false)
 }
 ```
