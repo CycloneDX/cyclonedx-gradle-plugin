@@ -384,7 +384,7 @@ public class CycloneDxTask extends DefaultTask {
         return Component.Type.LIBRARY;
     }
 
-    private Component convertArtifact(ResolvedArtifact artifact, CycloneDxSchema.Version version) {
+    private Component convertArtifact(ResolvedArtifact artifact, CycloneDxSchema.Version schemaVersion) {
         final Component component = new Component();
         component.setGroup(artifact.getModuleVersion().getId().getGroup());
         component.setName(artifact.getModuleVersion().getId().getName());
@@ -393,7 +393,7 @@ public class CycloneDxTask extends DefaultTask {
         getLogger().debug(MESSAGE_CALCULATING_HASHES);
         List<Hash> hashes = artifactHashes.computeIfAbsent(artifact.getFile(), f -> {
             try {
-                return BomUtils.calculateHashes(f, version);
+                return BomUtils.calculateHashes(f, schemaVersion);
             } catch(IOException e) {
                 getLogger().error("Error encountered calculating hashes", e);
             }
@@ -401,14 +401,14 @@ public class CycloneDxTask extends DefaultTask {
         });
         component.setHashes(hashes);
 
-        if (schemaVersion().getVersion() >= 1.1) {
+        final String packageUrl = generatePackageUrl(artifact);
+        component.setPurl(packageUrl);
+
+        if (schemaVersion.getVersion() >= 1.1) {
             component.setModified(mavenHelper.isModified(artifact));
+            component.setBomRef(packageUrl);
         }
 
-        component.setPurl(generatePackageUrl(artifact));
-        //if (CycloneDxSchema.Version.VERSION_10 != schemaVersion()) {
-        //    component.setBomRef(component.getPurl());
-        //}
         if (mavenHelper.isDescribedArtifact(artifact)) {
             final MavenProject project = mavenHelper.extractPom(artifact);
             if (project != null) {

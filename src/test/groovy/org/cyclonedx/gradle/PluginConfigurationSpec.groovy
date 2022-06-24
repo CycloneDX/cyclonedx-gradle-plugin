@@ -1,5 +1,8 @@
 package org.cyclonedx.gradle
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.cyclonedx.model.Bom
+import org.cyclonedx.model.Component
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import spock.lang.Specification
@@ -175,5 +178,40 @@ class PluginConfigurationSpec extends Specification {
         reportDir.listFiles().length == 1
         File jsonBom = new File(reportDir, "bom.json")
         assert jsonBom.exists()
+    }
+
+    def "includes component bom-ref when schema version greater than 1.0"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                schemaVersion = '1.3'
+            }
+            dependencies {
+                implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.15.0'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component log4jCore = bom.getComponents().find(c -> c.name == 'log4j-core')
+
+        assert log4jCore.getBomRef() == 'pkg:maven/org.apache.logging.log4j/log4j-core@2.15.0?type=jar'
     }
 }
