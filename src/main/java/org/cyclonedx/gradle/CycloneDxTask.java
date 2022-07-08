@@ -29,6 +29,8 @@ import org.cyclonedx.CycloneDxSchema;
 import org.cyclonedx.exception.GeneratorException;
 import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
+import org.cyclonedx.gradle.utils.CycloneDxUtils;
+import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Hash;
@@ -43,29 +45,24 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
-import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.provider.ListProperty;
-import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -199,17 +196,7 @@ public class CycloneDxTask extends DefaultTask {
         this.destination.set(destination);
     }
 
-    private CycloneDxSchema.Version computeSchemaVersion() {
-        CycloneDxSchema.Version version = schemaVersion();
-        mavenHelper = new MavenHelper(getLogger(), version);
-        if (version == CycloneDxSchema.Version.VERSION_10) {
-             setIncludeBomSerialNumber(false);
-        }
-        return version;
-    }
-
     @TaskAction
-    @SuppressWarnings("unused")
     public void createBom() {
         if (!outputFormat.get().trim().equalsIgnoreCase("all")
             && !outputFormat.get().trim().equalsIgnoreCase("xml")
@@ -230,57 +217,76 @@ public class CycloneDxTask extends DefaultTask {
         final Metadata metadata = createMetadata();
         final Set<Configuration> configurations = getProject().getAllprojects().stream()
                 .flatMap(p -> p.getConfigurations().stream())
-                .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && canBeResolved(configuration))
+                .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && DependencyUtils.canBeResolved(configuration))
                 .collect(Collectors.toSet());
 
-        final Set<Component> components = configurations.stream().flatMap(configuration -> {
-                final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
-                final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
-                final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
-                resolvedConfiguration.getResolvedArtifacts().forEach(artifact -> {
-                    // Don't include other resources built from this Gradle project.
-                    final String dependencyName = getDependencyName(artifact);
-                    if (builtDependencies.contains(dependencyName)) {
-                        return;
-                    }
+        final Set<Component> components = new HashSet<>();
+        final Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
 
-                    depsFromConfig.add(dependencyName);
+        for (Configuration configuration : configurations) {
+            final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
+            final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
+            final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
 
-                    // Convert into a Component and augment with pom metadata if available.
-                    final Component component = convertArtifact(artifact, version);
-                    augmentComponentMetadata(component, dependencyName);
-                    componentsFromConfig.add(component);
-                });
-                Collections.sort(depsFromConfig);
-                getLogger().info("BOM inclusion for configuration {} : {}", configuration.getName(), depsFromConfig);
-                return componentsFromConfig.stream();
-            })
-            .collect(Collectors.toSet());
 
-        writeBom(metadata, components, version);
-    }
+            final org.cyclonedx.model.Dependency moduleDependency = new org.cyclonedx.model.Dependency(metadata.getComponent().getPurl());
+            final Set<ResolvedDependency> directModuleDependencies = configuration.getResolvedConfiguration()
+                .getFirstLevelModuleDependencies();
 
-    private boolean canBeResolved(Configuration configuration) {
-        // Configuration.isCanBeResolved() has been introduced with Gradle 3.3,
-        // thus we need to check for the method's existence first
-        try {
-            Method method = Configuration.class.getMethod("isCanBeResolved");
-            try {
-                return (Boolean) method.invoke(configuration);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                getLogger().warn("Failed to check resolvability of configuration {} -- assuming resolvability. Exception was: {}",
-                        configuration.getName(), e);
-                return true;
+            for (ResolvedDependency directModuleDependency : directModuleDependencies) {
+                moduleDependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(directModuleDependency)));
+                dependencies.putAll(buildDependencyGraph(directModuleDependency));
             }
-        } catch (NoSuchMethodException e) {
-            // prior to Gradle 3.3 all configurations were resolvable
-            return true;
+            dependencies.compute(metadata.getComponent().getPurl(), (k, v) -> {
+                if (v == null) {
+                    return moduleDependency;
+                } else if (moduleDependency.getDependencies() != null) {
+                    moduleDependency.getDependencies().stream().forEach(v::addDependency);
+                }
+                return v;
+            });
+
+            resolvedConfiguration.getResolvedArtifacts().forEach(artifact -> {
+                // Don't include other resources built from this Gradle project.
+                final String dependencyName = DependencyUtils.getDependencyName(artifact);
+                if (builtDependencies.contains(dependencyName)) {
+                    return;
+                }
+
+                depsFromConfig.add(dependencyName);
+
+                // Convert into a Component and augment with pom metadata if available.
+                final Component component = convertArtifact(artifact, version);
+                augmentComponentMetadata(component, dependencyName);
+                componentsFromConfig.add(component);
+            });
+            Collections.sort(depsFromConfig);
+            components.addAll(componentsFromConfig);
         }
+
+
+        writeBom(metadata, components, dependencies.values(), version);
     }
 
-    private String getDependencyName(ResolvedArtifact artifact) {
-        final ModuleVersionIdentifier m = artifact.getModuleVersion().getId();
-        return m.getGroup() + ":" + m.getName() + ":" + m.getVersion();
+    private CycloneDxSchema.Version computeSchemaVersion() {
+        CycloneDxSchema.Version version = CycloneDxUtils.schemaVersion(getSchemaVersion().get());
+        mavenHelper = new MavenHelper(getLogger(), version);
+        if (version == CycloneDxSchema.Version.VERSION_10) {
+            setIncludeBomSerialNumber(false);
+        }
+        return version;
+    }
+
+    private Map<String, org.cyclonedx.model.Dependency> buildDependencyGraph(ResolvedDependency resolvedDependency) {
+        final Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
+        String dependencyPurl  = generatePackageUrl(resolvedDependency);
+        final org.cyclonedx.model.Dependency dependency = new org.cyclonedx.model.Dependency(dependencyPurl);
+        dependencies.put(dependencyPurl, dependency);
+        for (ResolvedDependency childDependency : resolvedDependency.getChildren()) {
+            dependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(childDependency)));
+            dependencies.putAll(buildDependencyGraph(childDependency));
+        }
+        return dependencies;
     }
 
     /**
@@ -349,12 +355,16 @@ public class CycloneDxTask extends DefaultTask {
         tool.setVersion(properties.getProperty("version"));
         // TODO: Attempt to add hash values from the current mojo
         metadata.addTool(tool);
+
+        TreeMap<String, String> qualifiers = new TreeMap<>();
+        qualifiers.put("type",  "jar");
+
         final Component component = new Component();
         component.setGroup((StringUtils.trimToNull(project.getGroup().toString()) != null) ? project.getGroup().toString() : null);
         component.setName(project.getName());
         component.setVersion(project.getVersion().toString());
         component.setType(resolveProjectType());
-        component.setPurl(generatePackageUrl(project.getGroup().toString(), project.getName(), project.getVersion().toString(), null ));
+        component.setPurl(generatePackageUrl(project.getGroup().toString(), project.getName(), project.getVersion().toString(), qualifiers));
         component.setBomRef(component.getPurl());
         metadata.setComponent(component);
         return metadata;
@@ -427,9 +437,18 @@ public class CycloneDxTask extends DefaultTask {
         return getSkipConfigs().get().contains(configuration.getName());
     }
 
+    private String generatePackageUrl(final ResolvedDependency dependency) {
+        TreeMap<String, String> qualifiers = new TreeMap<>();
+        qualifiers.put("type",  "jar");
+        return generatePackageUrl(dependency.getModuleGroup(),
+                    dependency.getModuleName(),
+                    dependency.getModuleVersion(),
+                    qualifiers);
+    }
+
     private String generatePackageUrl(final ResolvedArtifact artifact) {
         TreeMap<String, String> qualifiers = new TreeMap<>();
-        qualifiers.put("type", artifact.getType());
+        qualifiers.put("type",  "jar");
         if (artifact.getClassifier() != null) {
             qualifiers.put("classifier", artifact.getClassifier());
         }
@@ -455,7 +474,8 @@ public class CycloneDxTask extends DefaultTask {
      * @param components The CycloneDX components extracted from gradle dependencies
      * @param version The CycloneDX schema version
      */
-    protected void writeBom(Metadata metadata, Set<Component> components, CycloneDxSchema.Version version) throws GradleException{
+    protected void writeBom(Metadata metadata, Set<Component> components, Collection<org.cyclonedx.model.Dependency> dependencies,
+                            CycloneDxSchema.Version version) throws GradleException{
         try {
             getLogger().info(MESSAGE_CREATING_BOM);
             final Bom bom = new Bom();
@@ -467,10 +487,11 @@ public class CycloneDxTask extends DefaultTask {
             }
             bom.setMetadata(metadata);
             bom.setComponents(new ArrayList<>(components));
+            bom.setDependencies(new ArrayList<>(dependencies));
             if (outputFormat.get().equals("all") || outputFormat.get().equals("xml")) {
                 writeXMLBom(version, bom);
             }
-            if (schemaVersion().getVersion() >= 1.2 && (outputFormat.get().equals("all") || outputFormat.get().equals("json"))) {
+            if (CycloneDxUtils.schemaVersion(getSchemaVersion().get()).getVersion() >= 1.2 && (outputFormat.get().equals("all") || outputFormat.get().equals("json"))) {
                 writeJSONBom(version, bom);
             }
         } catch (GeneratorException | ParserConfigurationException | IOException e) {
@@ -516,20 +537,6 @@ public class CycloneDxTask extends DefaultTask {
         }
     }
 
-    /**
-     * Resolves the CycloneDX schema the mojo has been requested to use.
-     * @return the CycloneDX schema to use
-     */
-    private CycloneDxSchema.Version schemaVersion() {
-        switch (getSchemaVersion().get()) {
-          case "1.0": return CycloneDxSchema.Version.VERSION_10;
-          case "1.1": return CycloneDxSchema.Version.VERSION_11;
-          case "1.2": return CycloneDxSchema.Version.VERSION_12;
-          case "1.3": return CycloneDxSchema.Version.VERSION_13;
-          default: return CycloneDxSchema.Version.VERSION_14;
-        }
-    }
-
     private boolean getBooleanParameter(String parameter, boolean defaultValue) {
         final Project project = super.getProject();
         if (project.hasProperty(parameter)) {
@@ -554,4 +561,6 @@ public class CycloneDxTask extends DefaultTask {
             getLogger().info("------------------------------------------------------------------------");
         }
     }
+
+
 }
