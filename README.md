@@ -26,7 +26,7 @@ gradle cyclonedxBom -info
 __build.gradle__ (excerpt)
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '1.6.1'
+    id 'org.cyclonedx.bom' version '1.7.0'
 }
 ```
 
@@ -82,13 +82,14 @@ as well as the output format options. Use the latest possible version of this pl
 the CycloneDX version supported by the target system.
 
 | Version | Schema Version | Format(s) |
-| ------- | ----------------- | --------- |
-| 1.6.x | CycloneDX v1.4 | XML/JSON |
-| 1.5.x | CycloneDX v1.3 | XML/JSON |
-| 1.4.x | CycloneDX v1.3 | XML/JSON |
-| 1.2.x | CycloneDX v1.2 | XML/JSON |
-| 1.1.x | CycloneDX v1.1 | XML |
-| 1.0x | CycloneDX v1.0 | XML |
+|---------| ----------------- | --------- |
+| 1.7.x   | CycloneDX v1.4 | XML/JSON |
+| 1.6.x   | CycloneDX v1.4 | XML/JSON |
+| 1.5.x   | CycloneDX v1.3 | XML/JSON |
+| 1.4.x   | CycloneDX v1.3 | XML/JSON |
+| 1.2.x   | CycloneDX v1.2 | XML/JSON |
+| 1.1.x   | CycloneDX v1.1 | XML |
+| 1.0x    | CycloneDX v1.0 | XML |
 
 ## Copyright & License
 
