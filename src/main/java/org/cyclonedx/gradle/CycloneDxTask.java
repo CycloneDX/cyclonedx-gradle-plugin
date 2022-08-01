@@ -153,11 +153,11 @@ public class CycloneDxTask extends DefaultTask {
 
     @Input
     public ListProperty<String> getSkipConfigs() {
-    	return skipConfigs;
+        return skipConfigs;
     }
 
     public void setSkipConfigs(Collection<String> skipConfigs) {
-    	this.skipConfigs.addAll(skipConfigs);
+        this.skipConfigs.addAll(skipConfigs);
     }
 
     @Input
@@ -234,8 +234,11 @@ public class CycloneDxTask extends DefaultTask {
                 .getFirstLevelModuleDependencies();
 
             for (ResolvedDependency directModuleDependency : directModuleDependencies) {
-                moduleDependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(directModuleDependency)));
-                dependencies.putAll(buildDependencyGraph(directModuleDependency));
+                ResolvedArtifact directJarArtifact = getJarArtifact(directModuleDependency);
+                if (directJarArtifact != null) {
+                     moduleDependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(directJarArtifact)));
+                     dependencies.putAll(buildDependencyGraph(directModuleDependency, directJarArtifact));
+                }
             }
             dependencies.compute(metadata.getComponent().getPurl(), (k, v) -> {
                 if (v == null) {
@@ -277,16 +280,29 @@ public class CycloneDxTask extends DefaultTask {
         return version;
     }
 
-    private Map<String, org.cyclonedx.model.Dependency> buildDependencyGraph(ResolvedDependency resolvedDependency) {
-        final Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
-        String dependencyPurl  = generatePackageUrl(resolvedDependency);
-        final org.cyclonedx.model.Dependency dependency = new org.cyclonedx.model.Dependency(dependencyPurl);
+    private Map<String, org.cyclonedx.model.Dependency> buildDependencyGraph(ResolvedDependency resolvedDependency, ResolvedArtifact jarArtifact) {
+        Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
+        String dependencyPurl = generatePackageUrl(jarArtifact);
+        org.cyclonedx.model.Dependency dependency = new org.cyclonedx.model.Dependency(dependencyPurl);
         dependencies.put(dependencyPurl, dependency);
+        
         for (ResolvedDependency childDependency : resolvedDependency.getChildren()) {
-            dependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(childDependency)));
-            dependencies.putAll(buildDependencyGraph(childDependency));
+            ResolvedArtifact childJarArtifact = getJarArtifact(childDependency);
+            if (childJarArtifact != null) {
+                dependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(childJarArtifact)));
+                dependencies.putAll(buildDependencyGraph(childDependency, childJarArtifact));
+            }
         }
         return dependencies;
+    }
+    
+    private ResolvedArtifact getJarArtifact(ResolvedDependency dependency) {
+        for(ResolvedArtifact artifact : dependency.getModuleArtifacts()) {
+            if ("jar".equals(artifact.getType())) {
+                return artifact;
+            }
+        }
+        return null;
     }
 
     /**
@@ -435,15 +451,6 @@ public class CycloneDxTask extends DefaultTask {
 
     private boolean shouldSkipConfiguration(Configuration configuration) {
         return getSkipConfigs().get().contains(configuration.getName());
-    }
-
-    private String generatePackageUrl(final ResolvedDependency dependency) {
-        TreeMap<String, String> qualifiers = new TreeMap<>();
-        qualifiers.put("type",  "jar");
-        return generatePackageUrl(dependency.getModuleGroup(),
-                    dependency.getModuleName(),
-                    dependency.getModuleVersion(),
-                    qualifiers);
     }
 
     private String generatePackageUrl(final ResolvedArtifact artifact) {
