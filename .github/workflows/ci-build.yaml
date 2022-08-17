@@ -41,7 +41,7 @@ jobs:
         uses: gradle/wrapper-validation-action@e6e38bacfdf1a337459f332974bb2327a31aaf4b
 
       - name: Build with Gradle
-        uses: gradle/gradle-build-action@cd3cedc781988c804f626f4cd2dc51d0bdf02a12
+        uses: gradle/gradle-build-action@e4e8267f88a4dc100685322f9e33cb1f9252e343
         with:
           arguments: build
 
