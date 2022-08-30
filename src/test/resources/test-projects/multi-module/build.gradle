@@ -1,0 +1,17 @@
+plugins {
+    id 'org.cyclonedx.bom' version '1.7.1'
+    id 'java'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    maven {
+        url 'https://oss.sonatype.org/content/repositories/snapshots'
+    }
+}
+
+

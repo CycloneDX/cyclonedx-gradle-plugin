@@ -247,4 +247,45 @@ class PluginConfigurationSpec extends Specification {
 
         assert log4jCore.getBomRef() == 'pkg:maven/org.apache.logging.log4j/log4j-core@2.15.0?type=jar'
     }
+
+    def "multi-module should output boms in build/reports with version 1.4"() {
+        given:
+        File testDir = TestUtils.duplicate("multi-module")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--info", "-S")
+            .withPluginClasspath()
+            .build()
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        assert jsonBom.text.contains("\"specVersion\" : \"1.4\"")
+    }
+
+    def "kotlin-dsl-project should allow configuring all properties"() {
+        given:
+        File testDir = TestUtils.duplicate("kotlin-project")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--info", "-S")
+            .withPluginClasspath()
+            .build()
+
+        then:
+      //  result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        assert !jsonBom.text.contains("serialNumber")
+    }
 }

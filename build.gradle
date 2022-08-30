@@ -32,7 +32,7 @@ test {
 
 project.ext.organization = 'CycloneDX'
 group = 'org.cyclonedx'
-version = '1.7.0'
+version = '1.7.1'
 
 // populate properties into plugin.properties at build time
 ant.propertyfile(file: "src/main/resources/plugin.properties") {
