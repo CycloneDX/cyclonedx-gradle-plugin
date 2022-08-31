@@ -55,6 +55,8 @@ cyclonedxBom {
     outputFormat = "json"
     // Exclude BOM Serial Number
     includeBomSerialNumber = false
+    // Override component version
+    componentVersion = "2.0.0"
 }
 ```
 
@@ -69,7 +71,8 @@ tasks.cyclonedxBom {
     setDestination(project.file("build/reports"))
     setOutputName("bom")
     setOutputFormat("json")
-    setincludeBomSerialNumber(false)
+    setIncludeBomSerialNumber(false)
+    setComponentVersion("2.0.0")
 }
 ```
 
