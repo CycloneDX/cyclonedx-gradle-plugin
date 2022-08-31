@@ -250,7 +250,7 @@ public class CycloneDxTask extends DefaultTask {
                 ResolvedArtifact directJarArtifact = getJarArtifact(directModuleDependency);
                 if (directJarArtifact != null) {
                      moduleDependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(directJarArtifact)));
-                     dependencies.putAll(buildDependencyGraph(directModuleDependency, directJarArtifact));
+                     buildDependencyGraph(dependencies, directModuleDependency, directJarArtifact);
                 }
             }
             dependencies.compute(metadata.getComponent().getPurl(), (k, v) -> {
@@ -293,20 +293,21 @@ public class CycloneDxTask extends DefaultTask {
         return version;
     }
 
-    private Map<String, org.cyclonedx.model.Dependency> buildDependencyGraph(ResolvedDependency resolvedDependency, ResolvedArtifact jarArtifact) {
-        Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
+    private Map<String, org.cyclonedx.model.Dependency> buildDependencyGraph(Map<String, org.cyclonedx.model.Dependency> dependenciesSoFar, ResolvedDependency resolvedDependency, ResolvedArtifact jarArtifact) {
         String dependencyPurl = generatePackageUrl(jarArtifact);
         org.cyclonedx.model.Dependency dependency = new org.cyclonedx.model.Dependency(dependencyPurl);
-        dependencies.put(dependencyPurl, dependency);
+        if (dependenciesSoFar.put(dependencyPurl, dependency) != null){
+            return dependenciesSoFar;
+        }
 
         for (ResolvedDependency childDependency : resolvedDependency.getChildren()) {
             ResolvedArtifact childJarArtifact = getJarArtifact(childDependency);
             if (childJarArtifact != null) {
                 dependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(childJarArtifact)));
-                dependencies.putAll(buildDependencyGraph(childDependency, childJarArtifact));
+                buildDependencyGraph(dependenciesSoFar, childDependency, childJarArtifact);
             }
         }
-        return dependencies;
+        return dependenciesSoFar;
     }
 
     private ResolvedArtifact getJarArtifact(ResolvedDependency dependency) {

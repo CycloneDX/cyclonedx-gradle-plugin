@@ -9,6 +9,23 @@ import spock.lang.Specification
 
 
 class PluginConfigurationSpec extends Specification {
+    def "loops in the dependency graph should be processed"() {
+        given:
+        File testDir = TestUtils.duplicate("dependency-graph-loop")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+    }
 
     def "simple-project should output boms in build/reports with version 1.4"() {
         given:

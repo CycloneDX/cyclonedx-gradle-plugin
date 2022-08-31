@@ -1,0 +1,23 @@
+plugins {
+    id 'org.cyclonedx.bom'
+    id 'java'
+    id 'maven-publish'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    maven {
+        url 'https://oss.sonatype.org/content/repositories/snapshots'
+    }
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    implementation group: 'org.apache.xmlgraphics', name: 'batik-svg-dom', version:'1.7'
+}
