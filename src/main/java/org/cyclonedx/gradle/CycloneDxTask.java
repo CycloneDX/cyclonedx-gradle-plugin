@@ -48,6 +48,7 @@ import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
+import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
@@ -71,6 +72,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class CycloneDxTask extends DefaultTask {
 
@@ -227,59 +229,74 @@ public class CycloneDxTask extends DefaultTask {
                 .map(p -> p.getGroup() + ":" + p.getName() + ":" + p.getVersion())
                 .collect(Collectors.toSet());
 
-        final Metadata metadata = createMetadata();
-        final Set<Configuration> configurations = getProject().getAllprojects().stream()
-                .flatMap(p -> p.getConfigurations().stream())
-                .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && DependencyUtils.canBeResolved(configuration))
-                .collect(Collectors.toSet());
-
         final Set<Component> components = new HashSet<>();
         final Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
 
-        for (Configuration configuration : configurations) {
-            final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
-            final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
-            final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
+        final Metadata metadata = createMetadata();
+        Project rootProject = getProject().getRootProject();
+
+        org.cyclonedx.model.Dependency rootDependency = new org.cyclonedx.model.Dependency(generatePackageUrl(rootProject));
+        dependencies.put(generatePackageUrl(rootProject), rootDependency);
+
+        rootProject.getAllprojects().forEach(project -> {
+            Set<Configuration> configurations = project.getConfigurations()
+                .stream()
+                .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && DependencyUtils.canBeResolved(configuration))
+                .collect(Collectors.toSet());
+
+            String projectReference = generatePackageUrl(project);
 
 
-            final org.cyclonedx.model.Dependency moduleDependency = new org.cyclonedx.model.Dependency(metadata.getComponent().getPurl());
-            final Set<ResolvedDependency> directModuleDependencies = configuration.getResolvedConfiguration()
-                .getFirstLevelModuleDependencies();
-
-            for (ResolvedDependency directModuleDependency : directModuleDependencies) {
-                ResolvedArtifact directJarArtifact = getJarArtifact(directModuleDependency);
-                if (directJarArtifact != null) {
-                     moduleDependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(directJarArtifact)));
-                     buildDependencyGraph(dependencies, directModuleDependency, directJarArtifact);
-                }
+            if (!rootProject.equals(project)) {
+                rootDependency.addDependency(new org.cyclonedx.model.Dependency(projectReference));
+                // declare sub-project as component
+                components.add(generateProjectComponent(project, version));
             }
-            dependencies.compute(metadata.getComponent().getPurl(), (k, v) -> {
-                if (v == null) {
-                    return moduleDependency;
-                } else if (moduleDependency.getDependencies() != null) {
-                    moduleDependency.getDependencies().stream().forEach(v::addDependency);
+
+            for (Configuration configuration : configurations) {
+                final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
+                final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
+                final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
+
+                final org.cyclonedx.model.Dependency moduleDependency = new org.cyclonedx.model.Dependency(projectReference);
+
+                final Set<ResolvedDependency> directModuleDependencies = configuration.getResolvedConfiguration()
+                    .getFirstLevelModuleDependencies();
+
+                for (ResolvedDependency directModuleDependency : directModuleDependencies) {
+                    ResolvedArtifact directJarArtifact = getJarArtifact(directModuleDependency);
+                    if (directJarArtifact != null) {
+                        moduleDependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(directJarArtifact)));
+                        buildDependencyGraph(dependencies, directModuleDependency, directJarArtifact);
+                    }
                 }
-                return v;
-            });
+                dependencies.compute(projectReference, (k, v) -> {
+                    if (v == null) {
+                        return moduleDependency;
+                    } else if (moduleDependency.getDependencies() != null) {
+                        moduleDependency.getDependencies().stream().forEach(v::addDependency);
+                    }
+                    return v;
+                });
 
-            resolvedConfiguration.getResolvedArtifacts().forEach(artifact -> {
-                // Don't include other resources built from this Gradle project.
-                final String dependencyName = DependencyUtils.getDependencyName(artifact);
-                if (builtDependencies.contains(dependencyName)) {
-                    return;
-                }
+                resolvedConfiguration.getResolvedArtifacts().forEach(artifact -> {
+                    // Don't include other resources built from this Gradle project.
+                    final String dependencyName = DependencyUtils.getDependencyName(artifact);
+                    if (builtDependencies.contains(dependencyName)) {
+                        return;
+                    }
 
-                depsFromConfig.add(dependencyName);
+                    depsFromConfig.add(dependencyName);
 
-                // Convert into a Component and augment with pom metadata if available.
-                final Component component = convertArtifact(artifact, version);
-                augmentComponentMetadata(component, dependencyName);
-                componentsFromConfig.add(component);
-            });
-            Collections.sort(depsFromConfig);
-            components.addAll(componentsFromConfig);
-        }
-
+                    // Convert into a Component and augment with pom metadata if available.
+                    final Component component = convertArtifact(artifact, version);
+                    augmentComponentMetadata(component, dependencyName);
+                    componentsFromConfig.add(component);
+                });
+                Collections.sort(depsFromConfig);
+                components.addAll(componentsFromConfig);
+            }
+        });
 
         writeBom(metadata, components, dependencies.values(), version);
     }
@@ -383,18 +400,14 @@ public class CycloneDxTask extends DefaultTask {
         tool.setVendor(properties.getProperty("vendor"));
         tool.setName(properties.getProperty("name"));
         tool.setVersion(properties.getProperty("version"));
-        // TODO: Attempt to add hash values from the current mojo
         metadata.addTool(tool);
-
-        TreeMap<String, String> qualifiers = new TreeMap<>();
-        qualifiers.put("type",  "jar");
 
         final Component component = new Component();
         component.setGroup((StringUtils.trimToNull(project.getGroup().toString()) != null) ? project.getGroup().toString() : null);
         component.setName(project.getName());
         component.setVersion(componentVersion.get());
         component.setType(resolveProjectType());
-        component.setPurl(generatePackageUrl(project.getGroup().toString(), project.getName(), project.getVersion().toString(), qualifiers));
+        component.setPurl(generatePackageUrl(project));
         component.setBomRef(component.getPurl());
         metadata.setComponent(component);
         return metadata;
@@ -424,6 +437,22 @@ public class CycloneDxTask extends DefaultTask {
         return Component.Type.LIBRARY;
     }
 
+    private Component generateProjectComponent(Project project, CycloneDxSchema.Version schemaVersion) {
+        final Component component = new Component();
+        component.setGroup(project.getGroup().toString());
+        component.setName(project.getName());
+        component.setVersion(project.getVersion().toString());
+        component.setType(Component.Type.LIBRARY);
+
+        String projectReference = generatePackageUrl(project);
+
+        component.setPurl(projectReference);
+        if (schemaVersion.getVersion() >= 1.1) {
+            component.setBomRef(projectReference);
+        }
+
+        return component;
+    }
     private Component convertArtifact(ResolvedArtifact artifact, CycloneDxSchema.Version schemaVersion) {
         final Component component = new Component();
         component.setGroup(artifact.getModuleVersion().getId().getGroup());
@@ -479,12 +508,23 @@ public class CycloneDxTask extends DefaultTask {
                 qualifiers );
     }
 
+    private String generatePackageUrl(final Project project) {
+        TreeMap<String, String> qualifiers = new TreeMap<>();
+        if (project.getChildProjects().isEmpty()) {
+            qualifiers.put("type",  "jar");
+        } else {
+            qualifiers.put("type",  "pom");
+        }
+        return generatePackageUrl(project.getGroup().toString(), project.getName(), project.getVersion().toString(), qualifiers );
+    }
+
+
     private String generatePackageUrl(String groupId, String artifactId, String version, TreeMap<String, String> qualifiers) {
         try {
             return new PackageURL(PackageURL.StandardTypes.MAVEN, groupId, artifactId, version, qualifiers, null).canonicalize();
         } catch(MalformedPackageURLException e) {
-            getLogger().debug("An unexpected issue occurred attempting to create a PackageURL for "
-                    + groupId + ":" + artifactId + ":" + version, e);
+            getLogger().warn("An unexpected issue occurred attempting to create a PackageURL for "
+                    + groupId + ":" + artifactId + ":" + version);
         }
         return null;
     }
@@ -547,6 +587,7 @@ public class CycloneDxTask extends DefaultTask {
         getLogger().info(MESSAGE_WRITING_BOM_JSON);
         FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
         getLogger().info(MESSAGE_VALIDATING_BOM);
+
         final Parser bomParser = new JsonParser();
         try {
             if (!bomParser.isValid(bomFile, schemaVersion)) {
