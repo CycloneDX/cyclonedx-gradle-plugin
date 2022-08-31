@@ -90,6 +90,7 @@ public class CycloneDxTask extends DefaultTask {
     private MavenHelper mavenHelper;
 
     private final Property<String> schemaVersion;
+    private final Property<String> componentVersion;
     private final Property<String> outputName;
     private final Property<String> outputFormat;
     private final Property<String> projectType;
@@ -116,6 +117,9 @@ public class CycloneDxTask extends DefaultTask {
 
         includeBomSerialNumber = getProject().getObjects().property(Boolean.class);
         includeBomSerialNumber.convention(true);
+
+        componentVersion = getProject().getObjects().property(String.class);
+        componentVersion.convention(getProject().getVersion().toString());
 
         includeConfigs = getProject().getObjects().listProperty(String.class);
         skipConfigs = getProject().getObjects().listProperty(String.class);
@@ -149,6 +153,15 @@ public class CycloneDxTask extends DefaultTask {
 
     public void setIncludeConfigs(Collection<String> includeConfigs) {
         this.includeConfigs.addAll(includeConfigs);
+    }
+
+    @Input
+    public Property<String> getComponentVersion() {
+        return componentVersion;
+    }
+
+    public void setComponentVersion(String componentVersion) {
+        this.componentVersion.set(componentVersion);
     }
 
     @Input
@@ -285,7 +298,7 @@ public class CycloneDxTask extends DefaultTask {
         String dependencyPurl = generatePackageUrl(jarArtifact);
         org.cyclonedx.model.Dependency dependency = new org.cyclonedx.model.Dependency(dependencyPurl);
         dependencies.put(dependencyPurl, dependency);
-        
+
         for (ResolvedDependency childDependency : resolvedDependency.getChildren()) {
             ResolvedArtifact childJarArtifact = getJarArtifact(childDependency);
             if (childJarArtifact != null) {
@@ -295,7 +308,7 @@ public class CycloneDxTask extends DefaultTask {
         }
         return dependencies;
     }
-    
+
     private ResolvedArtifact getJarArtifact(ResolvedDependency dependency) {
         for(ResolvedArtifact artifact : dependency.getModuleArtifacts()) {
             if ("jar".equals(artifact.getType())) {
@@ -378,7 +391,7 @@ public class CycloneDxTask extends DefaultTask {
         final Component component = new Component();
         component.setGroup((StringUtils.trimToNull(project.getGroup().toString()) != null) ? project.getGroup().toString() : null);
         component.setName(project.getName());
-        component.setVersion(project.getVersion().toString());
+        component.setVersion(componentVersion.get());
         component.setType(resolveProjectType());
         component.setPurl(generatePackageUrl(project.getGroup().toString(), project.getName(), project.getVersion().toString(), qualifiers));
         component.setBomRef(component.getPurl());
