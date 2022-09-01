@@ -26,7 +26,7 @@ gradle cyclonedxBom -info
 __build.gradle__ (excerpt)
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '1.7.0'
+    id 'org.cyclonedx.bom' version '1.7.1'
 }
 ```
 
