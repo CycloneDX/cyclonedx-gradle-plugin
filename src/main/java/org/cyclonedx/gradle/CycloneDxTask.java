@@ -223,7 +223,6 @@ public class CycloneDxTask extends DefaultTask {
         logParameters();
         getLogger().info(MESSAGE_RESOLVING_DEPS);
         final Set<String> builtDependencies = getProject()
-                .getRootProject()
                 .getSubprojects()
                 .stream()
                 .map(p -> p.getGroup() + ":" + p.getName() + ":" + p.getVersion())
@@ -233,12 +232,17 @@ public class CycloneDxTask extends DefaultTask {
         final Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
 
         final Metadata metadata = createMetadata();
-        Project rootProject = getProject().getRootProject();
+        Project rootProject = getProject();
 
         org.cyclonedx.model.Dependency rootDependency = new org.cyclonedx.model.Dependency(generatePackageUrl(rootProject));
         dependencies.put(generatePackageUrl(rootProject), rootDependency);
 
-        rootProject.getAllprojects().forEach(project -> {
+
+        Set<Project> projectsToScan = new HashSet<>();
+        projectsToScan.add(rootProject);
+        projectsToScan.addAll(rootProject.getSubprojects());
+
+        projectsToScan.forEach(project -> {
             Set<Configuration> configurations = project.getConfigurations()
                 .stream()
                 .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && DependencyUtils.canBeResolved(configuration))

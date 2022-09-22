@@ -268,6 +268,26 @@ class PluginConfigurationSpec extends Specification {
         assert jsonBom.text.contains("\"specVersion\" : \"1.4\"")
     }
 
+    def "multi-module with plugin in subproject should output boms in build/reports with version 1.4"() {
+        given:
+        File testDir = TestUtils.duplicate("multi-module-subproject")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(":app-a:cyclonedxBom", "--info", "-S")
+            .withPluginClasspath()
+            .build()
+        then:
+        result.task(":app-a:cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "app-a/build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        assert jsonBom.text.contains("\"specVersion\" : \"1.4\"")
+    }
+
     def "kotlin-dsl-project should allow configuring all properties"() {
         given:
         File testDir = TestUtils.duplicate("kotlin-project")
