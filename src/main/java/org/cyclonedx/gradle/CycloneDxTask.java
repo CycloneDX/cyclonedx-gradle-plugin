@@ -317,9 +317,10 @@ public class CycloneDxTask extends DefaultTask {
     private Map<String, org.cyclonedx.model.Dependency> buildDependencyGraph(Map<String, org.cyclonedx.model.Dependency> dependenciesSoFar, ResolvedDependency resolvedDependency, ResolvedArtifact jarArtifact) {
         String dependencyPurl = generatePackageUrl(jarArtifact);
         org.cyclonedx.model.Dependency dependency = new org.cyclonedx.model.Dependency(dependencyPurl);
-        if (dependenciesSoFar.put(dependencyPurl, dependency) != null){
+        if (dependenciesSoFar.containsKey(dependencyPurl)){
             return dependenciesSoFar;
         }
+        dependenciesSoFar.put(dependencyPurl, dependency);
 
         for (ResolvedDependency childDependency : resolvedDependency.getChildren()) {
             ResolvedArtifact childJarArtifact = getJarArtifact(childDependency);

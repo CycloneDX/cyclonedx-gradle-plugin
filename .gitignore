@@ -8,3 +8,6 @@ src/main/resources/plugin.properties
 
 src/test/build/
 src/test/.gradle/
+**/*/.gradle/
+**/*/build/
+**/*/.DS_Store
