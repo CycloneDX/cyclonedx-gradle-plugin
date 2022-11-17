@@ -43,6 +43,8 @@ cyclonedxBom {
     includeConfigs = ["runtimeClasspath"]
     // skipConfigs is a list of configuration names to exclude when generating the BOM
     skipConfigs = ["compileClasspath", "testCompileClasspath"]
+    // skipProjects is a list of project names to exclude when generating the BOM
+    skipProjects = [rootProject.name, "yourTestSubProject"]
     // Specified the type of project being built. Defaults to 'library'
     projectType = "application"
     // Specified the version of the CycloneDX specification to use. Defaults to 1.4.
@@ -66,6 +68,7 @@ If you are using the Kotlin DSL, the plugin can be configured as following:
 tasks.cyclonedxBom {
     setIncludeConfigs(listOf("runtimeClasspath"))
     setSkipConfigs(listOf("compileClasspath", "testCompileClasspath"))
+    setSkipProjects(listOf(rootProject.name, "yourTestSubProject"))
     setProjectType("application")
     setSchemaVersion("1.4")
     setDestination(project.file("build/reports"))
