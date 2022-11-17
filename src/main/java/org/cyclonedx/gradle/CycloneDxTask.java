@@ -99,6 +99,7 @@ public class CycloneDxTask extends DefaultTask {
     private final Property<Boolean> includeBomSerialNumber;
     private final ListProperty<String> includeConfigs;
     private final ListProperty<String> skipConfigs;
+    private final ListProperty<String> skipProjects;
     private final Property<File> destination;
 
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
@@ -125,6 +126,7 @@ public class CycloneDxTask extends DefaultTask {
 
         includeConfigs = getProject().getObjects().listProperty(String.class);
         skipConfigs = getProject().getObjects().listProperty(String.class);
+        skipProjects = getProject().getObjects().listProperty(String.class);
 
         destination = getProject().getObjects().property(File.class);
         destination.convention(getProject().getLayout().getBuildDirectory().dir("reports").get().getAsFile());
@@ -173,6 +175,15 @@ public class CycloneDxTask extends DefaultTask {
 
     public void setSkipConfigs(Collection<String> skipConfigs) {
         this.skipConfigs.addAll(skipConfigs);
+    }
+
+    @Input
+    public ListProperty<String> getSkipProjects() {
+        return skipProjects;
+    }
+
+    public void setSkipProjects(Collection<String> skipProjects) {
+        this.skipProjects.addAll(skipProjects);
     }
 
     @Input
@@ -242,7 +253,7 @@ public class CycloneDxTask extends DefaultTask {
         projectsToScan.add(rootProject);
         projectsToScan.addAll(rootProject.getSubprojects());
 
-        projectsToScan.forEach(project -> {
+        projectsToScan.stream().filter(p -> !shouldSkipProject(p)).forEach(project -> {
             Set<Configuration> configurations = project.getConfigurations()
                 .stream()
                 .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && DependencyUtils.canBeResolved(configuration))
@@ -501,6 +512,10 @@ public class CycloneDxTask extends DefaultTask {
         return getSkipConfigs().get().contains(configuration.getName());
     }
 
+    private boolean shouldSkipProject(Project project) {
+        return getSkipProjects().get().contains(project.getName());
+    }
+
     private String generatePackageUrl(final ResolvedArtifact artifact) {
         TreeMap<String, String> qualifiers = new TreeMap<>();
         qualifiers.put("type",  "jar");
@@ -623,6 +638,7 @@ public class CycloneDxTask extends DefaultTask {
             getLogger().info("includeBomSerialNumber : " + includeBomSerialNumber.get());
             getLogger().info("includeConfigs         : " + includeConfigs.get());
             getLogger().info("skipConfigs            : " + skipConfigs.get());
+            getLogger().info("skipProjects           : " + skipProjects.get());
             getLogger().info("destination            : " + destination.get());
             getLogger().info("outputName             : " + outputName.get());
             getLogger().info("------------------------------------------------------------------------");
