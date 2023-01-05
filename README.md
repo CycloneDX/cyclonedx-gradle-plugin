@@ -24,6 +24,10 @@ gradle cyclonedxBom -info
 ```
 
 __build.gradle__ (excerpt)
+
+To generate BOM for a single project add the plugin to the `build.gradle`.
+
+
 ```groovy
 plugins {
     id 'org.cyclonedx.bom' version '1.7.3'
@@ -32,9 +36,9 @@ plugins {
 
 Once a BOM is generated, by default it will reside at `./build/reports/bom.xml` and `./build/reports/bom.json`
 
-
 __Configuration:__
-You can control the configurations included in the BOM:
+
+You can add the following configuration to `build.gradle` to control various options in generating a BOM:
 
 
 ```groovy
@@ -80,6 +84,46 @@ tasks.cyclonedxBom {
 ```
 
 Run gradle with info logging (-i option) to see which configurations add to the BOM.
+
+__Generate BOM for multiple projects:__
+
+You can also build the BOM for multiple projects using the `--init-script` option:
+
+
+```bash
+gradle --init-script <path-to-init.gradle> cyclonedxBom -info
+```
+
+where the `init.gradle` can look like this:
+
+```groovy
+initscript {
+  repositories {
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
+  }
+  dependencies {
+    classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.7.3"
+  }
+}
+
+allprojects{
+  apply plugin:org.cyclonedx.gradle.CycloneDxPlugin
+  cyclonedxBom {
+    includeConfigs = ["runtimeClasspath"]
+    skipConfigs = ["compileClasspath", "testCompileClasspath"]
+    skipProjects = [rootProject.name, "yourTestSubProject"]
+    projectType = "application"
+    schemaVersion = "1.4"
+    destination = file("build/reports")
+    outputName = "bom"
+    outputFormat = "json"
+    includeBomSerialNumber = false
+    componentVersion = "2.0.0"
+  }
+}
+```
 
 ## CycloneDX Schema Support
 
