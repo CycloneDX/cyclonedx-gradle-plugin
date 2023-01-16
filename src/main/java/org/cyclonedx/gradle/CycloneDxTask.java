@@ -27,6 +27,7 @@ import org.apache.maven.project.MavenProject;
 import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
 import org.cyclonedx.exception.GeneratorException;
+import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
@@ -591,8 +592,9 @@ public class CycloneDxTask extends DefaultTask {
         getLogger().info(MESSAGE_VALIDATING_BOM);
         final Parser bomParser = new XmlParser();
         try {
-            if (!bomParser.isValid(bomFile, schemaVersion)) {
-                throw new GradleException(MESSAGE_VALIDATION_FAILURE);
+            final List<ParseException> exceptions = bomParser.validate(bomFile, schemaVersion);
+            if (!exceptions.isEmpty()) {
+                throw exceptions.get(0);
             }
         } catch (Exception e) { // Changed to Exception.
             // Gradle will erroneously report "exception IOException is never thrown in body of corresponding try statement"
@@ -610,8 +612,9 @@ public class CycloneDxTask extends DefaultTask {
 
         final Parser bomParser = new JsonParser();
         try {
-            if (!bomParser.isValid(bomFile, schemaVersion)) {
-                throw new GradleException(MESSAGE_VALIDATION_FAILURE);
+            final List<ParseException> exceptions = bomParser.validate(bomFile, schemaVersion);
+            if (!exceptions.isEmpty()) {
+                throw exceptions.get(0);
             }
         } catch (Exception e) { // Changed to Exception.
             // Gradle will erroneously report "exception IOException is never thrown in body of corresponding try statement"
