@@ -96,6 +96,7 @@ public class CycloneDxTask extends DefaultTask {
     private final Property<String> outputName;
     private final Property<String> outputFormat;
     private final Property<String> projectType;
+    private final Property<Boolean> includeLicenseText;
     private final Property<Boolean> includeBomSerialNumber;
     private final ListProperty<String> includeConfigs;
     private final ListProperty<String> skipConfigs;
@@ -117,6 +118,9 @@ public class CycloneDxTask extends DefaultTask {
 
         projectType = getProject().getObjects().property(String.class);
         projectType.convention(DEFAULT_PROJECT_TYPE);
+
+        includeLicenseText = getProject().getObjects().property(Boolean.class);
+        includeLicenseText.convention(true);
 
         includeBomSerialNumber = getProject().getObjects().property(Boolean.class);
         includeBomSerialNumber.convention(true);
@@ -202,6 +206,15 @@ public class CycloneDxTask extends DefaultTask {
 
     public void setProjectType(String projectType) {
         this.projectType.set(projectType);
+    }
+
+    @Input
+    public Property<Boolean> getIncludeLicenseText() {
+        return includeLicenseText;
+    }
+
+    public void setIncludeLicenseText(boolean includeLicenseText) {
+        this.includeLicenseText.set(includeLicenseText);
     }
 
     @Input
@@ -318,7 +331,7 @@ public class CycloneDxTask extends DefaultTask {
 
     private CycloneDxSchema.Version computeSchemaVersion() {
         CycloneDxSchema.Version version = CycloneDxUtils.schemaVersion(getSchemaVersion().get());
-        mavenHelper = new MavenHelper(getLogger(), version);
+        mavenHelper = new MavenHelper(getLogger(), version, getIncludeLicenseText().get());
         if (version == CycloneDxSchema.Version.VERSION_10) {
             setIncludeBomSerialNumber(false);
         }
@@ -635,6 +648,7 @@ public class CycloneDxTask extends DefaultTask {
             getLogger().info("CycloneDX: Parameters");
             getLogger().info("------------------------------------------------------------------------");
             getLogger().info("schemaVersion          : " + schemaVersion.get());
+            getLogger().info("includeLicenseText     : " + includeLicenseText.get());
             getLogger().info("includeBomSerialNumber : " + includeBomSerialNumber.get());
             getLogger().info("includeConfigs         : " + includeConfigs.get());
             getLogger().info("skipConfigs            : " + skipConfigs.get());
