@@ -359,7 +359,7 @@ public class CycloneDxTask extends DefaultTask {
 
     private ResolvedArtifact getJarArtifact(ResolvedDependency dependency) {
         for(ResolvedArtifact artifact : dependency.getModuleArtifacts()) {
-            if ("jar".equals(artifact.getType())) {
+            if (Objects.equals(artifact.getType(), "jar") || Objects.equals(artifact.getType(), "aar"))  {
                 return artifact;
             }
         }
@@ -532,7 +532,7 @@ public class CycloneDxTask extends DefaultTask {
 
     private String generatePackageUrl(final ResolvedArtifact artifact) {
         TreeMap<String, String> qualifiers = new TreeMap<>();
-        qualifiers.put("type",  "jar");
+        qualifiers.put("type",  artifact.getType());
         if (artifact.getClassifier() != null) {
             qualifiers.put("classifier", artifact.getClassifier());
         }
