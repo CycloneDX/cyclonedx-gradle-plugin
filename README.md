@@ -61,6 +61,8 @@ cyclonedxBom {
     outputFormat = "json"
     // Exclude BOM Serial Number
     includeBomSerialNumber = false
+    // Exclude License Text
+    includeLicenseText = true
     // Override component version
     componentVersion = "2.0.0"
 }
@@ -79,6 +81,7 @@ tasks.cyclonedxBom {
     setOutputName("bom")
     setOutputFormat("json")
     setIncludeBomSerialNumber(false)
+    setIncludeLicenseText(true)
     setComponentVersion("2.0.0")
 }
 ```
@@ -120,6 +123,7 @@ allprojects{
     outputName = "bom"
     outputFormat = "json"
     includeBomSerialNumber = false
+    includeLicenseText = true
     componentVersion = "2.0.0"
   }
 }

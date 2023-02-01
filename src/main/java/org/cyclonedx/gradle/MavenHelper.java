@@ -59,10 +59,12 @@ class MavenHelper {
 
     private Logger logger;
     private CycloneDxSchema.Version schemaVersion;
+    private Boolean includeLicenseText;
 
-    public MavenHelper(Logger logger, CycloneDxSchema.Version schemaVersion) {
+    public MavenHelper(Logger logger, CycloneDxSchema.Version schemaVersion, Boolean includeLicenseText) {
         this.logger = logger;
         this.schemaVersion = schemaVersion;
+        this.includeLicenseText = includeLicenseText;
     }
 
     /**
@@ -178,12 +180,11 @@ class MavenHelper {
     }
 
     LicenseChoice resolveMavenLicenses(final List<org.apache.maven.model.License> projectLicenses) {
-        final boolean includeLicenseText = true; // TODO: Make this configurable
         final LicenseChoice licenseChoice = new LicenseChoice();
         for (org.apache.maven.model.License artifactLicense : projectLicenses) {
             boolean resolved = false;
             if (artifactLicense.getName() != null) {
-                final LicenseChoice resolvedByName = LicenseResolver.resolve(artifactLicense.getName(), includeLicenseText);
+                final LicenseChoice resolvedByName = LicenseResolver.resolve(artifactLicense.getName(), this.includeLicenseText);
                 if (resolvedByName != null) {
                     if (resolvedByName.getLicenses() != null && !resolvedByName.getLicenses().isEmpty()) {
                         resolved = true;
