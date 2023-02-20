@@ -51,19 +51,19 @@ cyclonedxBom {
     skipProjects = [rootProject.name, "yourTestSubProject"]
     // Specified the type of project being built. Defaults to 'library'
     projectType = "application"
-    // Specified the version of the CycloneDX specification to use. Defaults to 1.4.
+    // Specified the version of the CycloneDX specification to use. Defaults to '1.4'
     schemaVersion = "1.4"
-    // Boms destination directory (defaults to build/reports)
+    // Boms destination directory. Defaults to 'build/reports'
     destination = file("build/reports")
     // The file name for the generated BOMs (before the file format suffix). Defaults to 'bom'
     outputName = "bom"
-    // The file format generated, can be xml, json or all for generating both
+    // The file format generated, can be xml, json or all for generating both. Defaults to 'all'
     outputFormat = "json"
-    // Exclude BOM Serial Number
+    // Exclude BOM Serial Number. Defaults to 'true'
     includeBomSerialNumber = false
-    // Exclude License Text
-    includeLicenseText = true
-    // Override component version
+    // Exclude License Text. Defaults to 'true'
+    includeLicenseText = false
+    // Override component version. Defaults to the project version
     componentVersion = "2.0.0"
 }
 ```
