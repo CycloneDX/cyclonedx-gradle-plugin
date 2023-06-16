@@ -4,7 +4,6 @@
 *~
 /build/
 /.gradle/
-src/main/resources/plugin.properties
 
 src/test/build/
 src/test/.gradle/
