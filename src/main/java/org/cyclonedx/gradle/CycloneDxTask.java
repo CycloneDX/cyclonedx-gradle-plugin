@@ -32,11 +32,7 @@ import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.gradle.utils.DependencyUtils;
-import org.cyclonedx.model.Bom;
-import org.cyclonedx.model.Component;
-import org.cyclonedx.model.Hash;
-import org.cyclonedx.model.Metadata;
-import org.cyclonedx.model.Tool;
+import org.cyclonedx.model.*;
 import org.cyclonedx.parsers.JsonParser;
 import org.cyclonedx.parsers.Parser;
 import org.cyclonedx.parsers.XmlParser;
@@ -104,6 +100,8 @@ public class CycloneDxTask extends DefaultTask {
     private final ListProperty<String> skipConfigs;
     private final ListProperty<String> skipProjects;
     private final Property<File> destination;
+    private final Property<OrganizationalEntity> organizationalEntity;
+    private final Property<LicenseChoice> licenseChoice;
 
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
@@ -136,6 +134,12 @@ public class CycloneDxTask extends DefaultTask {
 
         destination = getProject().getObjects().property(File.class);
         destination.convention(getProject().getLayout().getBuildDirectory().dir("reports").get().getAsFile());
+
+        organizationalEntity = getProject().getObjects().property(OrganizationalEntity.class);
+        organizationalEntity.convention(new OrganizationalEntity());
+
+        licenseChoice = getProject().getObjects().property(LicenseChoice.class);
+        licenseChoice.convention(new LicenseChoice());
     }
 
     @Input
@@ -236,6 +240,52 @@ public class CycloneDxTask extends DefaultTask {
     public void setDestination(File destination) {
         this.destination.set(destination);
     }
+
+    @Input
+    public Map<String, String> getOrganizationalEntity(){
+        Map<String,String> organizationalEntity_Hashmap = new HashMap<>();
+        organizationalEntity_Hashmap.put("name", organizationalEntity.get().getName());
+
+        if(organizationalEntity.get().getUrls() !=null){
+            for(int i = 0; i < organizationalEntity.get().getUrls().size();i++){
+                organizationalEntity_Hashmap.put("url"+i,organizationalEntity.get().getUrls().get(0));
+            }
+        }
+
+        return organizationalEntity_Hashmap;
+    }
+
+    public void setOrganizationalEntity(OrganizationalEntity organizationalEntity){
+        this.organizationalEntity.set(organizationalEntity);
+    }
+
+/*
+    public void setOrganizationalEntity(Map<String, String> organizationalEntity_Hashmap){
+        this.organizationalEntity.get().setName(organizationalEntity_Hashmap.get("name"));
+
+        if(organizationalEntity_Hashmap.containsKey("url0")){
+            List<String> urls_List= new ArrayList();
+            for(int i = 0; organizationalEntity_Hashmap.containsKey("url"+i) == true;i++){
+                urls_List.add(organizationalEntity_Hashmap.get("url"+i));
+            }
+            this.organizationalEntity.get().setUrls(urls_List);
+        }
+    }
+*/
+    @Input
+    public Map<String, String> getLicenseChoice(){
+        Map<String,String> licenseChoice_Hashmap = new HashMap<>();
+
+        if(licenseChoice.get().getLicenses() != null){
+            for (int i = 0; i < licenseChoice.get().getLicenses().size();i++){
+                licenseChoice_Hashmap.put("licenseChoice"+i+"name",licenseChoice.get().getLicenses().get(i).getName());
+                licenseChoice_Hashmap.put("licenseChoice"+i+"text",licenseChoice.get().getLicenses().get(i).getAttachmentText().getText());
+            }
+        }
+
+        return licenseChoice_Hashmap;
+    }
+    public void setLicenseChoice(LicenseChoice licenseChoice){this.licenseChoice.set(licenseChoice);}
 
     @TaskAction
     public void createBom() {
@@ -453,6 +503,15 @@ public class CycloneDxTask extends DefaultTask {
         component.setPurl(generatePackageUrl(project));
         component.setBomRef(component.getPurl());
         metadata.setComponent(component);
+
+        if(organizationalEntity.get().getName() != null || organizationalEntity.get().getUrls() != null || organizationalEntity.get().getContacts() != null) {
+            metadata.setManufacture(organizationalEntity.get());
+        }
+
+        if(licenseChoice.get().getLicenses() !=null || licenseChoice.get().getExpression() != null){
+            metadata.setLicenseChoice(licenseChoice.get());
+        }
+
         return metadata;
     }
 

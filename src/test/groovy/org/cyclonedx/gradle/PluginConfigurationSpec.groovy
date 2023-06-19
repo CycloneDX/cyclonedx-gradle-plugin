@@ -308,4 +308,70 @@ class PluginConfigurationSpec extends Specification {
         File jsonBom = new File(reportDir, "bom.json")
         assert !jsonBom.text.contains("serialNumber")
     }
+
+    def "kotlin-dsl-project-manufacture-licenses should allow definition of manufacture-data and licenses-data"() {
+        given:
+        File testDir = TestUtils.duplicate("kotlin-project-manufacture-licenses")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--info", "-S")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        //  result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        //check Manufacture Data
+        assert jsonBom.text.contains("\"name\" : \"Test\"")
+        assert jsonBom.text.contains("\"url\"")
+        assert jsonBom.text.contains("\"name\" : \"Max_Mustermann\"")
+        assert jsonBom.text.contains("\"email\" : \"max.mustermann@test.org\"")
+        assert jsonBom.text.contains("\"phone\" : \"0000 99999999\"")
+
+        //check Licenses Data
+        assert jsonBom.text.contains("\"licenses\"")
+        assert jsonBom.text.contains("\"content\" : \"This is a Licenses-Test\"")
+        assert jsonBom.text.contains("\"url\" : \"https://www.test-Url.org/\"")
+
+    }
+
+    def "groovy-project-manufacture-licenses should allow definition of manufacture-data and licenses-data"() {
+        given:
+        File testDir = TestUtils.duplicate("groovy-project-manufacture-licenses")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--info", "-S")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        //  result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        //check Manufacture Data
+        assert jsonBom.text.contains("\"name\" : \"Test\"")
+        assert jsonBom.text.contains("\"url\"")
+        assert jsonBom.text.contains("\"name\" : \"Max_Mustermann\"")
+        assert jsonBom.text.contains("\"email\" : \"max.mustermann@test.org\"")
+        assert jsonBom.text.contains("\"phone\" : \"0000 99999999\"")
+
+        //check Licenses Data
+        assert jsonBom.text.contains("\"licenses\"")
+        assert jsonBom.text.contains("\"content\" : \"This is a Licenses-Test\"")
+        assert jsonBom.text.contains("\"url\" : \"https://www.test-Url.org/\"")
+
+    }
+
+
 }
