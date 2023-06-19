@@ -1,0 +1,55 @@
+import org.cyclonedx.model.*;
+
+plugins {
+    id 'org.cyclonedx.bom'
+    id 'java'
+    id 'maven-publish'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
+    implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+}
+
+cyclonedxBom {
+    //declaration of Manufacture-Data
+    OrganizationalEntity organizationalEntity_temp = new OrganizationalEntity();
+
+    organizationalEntity_temp.setName("Test");
+    organizationalEntity_temp.setUrls(["www.test1.com", "www.test2.com"]);
+
+    OrganizationalContact organizationalContact = new OrganizationalContact();
+    organizationalContact.setName("Max_Mustermann");
+    organizationalContact.setEmail("max.mustermann@test.org");
+    organizationalContact.setPhone("0000 99999999");
+    organizationalEntity_temp.addContact(organizationalContact);
+
+    organizationalEntity = organizationalEntity_temp;
+
+    //declaration of Licenses-Data
+    AttachmentText attachmentText = new AttachmentText();
+    attachmentText.setText("This is a Licenses-Test");
+
+    License license = new License();
+    //license.setId("Mup"); // either id or name
+    license.setName("XXXX XXXX Software");
+    license.setLicenseText(attachmentText);
+    license.setUrl("https://www.test-Url.org/")
+
+    LicenseChoice licenseChoice_tmp = new LicenseChoice();
+    //licenseChoice.setExpression("This is a Test Expression"); // either license or expression
+    licenseChoice_tmp.addLicense(license);
+
+    licenseChoice = licenseChoice_tmp;
+}
