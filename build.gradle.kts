@@ -1,7 +1,7 @@
 plugins {
     id("java-gradle-plugin")
     id("com.gradle.plugin-publish")  version "1.2.0"
-    id("org.cyclonedx.bom") version "1.7.3"
+    id("org.cyclonedx.bom") version "1.7.4"
 }
 
 val organization = "CycloneDX"
