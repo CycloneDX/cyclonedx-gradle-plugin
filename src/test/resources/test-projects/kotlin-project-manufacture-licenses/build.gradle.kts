@@ -41,23 +41,12 @@ tasks.cyclonedxBom {
     attachmentText.setText("This is a Licenses-Test");
 
     var license = License()
-    //license.setId("Mup") // either id or name
     license.setName("XXXX XXXX Software")
     license.setLicenseText(attachmentText);
     license.setUrl("https://www.test-Url.org/")
 
     var licenseChoice = LicenseChoice()
-    //licenseChoice.setExpression("This is a Test Expression") // either license or expression
     licenseChoice.addLicense(license)
 
     setLicenseChoice(licenseChoice)
-
-    /*
-        val organizationalEntity_map: HashMap<String, String> = HashMap<String,String>()
-        organizationalEntity_map.put("name", "Mario_test")
-        organizationalEntity_map.put("url0", "urltest0")
-        organizationalEntity_map.put("url1", "urltest1")
-        setOrganizationalEntity(organizationalEntity_map)
-    */
-
 }

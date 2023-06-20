@@ -241,17 +241,18 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     public void setOrganizationalEntity(OrganizationalEntity organizationalEntity){
-        this.organizationalEntity.set(organizationalEntity);
+        this.organizationalEntity.set(organizationalEntity); //Setting OrganizationalEntity
 
+        //Hashmap for OrganizationalEntity information
         Map<String,String> organizationalEntity_Hashmap = new HashMap<>();
-        organizationalEntity_Hashmap.put("name", organizationalEntity.getName());
 
+        //writing Name, Url and Contacts to Hashmap
+        organizationalEntity_Hashmap.put("name", organizationalEntity.getName());
         if(organizationalEntity.getUrls() !=null){
             for(int i = 0; i < organizationalEntity.getUrls().size();i++){
                 organizationalEntity_Hashmap.put("url"+i,organizationalEntity.getUrls().get(i));
             }
         }
-
         if(organizationalEntity.getContacts() != null){
             for (int i = 0; i < organizationalEntity.getContacts().size();i++){
                 organizationalEntity_Hashmap.put("contact_name"+i,organizationalEntity.getContacts().get(i).getName());
@@ -259,14 +260,17 @@ public class CycloneDxTask extends DefaultTask {
                 organizationalEntity_Hashmap.put("contact_phone"+i,organizationalEntity.getContacts().get(i).getPhone());
             }
         }
+        //Definition of gradle Input via Hashmap because Hashmap is serializable (OrganizationalEntity isn't serializable)
         getInputs().property("OrganizationalEntity", organizationalEntity_Hashmap);
     }
 
     public void setLicenseChoice(LicenseChoice licenseChoice){
         this.licenseChoice.set(licenseChoice);
 
+        //Hashmap for LicenseChoice information
         Map<String,String> licenseChoice_Hashmap = new HashMap<>();
 
+        //writing Licenses to Hashmap
         if(licenseChoice.getLicenses() != null){
             for (int i = 0; i < licenseChoice.getLicenses().size();i++){
                 if (licenseChoice.getLicenses().get(i).getName() != null){
@@ -279,9 +283,11 @@ public class CycloneDxTask extends DefaultTask {
                 licenseChoice_Hashmap.put("licenseChoice"+i+"url",licenseChoice.getLicenses().get(i).getUrl());
             }
         }
+        //writing Expression to Hashmap
         if(licenseChoice.getExpression() != null){
              licenseChoice_Hashmap.put("licenseChoice_Expression",licenseChoice.getExpression());
         }
+        //Definition of gradle Input via Hashmap because Hashmap is serializable (LicenseChoice isn't serializable)
         getInputs().property("LicenseChoice", licenseChoice_Hashmap);
     }
 
