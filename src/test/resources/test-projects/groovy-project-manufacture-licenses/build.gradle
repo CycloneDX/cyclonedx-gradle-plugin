@@ -42,13 +42,11 @@ cyclonedxBom {
     attachmentText.setText("This is a Licenses-Test");
 
     License license = new License();
-    //license.setId("Mup"); // either id or name
     license.setName("XXXX XXXX Software");
     license.setLicenseText(attachmentText);
     license.setUrl("https://www.test-Url.org/")
 
     LicenseChoice licenseChoice_tmp = new LicenseChoice();
-    //licenseChoice.setExpression("This is a Test Expression"); // either license or expression
     licenseChoice_tmp.addLicense(license);
 
     licenseChoice = licenseChoice_tmp;
