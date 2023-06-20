@@ -4,7 +4,7 @@
 The Plugin makes it possible to manually add Manufacture-Data and Licenses-Data to the Metadata of the BOM. <br>
 The structure of the Metadata is shown on https://cyclonedx.org/docs/1.4/json/#metadata. <br>
 The editing of the Manufacture and Licenses-Data is optional. If the Manufacture/Licenses-Date isn't edited,
-then the respective structure doesn't appear in the BOM.
+then the respective structure won't appear in the BOM.
 
 To enable the modification of the metadata the cyclonedx-core-java plugin must be implemented in the build.gradle.
 
@@ -12,7 +12,7 @@ To enable the modification of the metadata the cyclonedx-core-java plugin must b
 
 ## Adding Manufacture-Data
 
-To make it possible to define Manufacture-Data you must __import org.cyclonedx.model.*;__ into the build.gradle.
+In order to be able to define the Manufacture-Data you must __import org.cyclonedx.model.*;__ into the build.gradle.
 <br>
 You can add the Manufacture-Data by passing an Object of the Type __OrganizationalEntity__ to the Plugin.
 
@@ -59,14 +59,14 @@ cyclonedxBom {
 }
 ```
 It should be noted that some Data like OrganizationalContact, Url, Name,... can be left out. <br>
-OrganizationalContact can also include multiple OrganizationalContact.
+OrganizationalEntity can also include multiple OrganizationalContact.
 
 For details look at https://cyclonedx.org/docs/1.4/json/#metadata.
 
 
 ## Adding Licenses-Data
 
-To make it possible to define Licenses-Data you must __import org.cyclonedx.model.*;__ into the build.gradle.
+In order to be able to define the Manufacture-Data you must __import org.cyclonedx.model.*;__ into the build.gradle.
 
 You can add the Licenses-Data by passing an Object of the Type __LicenseChoice__ to the Plugin.
 The Object from LicenseChoice includes __either License or Expression__. It can't include both.
@@ -116,7 +116,7 @@ cyclonedxBom {
     setLicenseChoice(licenseChoice)
 }
 ```
-It should be noted that License requires either Id or Name, but both can't be included at the same time.
+It should be noted that License requires __either Id or Name__, but both can't be included at the same time.
 
 Text and Url are optional for inclusion and multiple License can be added to LicenseChoice.
 
@@ -142,7 +142,7 @@ cyclonedxBom {
     //declaration of the Object from LicenseChoice
     val licenseChoice = LicenseChoice()
     //setting the Expression[String] of LicenseChoice
-    licenseChoice.addLicense(license)
+    licenseChoice.setExpression("This is a Test Expression");
     //passing licenseChoice_tmp to the plugin
     setLicenseChoice(licenseChoice)
 }
