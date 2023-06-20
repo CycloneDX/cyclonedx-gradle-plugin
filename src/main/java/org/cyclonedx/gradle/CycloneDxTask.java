@@ -102,7 +102,6 @@ public class CycloneDxTask extends DefaultTask {
     private final Property<File> destination;
     private final Property<OrganizationalEntity> organizationalEntity;
     private final Property<LicenseChoice> licenseChoice;
-
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
 
@@ -241,51 +240,50 @@ public class CycloneDxTask extends DefaultTask {
         this.destination.set(destination);
     }
 
-    @Input
-    public Map<String, String> getOrganizationalEntity(){
-        Map<String,String> organizationalEntity_Hashmap = new HashMap<>();
-        organizationalEntity_Hashmap.put("name", organizationalEntity.get().getName());
-
-        if(organizationalEntity.get().getUrls() !=null){
-            for(int i = 0; i < organizationalEntity.get().getUrls().size();i++){
-                organizationalEntity_Hashmap.put("url"+i,organizationalEntity.get().getUrls().get(0));
-            }
-        }
-
-        return organizationalEntity_Hashmap;
-    }
-
     public void setOrganizationalEntity(OrganizationalEntity organizationalEntity){
         this.organizationalEntity.set(organizationalEntity);
-    }
 
-/*
-    public void setOrganizationalEntity(Map<String, String> organizationalEntity_Hashmap){
-        this.organizationalEntity.get().setName(organizationalEntity_Hashmap.get("name"));
+        Map<String,String> organizationalEntity_Hashmap = new HashMap<>();
+        organizationalEntity_Hashmap.put("name", organizationalEntity.getName());
 
-        if(organizationalEntity_Hashmap.containsKey("url0")){
-            List<String> urls_List= new ArrayList();
-            for(int i = 0; organizationalEntity_Hashmap.containsKey("url"+i) == true;i++){
-                urls_List.add(organizationalEntity_Hashmap.get("url"+i));
+        if(organizationalEntity.getUrls() !=null){
+            for(int i = 0; i < organizationalEntity.getUrls().size();i++){
+                organizationalEntity_Hashmap.put("url"+i,organizationalEntity.getUrls().get(i));
             }
-            this.organizationalEntity.get().setUrls(urls_List);
         }
+
+        if(organizationalEntity.getContacts() != null){
+            for (int i = 0; i < organizationalEntity.getContacts().size();i++){
+                organizationalEntity_Hashmap.put("contact_name"+i,organizationalEntity.getContacts().get(i).getName());
+                organizationalEntity_Hashmap.put("contact_email"+i,organizationalEntity.getContacts().get(i).getEmail());
+                organizationalEntity_Hashmap.put("contact_phone"+i,organizationalEntity.getContacts().get(i).getPhone());
+            }
+        }
+        getInputs().property("OrganizationalEntity", organizationalEntity_Hashmap);
     }
-*/
-    @Input
-    public Map<String, String> getLicenseChoice(){
+
+    public void setLicenseChoice(LicenseChoice licenseChoice){
+        this.licenseChoice.set(licenseChoice);
+
         Map<String,String> licenseChoice_Hashmap = new HashMap<>();
 
-        if(licenseChoice.get().getLicenses() != null){
-            for (int i = 0; i < licenseChoice.get().getLicenses().size();i++){
-                licenseChoice_Hashmap.put("licenseChoice"+i+"name",licenseChoice.get().getLicenses().get(i).getName());
-                licenseChoice_Hashmap.put("licenseChoice"+i+"text",licenseChoice.get().getLicenses().get(i).getAttachmentText().getText());
+        if(licenseChoice.getLicenses() != null){
+            for (int i = 0; i < licenseChoice.getLicenses().size();i++){
+                if (licenseChoice.getLicenses().get(i).getName() != null){
+                    licenseChoice_Hashmap.put("licenseChoice"+i+"name",licenseChoice.getLicenses().get(i).getName());
+                }
+                if (licenseChoice.getLicenses().get(i).getId() != null){
+                    licenseChoice_Hashmap.put("licenseChoice"+i+"id",licenseChoice.getLicenses().get(i).getId());
+                }
+                licenseChoice_Hashmap.put("licenseChoice"+i+"text",licenseChoice.getLicenses().get(i).getAttachmentText().getText());
+                licenseChoice_Hashmap.put("licenseChoice"+i+"url",licenseChoice.getLicenses().get(i).getUrl());
             }
         }
-
-        return licenseChoice_Hashmap;
+        if(licenseChoice.getExpression() != null){
+             licenseChoice_Hashmap.put("licenseChoice_Expression",licenseChoice.getExpression());
+        }
+        getInputs().property("LicenseChoice", licenseChoice_Hashmap);
     }
-    public void setLicenseChoice(LicenseChoice licenseChoice){this.licenseChoice.set(licenseChoice);}
 
     @TaskAction
     public void createBom() {
