@@ -24,18 +24,16 @@ dependencies {
 
 cyclonedxBom {
     //declaration of Manufacture-Data
-    OrganizationalEntity organizationalEntity_temp = new OrganizationalEntity();
-
-    organizationalEntity_temp.setName("Test");
-    organizationalEntity_temp.setUrls(["www.test1.com", "www.test2.com"]);
-
     OrganizationalContact organizationalContact = new OrganizationalContact();
     organizationalContact.setName("Max_Mustermann");
     organizationalContact.setEmail("max.mustermann@test.org");
     organizationalContact.setPhone("0000 99999999");
-    organizationalEntity_temp.addContact(organizationalContact);
 
-    organizationalEntity = organizationalEntity_temp;
+    organizationalEntity {oe->
+        oe.name = 'Test'
+        oe.url = ['www.test1.com', 'www.test2.com']
+        oe.addContact(organizationalContact)
+    }
 
     //declaration of Licenses-Data
     AttachmentText attachmentText = new AttachmentText();
@@ -46,8 +44,7 @@ cyclonedxBom {
     license.setLicenseText(attachmentText);
     license.setUrl("https://www.test-Url.org/")
 
-    LicenseChoice licenseChoice_tmp = new LicenseChoice();
-    licenseChoice_tmp.addLicense(license);
-
-    licenseChoice = licenseChoice_tmp;
+    licenseChoice {lc->
+        lc.addLicense(license)
+    }
 }
