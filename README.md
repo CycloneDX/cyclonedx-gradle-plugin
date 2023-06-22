@@ -149,43 +149,36 @@ You can add the Manufacture-Data by passing an Object of the Type __Organization
 __Example (groovy):__
 ```groovy
 cyclonedxBom {
-    //declaration of the Object from OrganizationalEntity
-    OrganizationalEntity organizationalEntity_temp = new OrganizationalEntity();
-
-    //setting the Name[String] and Url[List] of the Object
-    organizationalEntity_temp.setName("Test");
-    organizationalEntity_temp.setUrls(["www.test1.com", "www.test2.com"]);
     //declaration of the Object from OrganizationalContact
     OrganizationalContact organizationalContact = new OrganizationalContact();
     //setting the Name[String], Email[String] and Phone[String] of the Object
     organizationalContact.setName("Max_Mustermann");
     organizationalContact.setEmail("max.mustermann@test.org");
     organizationalContact.setPhone("0000 99999999");
-    //adding the Object[OrganizationalContact] to the Object[OrganizationalEntity]
-    organizationalEntity_temp.addContact(organizationalContact);
-
-    //passing organizationalEntity_temp to the plugin
-    organizationalEntity = organizationalEntity_temp;
+    //passing Data to the plugin
+    organizationalEntity {oe->
+        oe.name = 'Test'
+        oe.url = ['www.test1.com', 'www.test2.com']
+        oe.addContact(organizationalContact)
+    }
 }
 ```
 
 __Example (Kotlin):__
 ```kotlin
 cyclonedxBom {
-    //declaration of the Object from OrganizationalEntity
-    val organizationalEntity = OrganizationalEntity()
-    //setting the Name[String] and Url[List] of the Object
-    organizationalEntity.setName("Test")
-    organizationalEntity.setUrls(listOf("www.test1.com", "www.test2.com"))
     //declaration of the Object from OrganizationalContact
-    val organizationalContact = OrganizationalContact()
-    organizationalContact.setName("Max_Mustermann")
-    organizationalContact.setEmail("max.mustermann@test.org")
-    organizationalContact.setPhone("0000 99999999")
-    //adding the Object[OrganizationalContact] to the Object[OrganizationalEntity]
-    organizationalEntity.addContact(organizationalContact)
-    //passing organizationalEntity to the plugin
-    setOrganizationalEntity(organizationalEntity)
+    var organizationalContact1 = OrganizationalContact()
+    //setting the Name[String], Email[String] and Phone[String] of the Object
+    organizationalContact1.setName("Max_Mustermann")
+    organizationalContact1.setEmail("max.mustermann@test.org")
+    organizationalContact1.setPhone("0000 99999999")
+    //passing Data to the plugin
+    setOrganizationalEntity{oe->
+        oe.name = "Test";
+        oe.urls = listOf("www.test1.com", "www.test2.com");
+        oe.addContact(organizationalContact1);
+    }
 }
 ```
 It should be noted that some Data like OrganizationalContact, Url, Name,... can be left out. <br>
@@ -216,12 +209,10 @@ cyclonedxBom {
     //license.setId("Mup")     // either id or name -> both not possible
     license.setLicenseText(attachmentText);
     license.setUrl("https://www.test-Url.org/")
-    //declaration of the Object form LicenseChoice
-    LicenseChoice licenseChoice_tmp = new LicenseChoice();
-    //adding the License[License] to LicenseChoice[LicenseChoice]
-    licenseChoice_tmp.addLicense(license);
-    //Passing licenseChoice_tmp to the plugin
-    licenseChoice = licenseChoice_tmp;
+    //passing Data to Plugin
+    licenseChoice {lc->
+        lc.addLicense(license)
+    }
 }
 ```
 
@@ -238,12 +229,10 @@ cyclonedxBom {
     //license.setId("Mup")     // either id or name -> both not possible
     license.setLicenseText(attachmentText)
     license.setUrl("https://www.test-Url.org/")
-    //declaration of the Object form LicenseChoice
-    val licenseChoice = LicenseChoice()
-    //adding the License[License] to LicenseChoice[LicenseChoice]
-    licenseChoice.addLicense(license)
-    //Passing licenseChoice_tmp to the plugin
-    setLicenseChoice(licenseChoice)
+    //passing Data to Plugin
+    setLicenseChoice{lc->
+        lc.addLicense(license);
+    }
 }
 ```
 It should be noted that License requires __either Id or Name__, but both can't be included at the same time.
@@ -257,24 +246,20 @@ Text and Url are optional for inclusion and multiple License can be added to Lic
 __Example (groovy):__
 ```groovy
 cyclonedxBom {
-    //declaration of the Object from LicenseChoice
-    LicenseChoice licenseChoice_tmp = new LicenseChoice();
-    //setting the Expression[String] of LicenseChoice
-    licenseChoice.setExpression("This is a Test Expression");
-    //passing licenseChoice_tmp to the plugin
-    licenseChoice = licenseChoice_tmp;
+    //passing Expression to Plugin
+    licenseChoice {lc->
+        lc.setExpression("This is a Test Expression");
+    }
 }
 ```
 
 __Example (Kotlin):__
 ```kotlin
 cyclonedxBom {
-    //declaration of the Object from LicenseChoice
-    val licenseChoice = LicenseChoice()
-    //setting the Expression[String] of LicenseChoice
-    licenseChoice.setExpression("This is a Test Expression");
-    //passing licenseChoice_tmp to the plugin
-    setLicenseChoice(licenseChoice)
+    //passing Expression to Plugin
+    setLicenseChoice{lc->
+        lc.setExpression("This is a Test Expression");
+    }
 }
 ```
 ---

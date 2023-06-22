@@ -32,7 +32,13 @@ import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.gradle.utils.DependencyUtils;
-import org.cyclonedx.model.*;
+import org.cyclonedx.model.Hash;
+import org.cyclonedx.model.Metadata;
+import org.cyclonedx.model.Tool;
+import org.cyclonedx.model.OrganizationalEntity;
+import org.cyclonedx.model.LicenseChoice;
+import org.cyclonedx.model.Component;
+import org.cyclonedx.model.Bom;
 import org.cyclonedx.parsers.JsonParser;
 import org.cyclonedx.parsers.Parser;
 import org.cyclonedx.parsers.XmlParser;
@@ -69,8 +75,10 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 
 public class CycloneDxTask extends DefaultTask {
 
@@ -100,8 +108,8 @@ public class CycloneDxTask extends DefaultTask {
     private final ListProperty<String> skipConfigs;
     private final ListProperty<String> skipProjects;
     private final Property<File> destination;
-    private final Property<OrganizationalEntity> organizationalEntity;
-    private final Property<LicenseChoice> licenseChoice;
+    private OrganizationalEntity organizationalEntity;
+    private LicenseChoice licenseChoice;
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
 
@@ -134,11 +142,9 @@ public class CycloneDxTask extends DefaultTask {
         destination = getProject().getObjects().property(File.class);
         destination.convention(getProject().getLayout().getBuildDirectory().dir("reports").get().getAsFile());
 
-        organizationalEntity = getProject().getObjects().property(OrganizationalEntity.class);
-        organizationalEntity.convention(new OrganizationalEntity());
+        organizationalEntity = new OrganizationalEntity();
 
-        licenseChoice = getProject().getObjects().property(LicenseChoice.class);
-        licenseChoice.convention(new LicenseChoice());
+        licenseChoice = new LicenseChoice();
     }
 
     @Input
@@ -240,55 +246,55 @@ public class CycloneDxTask extends DefaultTask {
         this.destination.set(destination);
     }
 
-    public void setOrganizationalEntity(OrganizationalEntity organizationalEntity){
-        this.organizationalEntity.set(organizationalEntity); //Setting OrganizationalEntity
+    public void setOrganizationalEntity(Consumer<OrganizationalEntity> customizer){
+        OrganizationalEntity origin = new OrganizationalEntity();
+        customizer.accept(origin);
+        this.organizationalEntity = origin;
 
-        //Hashmap for OrganizationalEntity information
-        Map<String,String> organizationalEntity_Hashmap = new HashMap<>();
+        Map<String,String> organizationalEntity = new HashMap<>();
 
-        //writing Name, Url and Contacts to Hashmap
-        organizationalEntity_Hashmap.put("name", organizationalEntity.getName());
-        if(organizationalEntity.getUrls() !=null){
-            for(int i = 0; i < organizationalEntity.getUrls().size();i++){
-                organizationalEntity_Hashmap.put("url"+i,organizationalEntity.getUrls().get(i));
+        organizationalEntity.put("name", this.organizationalEntity.getName());
+        if(this.organizationalEntity.getUrls() !=null){
+            for(int i = 0; i < this.organizationalEntity.getUrls().size();i++){
+                organizationalEntity.put("url"+i,this.organizationalEntity.getUrls().get(i));
             }
         }
-        if(organizationalEntity.getContacts() != null){
-            for (int i = 0; i < organizationalEntity.getContacts().size();i++){
-                organizationalEntity_Hashmap.put("contact_name"+i,organizationalEntity.getContacts().get(i).getName());
-                organizationalEntity_Hashmap.put("contact_email"+i,organizationalEntity.getContacts().get(i).getEmail());
-                organizationalEntity_Hashmap.put("contact_phone"+i,organizationalEntity.getContacts().get(i).getPhone());
+        if(this.organizationalEntity.getContacts() != null){
+            for (int i = 0; i < this.organizationalEntity.getContacts().size();i++){
+                organizationalEntity.put("contact_name"+i,this.organizationalEntity.getContacts().get(i).getName());
+                organizationalEntity.put("contact_email"+i,this.organizationalEntity.getContacts().get(i).getEmail());
+                organizationalEntity.put("contact_phone"+i,this.organizationalEntity.getContacts().get(i).getPhone());
             }
         }
         //Definition of gradle Input via Hashmap because Hashmap is serializable (OrganizationalEntity isn't serializable)
-        getInputs().property("OrganizationalEntity", organizationalEntity_Hashmap);
+   //     getInputs().property("OrganizationalEntity", organizationalEntity);
     }
 
-    public void setLicenseChoice(LicenseChoice licenseChoice){
-        this.licenseChoice.set(licenseChoice);
+    public void setLicenseChoice(Consumer<LicenseChoice> customizer){
+        LicenseChoice origin = new LicenseChoice();
+        customizer.accept(origin);
+        this.licenseChoice = origin;
 
-        //Hashmap for LicenseChoice information
-        Map<String,String> licenseChoice_Hashmap = new HashMap<>();
+        Map<String,String> licenseChoice = new HashMap<>();
 
-        //writing Licenses to Hashmap
-        if(licenseChoice.getLicenses() != null){
-            for (int i = 0; i < licenseChoice.getLicenses().size();i++){
-                if (licenseChoice.getLicenses().get(i).getName() != null){
-                    licenseChoice_Hashmap.put("licenseChoice"+i+"name",licenseChoice.getLicenses().get(i).getName());
+        if(this.licenseChoice.getLicenses() != null){
+            for (int i = 0; i < this.licenseChoice.getLicenses().size();i++){
+                if (this.licenseChoice.getLicenses().get(i).getName() != null){
+                    licenseChoice.put("licenseChoice"+i+"name",this.licenseChoice.getLicenses().get(i).getName());
                 }
-                if (licenseChoice.getLicenses().get(i).getId() != null){
-                    licenseChoice_Hashmap.put("licenseChoice"+i+"id",licenseChoice.getLicenses().get(i).getId());
+                if (this.licenseChoice.getLicenses().get(i).getId() != null){
+                    licenseChoice.put("licenseChoice"+i+"id",this.licenseChoice.getLicenses().get(i).getId());
                 }
-                licenseChoice_Hashmap.put("licenseChoice"+i+"text",licenseChoice.getLicenses().get(i).getAttachmentText().getText());
-                licenseChoice_Hashmap.put("licenseChoice"+i+"url",licenseChoice.getLicenses().get(i).getUrl());
+                licenseChoice.put("licenseChoice"+i+"text",this.licenseChoice.getLicenses().get(i).getAttachmentText().getText());
+                licenseChoice.put("licenseChoice"+i+"url",this.licenseChoice.getLicenses().get(i).getUrl());
             }
         }
-        //writing Expression to Hashmap
-        if(licenseChoice.getExpression() != null){
-             licenseChoice_Hashmap.put("licenseChoice_Expression",licenseChoice.getExpression());
+
+        if(this.licenseChoice.getExpression() != null){
+            licenseChoice.put("licenseChoice_Expression",this.licenseChoice.getExpression());
         }
         //Definition of gradle Input via Hashmap because Hashmap is serializable (LicenseChoice isn't serializable)
-        getInputs().property("LicenseChoice", licenseChoice_Hashmap);
+        getInputs().property("LicenseChoice", licenseChoice);
     }
 
     @TaskAction
@@ -508,12 +514,12 @@ public class CycloneDxTask extends DefaultTask {
         component.setBomRef(component.getPurl());
         metadata.setComponent(component);
 
-        if(organizationalEntity.get().getName() != null || organizationalEntity.get().getUrls() != null || organizationalEntity.get().getContacts() != null) {
-            metadata.setManufacture(organizationalEntity.get());
+        if(organizationalEntity.getName() != null || organizationalEntity.getUrls() != null || organizationalEntity.getContacts() != null) {
+            metadata.setManufacture(organizationalEntity);
         }
 
-        if(licenseChoice.get().getLicenses() !=null || licenseChoice.get().getExpression() != null){
-            metadata.setLicenseChoice(licenseChoice.get());
+        if(licenseChoice.getLicenses() !=null || licenseChoice.getExpression() != null){
+            metadata.setLicenseChoice(licenseChoice);
         }
 
         return metadata;
