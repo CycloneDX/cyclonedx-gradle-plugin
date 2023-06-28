@@ -267,7 +267,7 @@ public class CycloneDxTask extends DefaultTask {
             }
         }
         //Definition of gradle Input via Hashmap because Hashmap is serializable (OrganizationalEntity isn't serializable)
-   //     getInputs().property("OrganizationalEntity", organizationalEntity);
+        getInputs().property("OrganizationalEntity", organizationalEntity);
     }
 
     public void setLicenseChoice(Consumer<LicenseChoice> customizer){
