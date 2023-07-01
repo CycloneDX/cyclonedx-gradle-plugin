@@ -86,7 +86,7 @@ tasks.cyclonedxBom {
 }
 ```
 
-Run gradle with info logging (-i option) to see which configurations add to the BOM.
+Run Gradle with info logging (-i option) to see which configurations add to the BOM.
 
 __Generate BOM for multiple projects:__
 
@@ -131,7 +131,7 @@ allprojects{
 
 ## CycloneDX Schema Support
 
-The following table provides information on the version of this gradle plugin, the CycloneDX schema version supported,
+The following table provides information on the version of this Gradle plugin, the CycloneDX schema version supported,
 as well as the output format options. Use the latest possible version of this plugin that is the compatible with
 the CycloneDX version supported by the target system.
 
