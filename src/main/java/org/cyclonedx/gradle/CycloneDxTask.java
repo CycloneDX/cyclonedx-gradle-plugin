@@ -293,6 +293,14 @@ public class CycloneDxTask extends DefaultTask {
                 final Set<ResolvedDependency> directModuleDependencies = configuration.getResolvedConfiguration()
                     .getFirstLevelModuleDependencies();
 
+                while (directModuleDependencies.stream().anyMatch(this::dependencyWithoutJarArtifact)) {
+                    Set<ResolvedDependency> depWithNoArtifacts = directModuleDependencies.stream()
+                        .filter(this::dependencyWithoutJarArtifact).collect(Collectors.toSet());
+
+                    directModuleDependencies.removeAll(depWithNoArtifacts);
+                    depWithNoArtifacts.forEach(dmd -> directModuleDependencies.addAll(dmd.getChildren()));
+                }
+
                 for (ResolvedDependency directModuleDependency : directModuleDependencies) {
                     ResolvedArtifact directJarArtifact = getJarArtifact(directModuleDependency);
                     if (directJarArtifact != null) {
@@ -329,6 +337,10 @@ public class CycloneDxTask extends DefaultTask {
         });
 
         writeBom(metadata, components, dependencies.values(), version);
+    }
+
+    private boolean dependencyWithoutJarArtifact(ResolvedDependency dependency) {
+        return getJarArtifact(dependency) == null;
     }
 
     private CycloneDxSchema.Version computeSchemaVersion() {
