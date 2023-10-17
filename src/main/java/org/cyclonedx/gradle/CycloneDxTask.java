@@ -115,7 +115,7 @@ public class CycloneDxTask extends DefaultTask {
 
     public CycloneDxTask() {
         schemaVersion = getProject().getObjects().property(String.class);
-        schemaVersion.convention(CycloneDxSchema.Version.VERSION_14.getVersionString());
+        schemaVersion.convention(CycloneDxSchema.Version.VERSION_15.getVersionString());
 
         outputName = getProject().getObjects().property(String.class);
         outputName.convention("bom");
