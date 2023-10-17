@@ -30,7 +30,7 @@ To generate BOM for a single project add the plugin to the `build.gradle`.
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '1.7.4'
+    id 'org.cyclonedx.bom' version '1.8.0'
 }
 ```
 
@@ -51,8 +51,8 @@ cyclonedxBom {
     skipProjects = [rootProject.name, "yourTestSubProject"]
     // Specified the type of project being built. Defaults to 'library'
     projectType = "application"
-    // Specified the version of the CycloneDX specification to use. Defaults to '1.4'
-    schemaVersion = "1.4"
+    // Specified the version of the CycloneDX specification to use. Defaults to '1.5'
+    schemaVersion = "1.5"
     // Boms destination directory. Defaults to 'build/reports'
     destination = file("build/reports")
     // The file name for the generated BOMs (before the file format suffix). Defaults to 'bom'
@@ -76,7 +76,7 @@ tasks.cyclonedxBom {
     setSkipConfigs(listOf("compileClasspath", "testCompileClasspath"))
     setSkipProjects(listOf(rootProject.name, "yourTestSubProject"))
     setProjectType("application")
-    setSchemaVersion("1.4")
+    setSchemaVersion("1.5")
     setDestination(project.file("build/reports"))
     setOutputName("bom")
     setOutputFormat("json")
@@ -107,7 +107,7 @@ initscript {
     }
   }
   dependencies {
-    classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.7.4"
+    classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.8.0"
   }
 }
 
@@ -118,7 +118,7 @@ allprojects{
     skipConfigs = ["compileClasspath", "testCompileClasspath"]
     skipProjects = [rootProject.name, "yourTestSubProject"]
     projectType = "application"
-    schemaVersion = "1.4"
+    schemaVersion = "1.5"
     destination = file("build/reports")
     outputName = "bom"
     outputFormat = "json"
@@ -150,11 +150,11 @@ __Example (groovy):__
 ```groovy
 cyclonedxBom {
     //declaration of the Object from OrganizationalContact
-    OrganizationalContact organizationalContact = new OrganizationalContact();
+    OrganizationalContact organizationalContact = new OrganizationalContact()
     //setting the Name[String], Email[String] and Phone[String] of the Object
-    organizationalContact.setName("Max_Mustermann");
-    organizationalContact.setEmail("max.mustermann@test.org");
-    organizationalContact.setPhone("0000 99999999");
+    organizationalContact.setName("Max_Mustermann")
+    organizationalContact.setEmail("max.mustermann@test.org")
+    organizationalContact.setPhone("0000 99999999")
     //passing Data to the plugin
     organizationalEntity {oe->
         oe.name = 'Test'
@@ -176,8 +176,8 @@ cyclonedxBom {
     //passing Data to the plugin
     setOrganizationalEntity{oe->
         oe.name = "Test";
-        oe.urls = listOf("www.test1.com", "www.test2.com");
-        oe.addContact(organizationalContact1);
+        oe.urls = listOf("www.test1.com", "www.test2.com")
+        oe.addContact(organizationalContact1)
     }
 }
 ```
@@ -200,12 +200,12 @@ __Example (groovy):__
 ```groovy
 cyclonedxBom {
     //declaration of the Object from AttachmentText -> Needed for the setting of LicenseText
-    AttachmentText attachmentText = new AttachmentText();
-    attachmentText.setText("This is a Licenses-Test");
+    AttachmentText attachmentText = new AttachmentText()
+    attachmentText.setText("This is a Licenses-Test")
     //declaration of the Object from License
-    License license = new License();
+    License license = new License()
     //setting the Name[String], LicenseText[AttachmentText] and Url[String]
-    license.setName("XXXX XXXX Software");
+    license.setName("XXXX XXXX Software")
     //license.setId("Mup")     // either id or name -> both not possible
     license.setLicenseText(attachmentText);
     license.setUrl("https://www.test-Url.org/")
@@ -231,7 +231,7 @@ cyclonedxBom {
     license.setUrl("https://www.test-Url.org/")
     //passing Data to Plugin
     setLicenseChoice{lc->
-        lc.addLicense(license);
+        lc.addLicense(license)
     }
 }
 ```
@@ -248,7 +248,7 @@ __Example (groovy):__
 cyclonedxBom {
     //passing Expression to Plugin
     licenseChoice {lc->
-        lc.setExpression("This is a Test Expression");
+        lc.setExpression("This is a Test Expression")
     }
 }
 ```
@@ -258,7 +258,7 @@ __Example (Kotlin):__
 cyclonedxBom {
     //passing Expression to Plugin
     setLicenseChoice{lc->
-        lc.setExpression("This is a Test Expression");
+        lc.setExpression("This is a Test Expression")
     }
 }
 ```
@@ -272,7 +272,8 @@ as well as the output format options. Use the latest possible version of this pl
 the CycloneDX version supported by the target system.
 
 | Version | Schema Version | Format(s) |
-|---------| ----------------- | --------- |
+|---------|----------------| --------- |
+| 1.8.x   | CycloneDX v1.5 | XML/JSON |
 | 1.7.x   | CycloneDX v1.4 | XML/JSON |
 | 1.6.x   | CycloneDX v1.4 | XML/JSON |
 | 1.5.x   | CycloneDX v1.3 | XML/JSON |
