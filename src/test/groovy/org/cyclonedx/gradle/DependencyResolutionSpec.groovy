@@ -58,7 +58,7 @@ class DependencyResolutionSpec extends Specification {
             version = '1.0.0'
 
             dependencies {
-                implementation("org.hibernate:hibernate-core:6.3.1.Final")
+                implementation("org.hibernate:hibernate-core:5.6.15.Final")
             }""", "rootProject.name = 'hello-world'")
 
         when:
@@ -74,8 +74,8 @@ class DependencyResolutionSpec extends Specification {
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         Dependency root = bom.getDependencies().find(dependency -> dependency.getRef().contains("example"))
 
-        assert bom.getDependencies().find(dependency -> dependency.getRef().contains("pkg:maven/jakarta.inject/jakarta.inject-api@2.0.1?type=jar"))
+        assert bom.getDependencies().find(dependency -> dependency.getRef().contains("pkg:maven/javax.persistence/javax.persistence-api@2.2?type=jar"))
         assert root.getDependencies().size() == 1
-        assert root.getDependencies().get(0).getRef() == "pkg:maven/org.hibernate.orm/hibernate-core@6.3.1.Final?type=jar"
+        assert root.getDependencies().get(0).getRef() == "pkg:maven/org.hibernate/hibernate-core@5.6.15.Final?type=jar"
     }
 }
