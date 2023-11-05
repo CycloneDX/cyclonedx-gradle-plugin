@@ -79,7 +79,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-
 public class CycloneDxTask extends DefaultTask {
 
     /**
@@ -115,7 +114,7 @@ public class CycloneDxTask extends DefaultTask {
 
     public CycloneDxTask() {
         schemaVersion = getProject().getObjects().property(String.class);
-        schemaVersion.convention(CycloneDxSchema.Version.VERSION_15.getVersionString());
+        schemaVersion.convention(CycloneDxUtils.DEFAULT_SCHEMA_VERSION.getVersionString());
 
         outputName = getProject().getObjects().property(String.class);
         outputName.convention("bom");
