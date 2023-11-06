@@ -30,7 +30,7 @@ To generate BOM for a single project add the plugin to the `build.gradle`.
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '1.8.0'
+    id 'org.cyclonedx.bom' version '1.8.1'
 }
 ```
 
@@ -107,7 +107,7 @@ initscript {
     }
   }
   dependencies {
-    classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.8.0"
+    classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.8.1"
   }
 }
 
@@ -132,7 +132,7 @@ allprojects{
 ## How to manually modify Metadata
 
 The Plugin makes it possible to manually add Manufacture-Data and Licenses-Data to the Metadata of the BOM. <br>
-The structure of the Metadata is shown on https://cyclonedx.org/docs/1.4/json/#metadata. <br>
+The structure of the Metadata is shown on https://cyclonedx.org/docs/1.5/json/#metadata. <br>
 The editing of the Manufacture and Licenses-Data is optional. If the Manufacture/Licenses-Date isn't edited,
 then the respective structure won't appear in the BOM.
 
@@ -184,7 +184,7 @@ cyclonedxBom {
 It should be noted that some Data like OrganizationalContact, Url, Name,... can be left out. <br>
 OrganizationalEntity can also include multiple OrganizationalContact.
 
-For details look at https://cyclonedx.org/docs/1.4/json/#metadata.
+For details look at https://cyclonedx.org/docs/1.5/json/#metadata.
 
 
 ## Adding Licenses-Data
@@ -263,7 +263,7 @@ cyclonedxBom {
 }
 ```
 ---
-For details of the BOM structure look at https://cyclonedx.org/docs/1.4/json/#metadata.
+For details of the BOM structure look at https://cyclonedx.org/docs/1.5/json/#metadata.
 
 ## CycloneDX Schema Support
 

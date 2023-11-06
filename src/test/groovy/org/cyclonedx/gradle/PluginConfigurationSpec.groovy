@@ -1,6 +1,7 @@
 package org.cyclonedx.gradle
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.cyclonedx.gradle.utils.CycloneDxUtils
 import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
 import org.gradle.testkit.runner.GradleRunner
@@ -27,7 +28,7 @@ class PluginConfigurationSpec extends Specification {
         assert reportDir.exists()
     }
 
-    def "simple-project should output boms in build/reports with version 1.4"() {
+    def "simple-project should output boms in build/reports with default schema version"() {
         given:
           File testDir = TestUtils.duplicate("simple-project")
 
@@ -44,7 +45,7 @@ class PluginConfigurationSpec extends Specification {
             assert reportDir.exists()
             reportDir.listFiles().length == 2
             File jsonBom = new File(reportDir, "bom.json")
-            assert jsonBom.text.contains("\"specVersion\" : \"1.4\"")
+            assert jsonBom.text.contains("\"specVersion\" : \"${CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString}\"")
     }
 
     def "custom-destination project should output boms in output-dir"() {
@@ -248,7 +249,7 @@ class PluginConfigurationSpec extends Specification {
         assert log4jCore.getBomRef() == 'pkg:maven/org.apache.logging.log4j/log4j-core@2.15.0?type=jar'
     }
 
-    def "multi-module should output boms in build/reports with version 1.4"() {
+    def "multi-module should output boms in build/reports with default version"() {
         given:
         File testDir = TestUtils.duplicate("multi-module")
 
@@ -265,10 +266,10 @@ class PluginConfigurationSpec extends Specification {
         assert reportDir.exists()
         reportDir.listFiles().length == 2
         File jsonBom = new File(reportDir, "bom.json")
-        assert jsonBom.text.contains("\"specVersion\" : \"1.4\"")
+        assert jsonBom.text.contains("\"specVersion\" : \"${CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString}\"")
     }
 
-    def "multi-module with plugin in subproject should output boms in build/reports with version 1.4"() {
+    def "multi-module with plugin in subproject should output boms in build/reports with default version"() {
         given:
         File testDir = TestUtils.duplicate("multi-module-subproject")
 
@@ -285,7 +286,7 @@ class PluginConfigurationSpec extends Specification {
         assert reportDir.exists()
         reportDir.listFiles().length == 2
         File jsonBom = new File(reportDir, "bom.json")
-        assert jsonBom.text.contains("\"specVersion\" : \"1.4\"")
+        assert jsonBom.text.contains("\"specVersion\" : \"${CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString}\"")
     }
 
     def "kotlin-dsl-project should allow configuring all properties"() {
