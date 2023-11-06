@@ -1,4 +1,3 @@
-import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
@@ -40,37 +39,19 @@ tasks.withType<Test> {
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
-    dependsOn.add(processPluginPropertiesFile)
 }
 
-val processPluginPropertiesFile = tasks.register<DefaultTask>("processPluginPropertiesFile") {
-    group = "build"
-    description = "Update the project information in the plugin.properties file."
+tasks.withType<ProcessResources> {
     doLast {
-        val pluginPropertiesFile = file("src/main/resources/plugin.properties")
+        val resourcesDirectory = project.layout.buildDirectory.dir("resources/main")
+        val pluginPropertiesFile = file("${resourcesDirectory.get()}/plugin.properties")
 
         val pluginProperties = Properties()
-        pluginProperties.load(FileInputStream(pluginPropertiesFile))
+        pluginProperties["name"] = project.name
+        pluginProperties["vendor"] = organization
+        pluginProperties["version"] = project.version
 
-        // Check for diff to avoid making continuous changes to the file
-        // because of the new timestamp even if there have been no real changes.
-        var diffExists = false
-        if (pluginProperties["vendor"] != organization) {
-            pluginProperties["vendor"] = organization
-            diffExists = true
-        }
-        if (pluginProperties["name"] != project.name) {
-            pluginProperties["name"] = project.name
-            diffExists = true
-        }
-        if (pluginProperties["version"] != project.version) {
-            pluginProperties["version"] = project.version
-            diffExists = true
-        }
-
-        if (diffExists) {
-            pluginProperties.store(pluginPropertiesFile.writer(), "Automatically populated by Gradle build. Do NOT modify!")
-        }
+        pluginProperties.store(pluginPropertiesFile.writer(), "Automatically populated by Gradle build.")
     }
 }
 
