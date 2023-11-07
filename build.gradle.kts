@@ -1,7 +1,7 @@
 plugins {
     id("java-gradle-plugin")
     id("com.gradle.plugin-publish")  version "1.2.1"
-    id("org.cyclonedx.bom") version "1.8.0"
+    id("org.cyclonedx.bom") version "1.8.1"
     id("groovy")
 }
 
