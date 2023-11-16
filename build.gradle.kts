@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("java-gradle-plugin")
     id("com.gradle.plugin-publish")  version "1.2.1"
@@ -37,6 +39,20 @@ tasks.withType<Test> {
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
+}
+
+tasks.withType<ProcessResources> {
+    doLast {
+        val resourcesDirectory = project.layout.buildDirectory.dir("resources/main")
+        val pluginPropertiesFile = file("${resourcesDirectory.get()}/plugin.properties")
+
+        val pluginProperties = Properties()
+        pluginProperties["name"] = project.name
+        pluginProperties["vendor"] = organization
+        pluginProperties["version"] = project.version
+
+        pluginProperties.store(pluginPropertiesFile.writer(), "Automatically populated by Gradle build.")
+    }
 }
 
 gradlePlugin {
