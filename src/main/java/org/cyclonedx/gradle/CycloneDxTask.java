@@ -48,6 +48,7 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
@@ -77,7 +78,6 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class CycloneDxTask extends DefaultTask {
 
@@ -343,6 +343,8 @@ public class CycloneDxTask extends DefaultTask {
             }
 
             for (Configuration configuration : configurations) {
+                addLocalProjectDependenciesToBuiltDependencies(builtDependencies, configuration);
+
                 final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
                 final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
                 final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
@@ -396,6 +398,17 @@ public class CycloneDxTask extends DefaultTask {
         });
 
         writeBom(metadata, components, dependencies.values(), version);
+    }
+
+    private void addLocalProjectDependenciesToBuiltDependencies(Set<String> builtDependencies, Configuration configuration) {
+        for (Dependency dependency : configuration.getAllDependencies()) {
+            if (dependency instanceof ProjectDependency) {
+                ProjectDependency projectDependency = (ProjectDependency) dependency;
+                Project project = projectDependency.getDependencyProject();
+                String dependencyId = projectDependency.getGroup() + ":" + projectDependency.getName() + ":" + project.getVersion();
+                builtDependencies.add(dependencyId);
+            }
+        }
     }
 
     private boolean dependencyWithoutJarArtifact(ResolvedDependency dependency) {
