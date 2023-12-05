@@ -265,7 +265,7 @@ class MavenHelper {
         if (!isDescribedArtifact(artifact)) {
             return null;
         }
-        if (artifact.getFile() != null) {
+        if (artifact.getFile() != null && artifact.getFile().exists()) {
             try {
                 final JarFile jarFile = new JarFile(artifact.getFile());
                 final ModuleVersionIdentifier mid = artifact.getModuleVersion().getId();
