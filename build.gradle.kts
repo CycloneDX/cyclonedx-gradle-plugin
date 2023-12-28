@@ -44,7 +44,7 @@ tasks.withType<JavaCompile>().configureEach {
 tasks.withType<ProcessResources> {
     doLast {
         val resourcesDirectory = project.layout.buildDirectory.dir("resources/main")
-        val pluginPropertiesFile = file("${resourcesDirectory.get()}/plugin.properties")
+        val pluginPropertiesFile = file("${resourcesDirectory.get()}/org/cyclonedx/gradle/plugin.properties")
 
         val pluginProperties = Properties()
         pluginProperties["name"] = project.name

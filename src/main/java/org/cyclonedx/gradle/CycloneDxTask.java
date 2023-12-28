@@ -540,7 +540,7 @@ public class CycloneDxTask extends DefaultTask {
     private Properties readPluginProperties() {
         final Properties props = new Properties();
         try {
-            props.load(this.getClass().getClassLoader().getResourceAsStream("plugin.properties"));
+            props.load(this.getClass().getResourceAsStream("plugin.properties"));
         } catch (NullPointerException | IOException e) {
             getLogger().warn("Unable to load plugin.properties", e);
         }
