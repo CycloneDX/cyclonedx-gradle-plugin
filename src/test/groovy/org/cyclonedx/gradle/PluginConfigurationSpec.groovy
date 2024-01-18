@@ -374,5 +374,76 @@ class PluginConfigurationSpec extends Specification {
 
     }
 
+    def "should skip configurations with regex"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                schemaVersion = '1.3'
+                skipConfigs = ['.*']
+            }
+            dependencies {
+                implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.15.0'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component log4jCore = bom.getComponents().find(c -> c.name == 'log4j-core')
+
+        assert log4jCore == null
+    }
+
+    def "should include configurations with regex"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                schemaVersion = '1.3'
+                includeConfigs = ['implement.*']
+            }
+            dependencies {
+                implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.15.0'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component log4jCore = bom.getComponents().find(c -> c.name == 'log4j-core')
+
+        assert log4jCore == null
+    }
 
 }

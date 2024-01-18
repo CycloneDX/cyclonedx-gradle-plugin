@@ -613,11 +613,11 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     private boolean shouldIncludeConfiguration(Configuration configuration) {
-        return getIncludeConfigs().get().isEmpty() || getIncludeConfigs().get().contains(configuration.getName());
+        return getIncludeConfigs().get().isEmpty() || getIncludeConfigs().get().stream().anyMatch(configuration.getName()::matches);
     }
 
     private boolean shouldSkipConfiguration(Configuration configuration) {
-        return getSkipConfigs().get().contains(configuration.getName());
+        return getSkipConfigs().get().stream().anyMatch(configuration.getName()::matches);
     }
 
     private boolean shouldSkipProject(Project project) {
