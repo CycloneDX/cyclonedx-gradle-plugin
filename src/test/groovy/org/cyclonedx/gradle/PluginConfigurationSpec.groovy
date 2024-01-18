@@ -424,7 +424,7 @@ class PluginConfigurationSpec extends Specification {
             version = '1.0.0'
             cyclonedxBom {
                 schemaVersion = '1.3'
-                includeConfigs = ['implement.*']
+                includeConfigs = ['.*']
             }
             dependencies {
                 implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.15.0'
@@ -443,7 +443,7 @@ class PluginConfigurationSpec extends Specification {
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         Component log4jCore = bom.getComponents().find(c -> c.name == 'log4j-core')
 
-        assert log4jCore == null
+        assert log4jCore.getBomRef() == 'pkg:maven/org.apache.logging.log4j/log4j-core@2.15.0?type=jar'
     }
 
 }
