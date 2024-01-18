@@ -43,9 +43,9 @@ You can add the following configuration to `build.gradle` to control various opt
 
 ```groovy
 cyclonedxBom {
-    // includeConfigs is the list of configuration names to include when generating the BOM (leave empty to include every configuration)
+    // includeConfigs is the list of configuration names to include when generating the BOM (leave empty to include every configuration), regex is supported
     includeConfigs = ["runtimeClasspath"]
-    // skipConfigs is a list of configuration names to exclude when generating the BOM
+    // skipConfigs is a list of configuration names to exclude when generating the BOM, regex is supported
     skipConfigs = ["compileClasspath", "testCompileClasspath"]
     // skipProjects is a list of project names to exclude when generating the BOM
     skipProjects = [rootProject.name, "yourTestSubProject"]
