@@ -26,6 +26,7 @@ jobs:
           - 8
           - 11
           - 17
+          - 21
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4.1.1
