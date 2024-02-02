@@ -32,7 +32,7 @@ jobs:
           settings-path: "${{ github.workspace }}" # location for the settings.xml file
 
       - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@56b90f209b02bf6d1deae490e9ef18b21a389cd4
+        uses: gradle/wrapper-validation-action@27152f6fa06a6b8062ef7195c795692e51fc2c81
 
       - name: Build with Gradle
         uses: gradle/gradle-build-action@982da8e78c05368c70dac0351bb82647a9e9a5d2
