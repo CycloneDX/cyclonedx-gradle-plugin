@@ -47,7 +47,7 @@ jobs:
           arguments: build
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4.2.0
+        uses: actions/upload-artifact@v4.3.1
         with:
           name: assembled-plugin-jdk_${{ matrix.java-version }}
           path: build/
