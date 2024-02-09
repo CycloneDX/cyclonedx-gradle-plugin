@@ -23,7 +23,7 @@ dependencies {
         exclude(group = "org.apache.logging.log4j", module ="log4j-slf4j-impl")
     }
 
-    implementation("commons-codec:commons-codec:1.16.0")
+    implementation("commons-codec:commons-codec:1.16.1")
     implementation("commons-io:commons-io:2.15.1")
     implementation("org.apache.maven:maven-core:3.9.6")
 
