@@ -20,7 +20,7 @@ gradle cyclonedxBom
 
 __Output CycloneDX Generation Info:__
 ```bash
-gradle cyclonedxBom -info
+gradle cyclonedxBom --info
 ```
 
 __build.gradle__ (excerpt)
@@ -94,7 +94,7 @@ You can also build the BOM for multiple projects using the `--init-script` optio
 
 
 ```bash
-gradle --init-script <path-to-init.gradle> cyclonedxBom -info
+gradle --init-script <path-to-init.gradle> cyclonedxBom --info
 ```
 
 where the `init.gradle` can look like this:
