@@ -363,7 +363,7 @@ public class CycloneDxTask extends DefaultTask {
                 }
 
                 for (ResolvedDependency directModuleDependency : directModuleDependencies) {
-                    ResolvedArtifact directJarArtifact = getJarArtifact(directModuleDependency);
+                    ResolvedArtifact directJarArtifact = getJarOrZipArtifact(directModuleDependency);
                     if (directJarArtifact != null) {
                         moduleDependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(directJarArtifact)));
                         buildDependencyGraph(dependencies, directModuleDependency, directJarArtifact);
@@ -412,7 +412,7 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     private boolean dependencyWithoutJarArtifact(ResolvedDependency dependency) {
-        return getJarArtifact(dependency) == null;
+        return getJarOrZipArtifact(dependency) == null;
     }
 
     private CycloneDxSchema.Version computeSchemaVersion() {
@@ -433,7 +433,7 @@ public class CycloneDxTask extends DefaultTask {
         dependenciesSoFar.put(dependencyPurl, dependency);
 
         for (ResolvedDependency childDependency : resolvedDependency.getChildren()) {
-            ResolvedArtifact childJarArtifact = getJarArtifact(childDependency);
+            ResolvedArtifact childJarArtifact = getJarOrZipArtifact(childDependency);
             if (childJarArtifact != null) {
                 dependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(childJarArtifact)));
                 buildDependencyGraph(dependenciesSoFar, childDependency, childJarArtifact);
@@ -442,9 +442,9 @@ public class CycloneDxTask extends DefaultTask {
         return dependenciesSoFar;
     }
 
-    private ResolvedArtifact getJarArtifact(ResolvedDependency dependency) {
+    private ResolvedArtifact getJarOrZipArtifact(ResolvedDependency dependency) {
         for(ResolvedArtifact artifact : dependency.getModuleArtifacts()) {
-            if (Objects.equals(artifact.getType(), "jar") || Objects.equals(artifact.getType(), "aar"))  {
+            if (Objects.equals(artifact.getType(), "jar") || Objects.equals(artifact.getType(), "aar") || Objects.equals(artifact.getType(), "zip"))  {
                 return artifact;
             }
         }
