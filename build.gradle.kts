@@ -28,7 +28,7 @@ dependencies {
     implementation("org.apache.maven:maven-core:3.9.6")
 
     testImplementation(gradleTestKit())
-    testImplementation("org.spockframework:spock-core:2.2-M1-groovy-3.0") {
+    testImplementation("org.spockframework:spock-core:2.4-M4-groovy-4.0") {
         exclude(module = "groovy-all")
     }
 }
