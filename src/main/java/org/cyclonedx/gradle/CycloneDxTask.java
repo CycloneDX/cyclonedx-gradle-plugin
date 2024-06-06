@@ -700,6 +700,7 @@ public class CycloneDxTask extends DefaultTask {
         final Parser bomParser = new XmlParser();
         try {
             final List<ParseException> exceptions = bomParser.validate(bomFile, schemaVersion);
+            exceptions.forEach(it -> getLogger().error(it.getMessage()));
             if (!exceptions.isEmpty()) {
                 throw exceptions.get(0);
             }
@@ -720,6 +721,7 @@ public class CycloneDxTask extends DefaultTask {
         final Parser bomParser = new JsonParser();
         try {
             final List<ParseException> exceptions = bomParser.validate(bomFile, schemaVersion);
+            exceptions.forEach(it -> getLogger().error(it.getMessage()));
             if (!exceptions.isEmpty()) {
                 throw exceptions.get(0);
             }
