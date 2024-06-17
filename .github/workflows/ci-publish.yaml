@@ -35,12 +35,12 @@ jobs:
         uses: gradle/wrapper-validation-action@5188e9b5527a0a094cee21e2fe9a8ca44b4629af
 
       - name: Build with Gradle
-        uses: gradle/gradle-build-action@e2097ccd7e8ed48671dc068ac4efa86d25745b39
+        uses: gradle/gradle-build-action@04b20c065cf1ab708c96e64a8811018d0a1fbc88
         with:
           arguments: build
 
       - name: Publish to Gradle portal
-        uses: gradle/gradle-build-action@e2097ccd7e8ed48671dc068ac4efa86d25745b39
+        uses: gradle/gradle-build-action@04b20c065cf1ab708c96e64a8811018d0a1fbc88
         with:
           arguments: |-
             publishPlugin
