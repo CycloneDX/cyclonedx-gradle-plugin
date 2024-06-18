@@ -39,7 +39,7 @@ jobs:
           cache: "gradle"
 
       - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@5188e9b5527a0a094cee21e2fe9a8ca44b4629af
+        uses: gradle/wrapper-validation-action@88425854a36845f9c881450d9660b5fd46bee142
 
       - name: Build with Gradle
         uses: gradle/gradle-build-action@e2097ccd7e8ed48671dc068ac4efa86d25745b39
