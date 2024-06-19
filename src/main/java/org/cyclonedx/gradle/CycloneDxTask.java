@@ -338,8 +338,8 @@ public class CycloneDxTask extends DefaultTask {
         getLogger().info(MESSAGE_RESOLVING_DEPS);
         final Set<String> builtDependencies = allBuiltProjects();
 
-        final Map<String, Component> components = new HashMap<>();
-        final Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
+        final Map<String, Component> components = new TreeMap<>();
+        final Map<String, org.cyclonedx.model.Dependency> dependencies = new TreeMap<>();
 
         final Metadata metadata = createMetadata();
         Project rootProject = getProject();
