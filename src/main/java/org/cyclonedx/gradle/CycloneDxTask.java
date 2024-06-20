@@ -66,6 +66,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -75,6 +76,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -313,8 +315,8 @@ public class CycloneDxTask extends DefaultTask {
                 .map(p -> p.getGroup() + ":" + p.getName() + ":" + p.getVersion())
                 .collect(Collectors.toSet());
 
-        final Set<Component> components = new HashSet<>();
-        final Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
+        final Set<Component> components = new TreeSet<>(Comparator.comparing(Component::getPurl));
+        final Map<String, org.cyclonedx.model.Dependency> dependencies = new TreeMap<>();
 
         final Metadata metadata = createMetadata();
         Project rootProject = getProject();
