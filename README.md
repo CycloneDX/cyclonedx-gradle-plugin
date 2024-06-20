@@ -30,7 +30,7 @@ To generate BOM for a single project add the plugin to the `build.gradle`.
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '1.7.4'
+    id 'org.cyclonedx.bom' version '1.8.2'
 }
 ```
 
@@ -43,16 +43,16 @@ You can add the following configuration to `build.gradle` to control various opt
 
 ```groovy
 cyclonedxBom {
-    // includeConfigs is the list of configuration names to include when generating the BOM (leave empty to include every configuration)
+    // includeConfigs is the list of configuration names to include when generating the BOM (leave empty to include every configuration), regex is supported
     includeConfigs = ["runtimeClasspath"]
-    // skipConfigs is a list of configuration names to exclude when generating the BOM
+    // skipConfigs is a list of configuration names to exclude when generating the BOM, regex is supported
     skipConfigs = ["compileClasspath", "testCompileClasspath"]
     // skipProjects is a list of project names to exclude when generating the BOM
     skipProjects = [rootProject.name, "yourTestSubProject"]
     // Specified the type of project being built. Defaults to 'library'
     projectType = "application"
-    // Specified the version of the CycloneDX specification to use. Defaults to '1.4'
-    schemaVersion = "1.4"
+    // Specified the version of the CycloneDX specification to use. Defaults to '1.5'
+    schemaVersion = "1.5"
     // Boms destination directory. Defaults to 'build/reports'
     destination = file("build/reports")
     // The file name for the generated BOMs (before the file format suffix). Defaults to 'bom'
@@ -76,7 +76,7 @@ tasks.cyclonedxBom {
     setSkipConfigs(listOf("compileClasspath", "testCompileClasspath"))
     setSkipProjects(listOf(rootProject.name, "yourTestSubProject"))
     setProjectType("application")
-    setSchemaVersion("1.4")
+    setSchemaVersion("1.5")
     setDestination(project.file("build/reports"))
     setOutputName("bom")
     setOutputFormat("json")
@@ -107,7 +107,7 @@ initscript {
     }
   }
   dependencies {
-    classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.7.4"
+    classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.8.2"
   }
 }
 
@@ -118,7 +118,7 @@ allprojects{
     skipConfigs = ["compileClasspath", "testCompileClasspath"]
     skipProjects = [rootProject.name, "yourTestSubProject"]
     projectType = "application"
-    schemaVersion = "1.4"
+    schemaVersion = "1.5"
     destination = file("build/reports")
     outputName = "bom"
     outputFormat = "json"
@@ -129,6 +129,142 @@ allprojects{
 }
 ```
 
+## How to manually modify Metadata
+
+The Plugin makes it possible to manually add Manufacture-Data and Licenses-Data to the Metadata of the BOM. <br>
+The structure of the Metadata is shown on https://cyclonedx.org/docs/1.5/json/#metadata. <br>
+The editing of the Manufacture and Licenses-Data is optional. If the Manufacture/Licenses-Date isn't edited,
+then the respective structure won't appear in the BOM.
+
+To enable the modification of the metadata the cyclonedx-core-java plugin must be implemented in the build.gradle.
+
+---
+
+## Adding Manufacture-Data
+
+In order to be able to define the Manufacture-Data you must __import org.cyclonedx.model.*;__ into the build.gradle.
+<br>
+You can add the Manufacture-Data by passing an Object of the Type __OrganizationalEntity__ to the Plugin.
+
+__Example (groovy):__
+```groovy
+cyclonedxBom {
+    //declaration of the Object from OrganizationalContact
+    OrganizationalContact organizationalContact = new OrganizationalContact()
+    //setting the Name[String], Email[String] and Phone[String] of the Object
+    organizationalContact.setName("Max_Mustermann")
+    organizationalContact.setEmail("max.mustermann@test.org")
+    organizationalContact.setPhone("0000 99999999")
+    //passing Data to the plugin
+    organizationalEntity {oe->
+        oe.name = 'Test'
+        oe.url = ['www.test1.com', 'www.test2.com']
+        oe.addContact(organizationalContact)
+    }
+}
+```
+
+__Example (Kotlin):__
+```kotlin
+cyclonedxBom {
+    //declaration of the Object from OrganizationalContact
+    var organizationalContact1 = OrganizationalContact()
+    //setting the Name[String], Email[String] and Phone[String] of the Object
+    organizationalContact1.setName("Max_Mustermann")
+    organizationalContact1.setEmail("max.mustermann@test.org")
+    organizationalContact1.setPhone("0000 99999999")
+    //passing Data to the plugin
+    setOrganizationalEntity{oe->
+        oe.name = "Test";
+        oe.urls = listOf("www.test1.com", "www.test2.com")
+        oe.addContact(organizationalContact1)
+    }
+}
+```
+It should be noted that some Data like OrganizationalContact, Url, Name,... can be left out. <br>
+OrganizationalEntity can also include multiple OrganizationalContact.
+
+For details look at https://cyclonedx.org/docs/1.5/json/#metadata.
+
+
+## Adding Licenses-Data
+
+In order to be able to define the Manufacture-Data you must __import org.cyclonedx.model.*;__ into the build.gradle.
+
+You can add the Licenses-Data by passing an Object of the Type __LicenseChoice__ to the Plugin.
+The Object from LicenseChoice includes __either License or Expression__. It can't include both.
+
+### License
+
+__Example (groovy):__
+```groovy
+cyclonedxBom {
+    //declaration of the Object from AttachmentText -> Needed for the setting of LicenseText
+    AttachmentText attachmentText = new AttachmentText()
+    attachmentText.setText("This is a Licenses-Test")
+    //declaration of the Object from License
+    License license = new License()
+    //setting the Name[String], LicenseText[AttachmentText] and Url[String]
+    license.setName("XXXX XXXX Software")
+    //license.setId("Mup")     // either id or name -> both not possible
+    license.setLicenseText(attachmentText);
+    license.setUrl("https://www.test-Url.org/")
+    //passing Data to Plugin
+    licenseChoice {lc->
+        lc.addLicense(license)
+    }
+}
+```
+
+__Example (Kotlin):__
+```kotlin
+cyclonedxBom {
+    //declaration of the Object from AttachmentText -> Needed for the setting of LicenseText
+    val attachmentText = AttachmentText()
+    attachmentText.setText("This is a Licenses-Test")
+    //declaration of the Object from License
+    val license = License()
+    //setting the Name[String], LicenseText[AttachmentText] and Url[String]
+    license.setName("XXXX XXXX Software")
+    //license.setId("Mup")     // either id or name -> both not possible
+    license.setLicenseText(attachmentText)
+    license.setUrl("https://www.test-Url.org/")
+    //passing Data to Plugin
+    setLicenseChoice{lc->
+        lc.addLicense(license)
+    }
+}
+```
+It should be noted that License requires __either Id or Name__, but both can't be included at the same time.
+
+Text and Url are optional for inclusion and multiple License can be added to LicenseChoice.
+
+---
+
+### Expression
+
+__Example (groovy):__
+```groovy
+cyclonedxBom {
+    //passing Expression to Plugin
+    licenseChoice {lc->
+        lc.setExpression("This is a Test Expression")
+    }
+}
+```
+
+__Example (Kotlin):__
+```kotlin
+cyclonedxBom {
+    //passing Expression to Plugin
+    setLicenseChoice{lc->
+        lc.setExpression("This is a Test Expression")
+    }
+}
+```
+---
+For details of the BOM structure look at https://cyclonedx.org/docs/1.5/json/#metadata.
+
 ## CycloneDX Schema Support
 
 The following table provides information on the version of this Gradle plugin, the CycloneDX schema version supported,
@@ -136,7 +272,8 @@ as well as the output format options. Use the latest possible version of this pl
 the CycloneDX version supported by the target system.
 
 | Version | Schema Version | Format(s) |
-|---------| ----------------- | --------- |
+|---------|----------------| --------- |
+| 1.8.x   | CycloneDX v1.5 | XML/JSON |
 | 1.7.x   | CycloneDX v1.4 | XML/JSON |
 | 1.6.x   | CycloneDX v1.4 | XML/JSON |
 | 1.5.x   | CycloneDX v1.3 | XML/JSON |

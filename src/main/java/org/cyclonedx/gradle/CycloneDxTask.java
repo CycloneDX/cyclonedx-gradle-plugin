@@ -32,11 +32,13 @@ import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.gradle.utils.DependencyUtils;
-import org.cyclonedx.model.Bom;
-import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Hash;
 import org.cyclonedx.model.Metadata;
 import org.cyclonedx.model.Tool;
+import org.cyclonedx.model.OrganizationalEntity;
+import org.cyclonedx.model.LicenseChoice;
+import org.cyclonedx.model.Component;
+import org.cyclonedx.model.Bom;
 import org.cyclonedx.parsers.JsonParser;
 import org.cyclonedx.parsers.Parser;
 import org.cyclonedx.parsers.XmlParser;
@@ -46,6 +48,7 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
@@ -75,8 +78,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class CycloneDxTask extends DefaultTask {
 
@@ -106,13 +109,14 @@ public class CycloneDxTask extends DefaultTask {
     private final ListProperty<String> skipConfigs;
     private final ListProperty<String> skipProjects;
     private final Property<File> destination;
-
+    private OrganizationalEntity organizationalEntity;
+    private LicenseChoice licenseChoice;
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, MavenProject> resolvedMavenProjects = Collections.synchronizedMap(new HashMap<>());
 
     public CycloneDxTask() {
         schemaVersion = getProject().getObjects().property(String.class);
-        schemaVersion.convention(CycloneDxSchema.Version.VERSION_14.getVersionString());
+        schemaVersion.convention(CycloneDxUtils.DEFAULT_SCHEMA_VERSION.getVersionString());
 
         outputName = getProject().getObjects().property(String.class);
         outputName.convention("bom");
@@ -138,6 +142,10 @@ public class CycloneDxTask extends DefaultTask {
 
         destination = getProject().getObjects().property(File.class);
         destination.convention(getProject().getLayout().getBuildDirectory().dir("reports").get().getAsFile());
+
+        organizationalEntity = new OrganizationalEntity();
+
+        licenseChoice = new LicenseChoice();
     }
 
     @Input
@@ -239,6 +247,57 @@ public class CycloneDxTask extends DefaultTask {
         this.destination.set(destination);
     }
 
+    public void setOrganizationalEntity(Consumer<OrganizationalEntity> customizer){
+        OrganizationalEntity origin = new OrganizationalEntity();
+        customizer.accept(origin);
+        this.organizationalEntity = origin;
+
+        Map<String,String> organizationalEntity = new HashMap<>();
+
+        organizationalEntity.put("name", this.organizationalEntity.getName());
+        if(this.organizationalEntity.getUrls() !=null){
+            for(int i = 0; i < this.organizationalEntity.getUrls().size();i++){
+                organizationalEntity.put("url"+i,this.organizationalEntity.getUrls().get(i));
+            }
+        }
+        if(this.organizationalEntity.getContacts() != null){
+            for (int i = 0; i < this.organizationalEntity.getContacts().size();i++){
+                organizationalEntity.put("contact_name"+i,this.organizationalEntity.getContacts().get(i).getName());
+                organizationalEntity.put("contact_email"+i,this.organizationalEntity.getContacts().get(i).getEmail());
+                organizationalEntity.put("contact_phone"+i,this.organizationalEntity.getContacts().get(i).getPhone());
+            }
+        }
+        //Definition of gradle Input via Hashmap because Hashmap is serializable (OrganizationalEntity isn't serializable)
+        getInputs().property("OrganizationalEntity", organizationalEntity);
+    }
+
+    public void setLicenseChoice(Consumer<LicenseChoice> customizer){
+        LicenseChoice origin = new LicenseChoice();
+        customizer.accept(origin);
+        this.licenseChoice = origin;
+
+        Map<String,String> licenseChoice = new HashMap<>();
+
+        if(this.licenseChoice.getLicenses() != null){
+            for (int i = 0; i < this.licenseChoice.getLicenses().size();i++){
+                if (this.licenseChoice.getLicenses().get(i).getName() != null){
+                    licenseChoice.put("licenseChoice"+i+"name",this.licenseChoice.getLicenses().get(i).getName());
+                }
+                if (this.licenseChoice.getLicenses().get(i).getId() != null){
+                    licenseChoice.put("licenseChoice"+i+"id",this.licenseChoice.getLicenses().get(i).getId());
+                }
+                licenseChoice.put("licenseChoice"+i+"text",this.licenseChoice.getLicenses().get(i).getAttachmentText().getText());
+                licenseChoice.put("licenseChoice"+i+"url",this.licenseChoice.getLicenses().get(i).getUrl());
+            }
+        }
+
+        if(this.licenseChoice.getExpression() != null){
+            licenseChoice.put("licenseChoice_Expression",this.licenseChoice.getExpression());
+        }
+        //Definition of gradle Input via Hashmap because Hashmap is serializable (LicenseChoice isn't serializable)
+        getInputs().property("LicenseChoice", licenseChoice);
+    }
+
     @TaskAction
     public void createBom() {
         if (!outputFormat.get().trim().equalsIgnoreCase("all")
@@ -286,6 +345,8 @@ public class CycloneDxTask extends DefaultTask {
             }
 
             for (Configuration configuration : configurations) {
+                addLocalProjectDependenciesToBuiltDependencies(builtDependencies, configuration);
+
                 final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
                 final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
                 final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
@@ -295,8 +356,16 @@ public class CycloneDxTask extends DefaultTask {
                 final Set<ResolvedDependency> directModuleDependencies = configuration.getResolvedConfiguration()
                     .getFirstLevelModuleDependencies();
 
+                while (directModuleDependencies.stream().anyMatch(this::dependencyWithoutJarArtifact)) {
+                    Set<ResolvedDependency> depWithNoArtifacts = directModuleDependencies.stream()
+                        .filter(this::dependencyWithoutJarArtifact).collect(Collectors.toSet());
+
+                    directModuleDependencies.removeAll(depWithNoArtifacts);
+                    depWithNoArtifacts.forEach(dmd -> directModuleDependencies.addAll(dmd.getChildren()));
+                }
+
                 for (ResolvedDependency directModuleDependency : directModuleDependencies) {
-                    ResolvedArtifact directJarArtifact = getJarArtifact(directModuleDependency);
+                    ResolvedArtifact directJarArtifact = getJarOrZipArtifact(directModuleDependency);
                     if (directJarArtifact != null) {
                         moduleDependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(directJarArtifact)));
                         buildDependencyGraph(dependencies, directModuleDependency, directJarArtifact);
@@ -333,6 +402,21 @@ public class CycloneDxTask extends DefaultTask {
         writeBom(metadata, components, dependencies.values(), version);
     }
 
+    private void addLocalProjectDependenciesToBuiltDependencies(Set<String> builtDependencies, Configuration configuration) {
+        for (Dependency dependency : configuration.getAllDependencies()) {
+            if (dependency instanceof ProjectDependency) {
+                ProjectDependency projectDependency = (ProjectDependency) dependency;
+                Project project = projectDependency.getDependencyProject();
+                String dependencyId = projectDependency.getGroup() + ":" + projectDependency.getName() + ":" + project.getVersion();
+                builtDependencies.add(dependencyId);
+            }
+        }
+    }
+
+    private boolean dependencyWithoutJarArtifact(ResolvedDependency dependency) {
+        return getJarOrZipArtifact(dependency) == null;
+    }
+
     private CycloneDxSchema.Version computeSchemaVersion() {
         CycloneDxSchema.Version version = CycloneDxUtils.schemaVersion(getSchemaVersion().get());
         mavenHelper = new MavenHelper(getLogger(), version, getIncludeLicenseText().get());
@@ -351,7 +435,7 @@ public class CycloneDxTask extends DefaultTask {
         dependenciesSoFar.put(dependencyPurl, dependency);
 
         for (ResolvedDependency childDependency : resolvedDependency.getChildren()) {
-            ResolvedArtifact childJarArtifact = getJarArtifact(childDependency);
+            ResolvedArtifact childJarArtifact = getJarOrZipArtifact(childDependency);
             if (childJarArtifact != null) {
                 dependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(childJarArtifact)));
                 buildDependencyGraph(dependenciesSoFar, childDependency, childJarArtifact);
@@ -360,9 +444,9 @@ public class CycloneDxTask extends DefaultTask {
         return dependenciesSoFar;
     }
 
-    private ResolvedArtifact getJarArtifact(ResolvedDependency dependency) {
+    private ResolvedArtifact getJarOrZipArtifact(ResolvedDependency dependency) {
         for(ResolvedArtifact artifact : dependency.getModuleArtifacts()) {
-            if (Objects.equals(artifact.getType(), "jar") || Objects.equals(artifact.getType(), "aar"))  {
+            if (Objects.equals(artifact.getType(), "jar") || Objects.equals(artifact.getType(), "aar") || Objects.equals(artifact.getType(), "zip"))  {
                 return artifact;
             }
         }
@@ -443,13 +527,22 @@ public class CycloneDxTask extends DefaultTask {
         component.setPurl(generatePackageUrl(project));
         component.setBomRef(component.getPurl());
         metadata.setComponent(component);
+
+        if(organizationalEntity.getName() != null || organizationalEntity.getUrls() != null || organizationalEntity.getContacts() != null) {
+            metadata.setManufacture(organizationalEntity);
+        }
+
+        if(licenseChoice.getLicenses() !=null || licenseChoice.getExpression() != null){
+            metadata.setLicenseChoice(licenseChoice);
+        }
+
         return metadata;
     }
 
     private Properties readPluginProperties() {
         final Properties props = new Properties();
         try {
-            props.load(this.getClass().getClassLoader().getResourceAsStream("plugin.properties"));
+            props.load(this.getClass().getResourceAsStream("plugin.properties"));
         } catch (NullPointerException | IOException e) {
             getLogger().warn("Unable to load plugin.properties", e);
         }
@@ -522,11 +615,11 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     private boolean shouldIncludeConfiguration(Configuration configuration) {
-        return getIncludeConfigs().get().isEmpty() || getIncludeConfigs().get().contains(configuration.getName());
+        return getIncludeConfigs().get().isEmpty() || getIncludeConfigs().get().stream().anyMatch(configuration.getName()::matches);
     }
 
     private boolean shouldSkipConfiguration(Configuration configuration) {
-        return getSkipConfigs().get().contains(configuration.getName());
+        return getSkipConfigs().get().stream().anyMatch(configuration.getName()::matches);
     }
 
     private boolean shouldSkipProject(Project project) {
