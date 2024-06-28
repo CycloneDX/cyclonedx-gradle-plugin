@@ -49,6 +49,8 @@ import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.logging.Logger;
 
+import javax.annotation.Nullable;
+
 /**
  * Ported from CycloneDX Maven plugin.
  */
@@ -176,6 +178,7 @@ class MavenHelper {
         return false;
     }
 
+    @Nullable
     LicenseChoice resolveMavenLicenses(final List<org.apache.maven.model.License> projectLicenses) {
         final LicenseChoice licenseChoice = new LicenseChoice();
         for (org.apache.maven.model.License artifactLicense : projectLicenses) {
@@ -217,6 +220,9 @@ class MavenHelper {
                 }
                 licenseChoice.addLicense(license);
             }
+        }
+        if (licenseChoice.getLicenses() == null) {
+            return null;
         }
         return licenseChoice;
     }
