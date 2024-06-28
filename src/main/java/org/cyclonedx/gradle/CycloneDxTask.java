@@ -24,10 +24,10 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Model;
 import org.apache.maven.project.MavenProject;
-import org.cyclonedx.BomGeneratorFactory;
-import org.cyclonedx.CycloneDxSchema;
+import org.cyclonedx.Version;
 import org.cyclonedx.exception.GeneratorException;
 import org.cyclonedx.exception.ParseException;
+import org.cyclonedx.generators.BomGeneratorFactory;
 import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
@@ -52,7 +52,6 @@ import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
-import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
@@ -290,7 +289,7 @@ public class CycloneDxTask extends DefaultTask {
         }
 
         if(this.licenseChoice.getExpression() != null){
-            licenseChoice.put("licenseChoice_Expression",this.licenseChoice.getExpression());
+            licenseChoice.put("licenseChoice_Expression",this.licenseChoice.getExpression().getValue());
         }
         //Definition of gradle Input via Hashmap because Hashmap is serializable (LicenseChoice isn't serializable)
         getInputs().property("LicenseChoice", licenseChoice);
@@ -304,7 +303,7 @@ public class CycloneDxTask extends DefaultTask {
             throw new GradleException("Unsupported output format. Must be one of all, xml, or json");
         }
 
-        CycloneDxSchema.Version version = computeSchemaVersion();
+        Version version = computeSchemaVersion();
         logParameters();
         getLogger().info(MESSAGE_RESOLVING_DEPS);
         final Set<String> builtDependencies = getProject()
@@ -415,10 +414,10 @@ public class CycloneDxTask extends DefaultTask {
         return getJarOrZipArtifact(dependency) == null;
     }
 
-    private CycloneDxSchema.Version computeSchemaVersion() {
-        CycloneDxSchema.Version version = CycloneDxUtils.schemaVersion(getSchemaVersion().get());
+    private Version computeSchemaVersion() {
+        Version version = CycloneDxUtils.schemaVersion(getSchemaVersion().get());
         mavenHelper = new MavenHelper(getLogger(), version, getIncludeLicenseText().get());
-        if (version == CycloneDxSchema.Version.VERSION_10) {
+        if (version == Version.VERSION_10) {
             setIncludeBomSerialNumber(false);
         }
         return version;
@@ -561,7 +560,7 @@ public class CycloneDxTask extends DefaultTask {
         return Component.Type.LIBRARY;
     }
 
-    private Component generateProjectComponent(Project project, CycloneDxSchema.Version schemaVersion) {
+    private Component generateProjectComponent(Project project, Version schemaVersion) {
         final Component component = new Component();
         component.setGroup(project.getGroup().toString());
         component.setName(project.getName());
@@ -577,7 +576,7 @@ public class CycloneDxTask extends DefaultTask {
 
         return component;
     }
-    private Component convertArtifact(ResolvedArtifact artifact, CycloneDxSchema.Version schemaVersion) {
+    private Component convertArtifact(ResolvedArtifact artifact, Version schemaVersion) {
         final Component component = new Component();
         component.setGroup(artifact.getModuleVersion().getId().getGroup());
         component.setName(artifact.getModuleVersion().getId().getName());
@@ -664,14 +663,14 @@ public class CycloneDxTask extends DefaultTask {
      * @param version The CycloneDX schema version
      */
     protected void writeBom(Metadata metadata, Set<Component> components, Collection<org.cyclonedx.model.Dependency> dependencies,
-                            CycloneDxSchema.Version version) throws GradleException{
+                            Version version) throws GradleException{
         try {
             getLogger().info(MESSAGE_CREATING_BOM);
             final Bom bom = new Bom();
 
             boolean includeSerialNumber = getBooleanParameter("cyclonedx.includeBomSerialNumber", getIncludeBomSerialNumber().get());
 
-            if (CycloneDxSchema.Version.VERSION_10 != version && includeSerialNumber) {
+            if (Version.VERSION_10 != version && includeSerialNumber) {
                 bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
             }
             bom.setMetadata(metadata);
@@ -688,7 +687,7 @@ public class CycloneDxTask extends DefaultTask {
         }
     }
 
-    private void writeXMLBom(final CycloneDxSchema.Version schemaVersion, final Bom bom)
+    private void writeXMLBom(final Version schemaVersion, final Bom bom)
             throws GeneratorException, ParserConfigurationException, IOException {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         bomGenerator.generate();
@@ -709,7 +708,7 @@ public class CycloneDxTask extends DefaultTask {
         }
     }
 
-    private void writeJSONBom(final CycloneDxSchema.Version schemaVersion, final Bom bom) throws IOException {
+    private void writeJSONBom(final Version schemaVersion, final Bom bom) throws IOException {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
         final String bomString = bomGenerator.toJsonString();
         final File bomFile = new File(getDestination().get(), getOutputName().get() + ".json");

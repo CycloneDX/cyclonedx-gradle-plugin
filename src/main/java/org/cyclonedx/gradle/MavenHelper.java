@@ -19,10 +19,8 @@
 package org.cyclonedx.gradle;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -30,7 +28,6 @@ import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-import org.apache.commons.io.input.BOMInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.MailingList;
@@ -42,7 +39,7 @@ import org.apache.maven.model.resolution.ModelResolver;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.ReaderFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-import org.cyclonedx.CycloneDxSchema;
+import org.cyclonedx.Version;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
@@ -52,16 +49,18 @@ import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.logging.Logger;
 
+import javax.annotation.Nullable;
+
 /**
  * Ported from CycloneDX Maven plugin.
  */
 class MavenHelper {
 
     private Logger logger;
-    private CycloneDxSchema.Version schemaVersion;
+    private Version schemaVersion;
     private Boolean includeLicenseText;
 
-    public MavenHelper(Logger logger, CycloneDxSchema.Version schemaVersion, Boolean includeLicenseText) {
+    public MavenHelper(Logger logger, Version schemaVersion, Boolean includeLicenseText) {
         this.logger = logger;
         this.schemaVersion = schemaVersion;
         this.includeLicenseText = includeLicenseText;
@@ -109,7 +108,7 @@ class MavenHelper {
                 component.setLicenseChoice(resolveMavenLicenses(project.getLicenses()));
             }
         }
-        if (CycloneDxSchema.Version.VERSION_10 != schemaVersion) {
+        if (Version.VERSION_10 != schemaVersion) {
             if (project.getOrganization() != null && project.getOrganization().getUrl() != null) {
                 if (!doesComponentHaveExternalReference(component, ExternalReference.Type.WEBSITE)) {
                     addExternalReference(ExternalReference.Type.WEBSITE, project.getOrganization().getUrl(), component);
@@ -179,6 +178,7 @@ class MavenHelper {
         return false;
     }
 
+    @Nullable
     LicenseChoice resolveMavenLicenses(final List<org.apache.maven.model.License> projectLicenses) {
         final LicenseChoice licenseChoice = new LicenseChoice();
         for (org.apache.maven.model.License artifactLicense : projectLicenses) {
@@ -189,7 +189,7 @@ class MavenHelper {
                     if (resolvedByName.getLicenses() != null && !resolvedByName.getLicenses().isEmpty()) {
                         resolved = true;
                         licenseChoice.addLicense(resolvedByName.getLicenses().get(0));
-                    } else if (resolvedByName.getExpression() != null && CycloneDxSchema.Version.VERSION_10 != schemaVersion) {
+                    } else if (resolvedByName.getExpression() != null && Version.VERSION_10 != schemaVersion) {
                         resolved = true;
                         licenseChoice.setExpression(resolvedByName.getExpression());
                     }
@@ -201,7 +201,7 @@ class MavenHelper {
                     if (resolvedByUrl.getLicenses() != null && !resolvedByUrl.getLicenses().isEmpty()) {
                         resolved = true;
                         licenseChoice.addLicense(resolvedByUrl.getLicenses().get(0));
-                    } else if (resolvedByUrl.getExpression() != null && CycloneDxSchema.Version.VERSION_10 != schemaVersion) {
+                    } else if (resolvedByUrl.getExpression() != null && Version.VERSION_10 != schemaVersion) {
                         resolved = true;
                         licenseChoice.setExpression(resolvedByUrl.getExpression());
                     }
@@ -220,6 +220,9 @@ class MavenHelper {
                 }
                 licenseChoice.addLicense(license);
             }
+        }
+        if (licenseChoice.getLicenses() == null) {
+            return null;
         }
         return licenseChoice;
     }
