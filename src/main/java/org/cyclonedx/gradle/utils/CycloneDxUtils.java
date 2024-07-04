@@ -4,7 +4,7 @@ import org.cyclonedx.Version;
 
 public class CycloneDxUtils {
 
-    public static final Version DEFAULT_SCHEMA_VERSION = Version.VERSION_16;
+    public static final Version DEFAULT_SCHEMA_VERSION = Version.VERSION_15;
 
     /**
      * Resolves the CycloneDX schema the mojo has been requested to use.
