@@ -303,6 +303,11 @@ public class CycloneDxTask extends DefaultTask {
             && !outputFormat.get().trim().equalsIgnoreCase("json")) {
             throw new GradleException("Unsupported output format. Must be one of all, xml, or json");
         }
+        if (getProject().getGroup().equals("")
+            || getProject().getName().isEmpty()
+            || getProject().getVersion().equals("")) {
+            throw new GradleException("Project group, name, and version must be set for the root project");
+        }
 
         CycloneDxSchema.Version version = computeSchemaVersion();
         logParameters();
