@@ -65,6 +65,8 @@ cyclonedxBom {
     includeLicenseText = false
     // Override component version. Defaults to the project version
     componentVersion = "2.0.0"
+    // Override component name. Defaults to the project name
+    componentName = "my-component"
 }
 ```
 
@@ -83,6 +85,7 @@ tasks.cyclonedxBom {
     setIncludeBomSerialNumber(false)
     setIncludeLicenseText(true)
     setComponentVersion("2.0.0")
+    setComponentName("my-component")
 }
 ```
 
@@ -125,6 +128,7 @@ allprojects{
     includeBomSerialNumber = false
     includeLicenseText = true
     componentVersion = "2.0.0"
+    componentName = "my-component"
   }
 }
 ```
