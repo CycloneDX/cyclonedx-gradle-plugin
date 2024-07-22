@@ -25,7 +25,7 @@ dependencies {
 
     implementation("commons-codec:commons-codec:1.16.0")
     implementation("commons-io:commons-io:2.16.1")
-    implementation("org.apache.maven:maven-core:3.9.6")
+    implementation("org.apache.maven:maven-core:3.9.8")
 
     testImplementation(gradleTestKit())
     testImplementation("org.spockframework:spock-core:2.2-M1-groovy-3.0") {
