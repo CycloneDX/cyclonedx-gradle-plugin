@@ -477,4 +477,29 @@ class PluginConfigurationSpec extends Specification {
         assert jsonBom.text.contains("\"specVersion\" : \"1.5\"")
     }
 
+    def "should print error if project group, name, or version unset"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = ''
+            version = ''
+            """, "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom")
+            .withPluginClasspath()
+            .run()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.FAILED
+        assert result.output.contains("Project group, name, and version must be set for the root project")
+    }
 }
