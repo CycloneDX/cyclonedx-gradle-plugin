@@ -1,6 +1,5 @@
 package org.cyclonedx.gradle.utils;
 
-import org.cyclonedx.CycloneDxSchema;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
