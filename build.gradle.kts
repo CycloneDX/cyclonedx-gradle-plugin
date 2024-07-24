@@ -9,7 +9,7 @@ plugins {
 
 val organization = "CycloneDX"
 group = "org.cyclonedx"
-version = "1.8.2"
+version = "1.9.0"
 
 java.sourceCompatibility = JavaVersion.VERSION_1_8
 java.targetCompatibility = JavaVersion.VERSION_1_8
