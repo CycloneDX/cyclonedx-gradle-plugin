@@ -96,6 +96,7 @@ public class CycloneDxTask extends DefaultTask {
     private MavenHelper mavenHelper;
 
     private final Property<String> schemaVersion;
+    private final Property<String> componentName;
     private final Property<String> componentVersion;
     private final Property<String> outputName;
     private final Property<String> outputFormat;
@@ -129,6 +130,9 @@ public class CycloneDxTask extends DefaultTask {
 
         includeBomSerialNumber = getProject().getObjects().property(Boolean.class);
         includeBomSerialNumber.convention(true);
+
+        componentName = getProject().getObjects().property(String.class);
+        componentName.convention(getProject().getName());
 
         componentVersion = getProject().getObjects().property(String.class);
         componentVersion.convention(getProject().getVersion().toString());
@@ -170,6 +174,15 @@ public class CycloneDxTask extends DefaultTask {
 
     public void setIncludeConfigs(Collection<String> includeConfigs) {
         this.includeConfigs.addAll(includeConfigs);
+    }
+
+    @Input
+    public Property<String> getComponentName() {
+        return componentName;
+    }
+
+    public void setComponentName(String componentName) {
+        this.componentName.set(componentName);
     }
 
     @Input
@@ -523,7 +536,7 @@ public class CycloneDxTask extends DefaultTask {
 
         final Component component = new Component();
         component.setGroup((StringUtils.trimToNull(project.getGroup().toString()) != null) ? project.getGroup().toString() : null);
-        component.setName(project.getName());
+        component.setName(componentName.get());
         component.setVersion(componentVersion.get());
         component.setType(resolveProjectType());
         component.setPurl(generatePackageUrl(project));
