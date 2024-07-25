@@ -3,7 +3,7 @@ import java.util.Properties
 plugins {
     id("java-gradle-plugin")
     id("com.gradle.plugin-publish")  version "1.2.1"
-    id("org.cyclonedx.bom") version "1.8.2"
+    id("org.cyclonedx.bom") version "1.9.0"
     id("groovy")
 }
 
