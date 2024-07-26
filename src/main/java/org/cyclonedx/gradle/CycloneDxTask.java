@@ -48,7 +48,6 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
@@ -67,7 +66,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -77,6 +75,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class CycloneDxTask extends DefaultTask {
 
@@ -324,13 +323,9 @@ public class CycloneDxTask extends DefaultTask {
         Version version = computeSchemaVersion();
         logParameters();
         getLogger().info(MESSAGE_RESOLVING_DEPS);
-        final Set<String> builtDependencies = getProject()
-                .getSubprojects()
-                .stream()
-                .map(p -> p.getGroup() + ":" + p.getName() + ":" + p.getVersion())
-                .collect(Collectors.toSet());
+        final Set<String> builtDependencies = allBuiltProjects();
 
-        final Set<Component> components = new HashSet<>();
+        final Map<String, Component> components = new HashMap<>();
         final Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
 
         final Metadata metadata = createMetadata();
@@ -339,30 +334,18 @@ public class CycloneDxTask extends DefaultTask {
         org.cyclonedx.model.Dependency rootDependency = new org.cyclonedx.model.Dependency(generatePackageUrl(rootProject));
         dependencies.put(generatePackageUrl(rootProject), rootDependency);
 
+        Set<Project> projectsToScan = Stream.concat(Stream.of(rootProject), rootProject.getSubprojects().stream())
+            .filter(p -> !shouldSkipProject(p))
+            .collect(Collectors.toSet());
 
-        Set<Project> projectsToScan = new HashSet<>();
-        projectsToScan.add(rootProject);
-        projectsToScan.addAll(rootProject.getSubprojects());
-
-        projectsToScan.stream().filter(p -> !shouldSkipProject(p)).forEach(project -> {
+        projectsToScan.forEach(project -> {
             Set<Configuration> configurations = project.getConfigurations()
                 .stream()
                 .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && DependencyUtils.canBeResolved(configuration))
                 .collect(Collectors.toSet());
 
             String projectReference = generatePackageUrl(project);
-
-
-            if (!rootProject.equals(project)) {
-                rootDependency.addDependency(new org.cyclonedx.model.Dependency(projectReference));
-                // declare sub-project as component
-                components.add(generateProjectComponent(project, version));
-            }
-
             for (Configuration configuration : configurations) {
-                addLocalProjectDependenciesToBuiltDependencies(builtDependencies, configuration);
-
-                final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
                 final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
                 final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
 
@@ -390,40 +373,55 @@ public class CycloneDxTask extends DefaultTask {
                     if (v == null) {
                         return moduleDependency;
                     } else if (moduleDependency.getDependencies() != null) {
-                        moduleDependency.getDependencies().stream().forEach(v::addDependency);
+                        moduleDependency.getDependencies().forEach(v::addDependency);
                     }
                     return v;
                 });
 
                 resolvedConfiguration.getResolvedArtifacts().forEach(artifact -> {
-                    // Don't include other resources built from this Gradle project.
-                    final String dependencyName = DependencyUtils.getDependencyName(artifact);
+                    String dependencyName = DependencyUtils.getDependencyName(artifact);
                     if (builtDependencies.contains(dependencyName)) {
-                        return;
+                        // Resources built as part of this Gradle project will be added to the
+                        // components section but not the dependencies sections
+                        Component component = convertArtifact(artifact, version);
+                        components.putIfAbsent(component.getBomRef(), component);
+                    } else {
+                        // Resources not built as part of this Gradle project will be added to the
+                        // components and dependencies sections. They will also be augmented with
+                        // metadata from their poms
+                        Component component = convertArtifact(artifact, version);
+                        augmentComponentMetadata(artifact, component, dependencyName);
+                        components.putIfAbsent(component.getBomRef(), component);
+                        depsFromConfig.add(dependencyName);
                     }
-
-                    depsFromConfig.add(dependencyName);
-
-                    // Convert into a Component and augment with pom metadata if available.
-                    final Component component = convertArtifact(artifact, version);
-                    augmentComponentMetadata(component, dependencyName);
-                    componentsFromConfig.add(component);
                 });
                 Collections.sort(depsFromConfig);
-                components.addAll(componentsFromConfig);
             }
         });
-
-        writeBom(metadata, components, dependencies.values(), version);
+        addSubProjectsAsComponents(rootDependency, version, projectsToScan, components);
+        writeBom(metadata, new HashSet<>(components.values()), dependencies.values(), version);
     }
 
-    private void addLocalProjectDependenciesToBuiltDependencies(Set<String> builtDependencies, Configuration configuration) {
-        for (Dependency dependency : configuration.getAllDependencies()) {
-            if (dependency instanceof ProjectDependency) {
-                ProjectDependency projectDependency = (ProjectDependency) dependency;
-                Project project = projectDependency.getDependencyProject();
-                String dependencyId = projectDependency.getGroup() + ":" + projectDependency.getName() + ":" + project.getVersion();
-                builtDependencies.add(dependencyId);
+    private Set<String> allBuiltProjects() {
+        return getProject().getRootProject().getAllprojects().stream()
+            .filter(it -> !Objects.equals(it.getVersion(), "unspecified"))
+            .map(it -> it.getGroup() + ":" + it.getName() + ":" + it.getVersion())
+            .collect(Collectors.toSet());
+    }
+
+    private void addSubProjectsAsComponents(org.cyclonedx.model.Dependency rootDependency,
+                                            Version version,
+                                            Set<Project> projectsToScan,
+                                            Map<String, Component> components) {
+        Project rootProject = getProject();
+        for (Project project : projectsToScan) {
+            String projectReference = generatePackageUrl(project);
+            if (!rootProject.equals(project)) {
+                rootDependency.addDependency(new org.cyclonedx.model.Dependency(projectReference));
+                // declare sub-project as component
+                Component component = generateProjectComponent(project, version);
+                String bomRef = component.getBomRef();
+                components.putIfAbsent(bomRef, component);
             }
         }
     }
@@ -506,7 +504,13 @@ public class CycloneDxTask extends DefaultTask {
         return null;
     }
 
-    private void augmentComponentMetadata(Component component, String dependencyName) {
+    private void augmentComponentMetadata(ResolvedArtifact artifact, Component component, String dependencyName) {
+        if (!mavenHelper.isDescribedArtifact(artifact)) {
+            MavenProject project = mavenHelper.extractPom(artifact);
+            if (project != null) {
+                mavenHelper.getClosestMetadata(artifact, project, component);
+            }
+        }
         final MavenProject project = getResolvedMavenProject(dependencyName);
 
         if(project != null) {
@@ -618,14 +622,6 @@ public class CycloneDxTask extends DefaultTask {
             component.setModified(mavenHelper.isModified(artifact));
             component.setBomRef(packageUrl);
         }
-
-        if (mavenHelper.isDescribedArtifact(artifact)) {
-            final MavenProject project = mavenHelper.extractPom(artifact);
-            if (project != null) {
-                mavenHelper.getClosestMetadata(artifact, project, component);
-            }
-        }
-
         return component;
     }
 
@@ -774,6 +770,4 @@ public class CycloneDxTask extends DefaultTask {
             getLogger().info("------------------------------------------------------------------------");
         }
     }
-
-
 }

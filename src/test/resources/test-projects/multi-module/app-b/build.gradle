@@ -12,4 +12,5 @@ version = '1.0.0'
 
 dependencies {
     implementation group: 'org.springframework', name: 'spring-core', version: '5.3.16'
+    implementation(project(':app-a'))
 }
