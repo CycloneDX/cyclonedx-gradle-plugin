@@ -63,6 +63,8 @@ cyclonedxBom {
     includeBomSerialNumber = false
     // Exclude License Text. Defaults to 'true'
     includeLicenseText = false
+    // Include resolution of full metadata for components including licenses. Defaults to 'true'
+    includeMetadataResolution = true
     // Override component version. Defaults to the project version
     componentVersion = "2.0.0"
     // Override component name. Defaults to the project name
@@ -84,6 +86,7 @@ tasks.cyclonedxBom {
     setOutputFormat("json")
     setIncludeBomSerialNumber(false)
     setIncludeLicenseText(true)
+    setIncludeMetadataResolution(true)
     setComponentVersion("2.0.0")
     setComponentName("my-component")
 }

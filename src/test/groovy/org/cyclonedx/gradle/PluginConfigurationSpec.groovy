@@ -641,6 +641,67 @@ class PluginConfigurationSpec extends Specification {
         assert result.output.contains("Project group, name, and version must be set for the root project")
     }
 
+    def "should include metadata by default"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            dependencies {
+                implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.15.0'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        assert jsonBom.text.contains("\"id\" : \"Apache-2.0\"")
+    }
+
+    def "should not include metadata when includeMetadataResolution is false"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                includeMetadataResolution = false
+            }
+            dependencies {
+                implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.15.0'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        assert !jsonBom.text.contains("\"id\" : \"Apache-2.0\"")
+    }
+
     private static def loadJsonBom(File file) {
         return new JsonSlurper().parse(file)
     }
