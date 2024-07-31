@@ -106,6 +106,7 @@ public class CycloneDxTask extends DefaultTask {
     private final ListProperty<String> skipConfigs;
     private final ListProperty<String> skipProjects;
     private final Property<File> destination;
+    private final Property<Boolean> includeMetadataResolution;
     private OrganizationalEntity organizationalEntity;
     private LicenseChoice licenseChoice;
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
@@ -139,6 +140,9 @@ public class CycloneDxTask extends DefaultTask {
         includeConfigs = getProject().getObjects().listProperty(String.class);
         skipConfigs = getProject().getObjects().listProperty(String.class);
         skipProjects = getProject().getObjects().listProperty(String.class);
+
+        includeMetadataResolution = getProject().getObjects().property(Boolean.class);
+        includeMetadataResolution.convention(true);
 
         destination = getProject().getObjects().property(File.class);
         destination.convention(getProject().getLayout().getBuildDirectory().dir("reports").get().getAsFile());
@@ -245,6 +249,15 @@ public class CycloneDxTask extends DefaultTask {
 
     public void setIncludeBomSerialNumber(boolean includeBomSerialNumber) {
         this.includeBomSerialNumber.set(includeBomSerialNumber);
+    }
+
+    @Input
+    public Property<Boolean> getIncludeMetadataResolution() {
+        return includeMetadataResolution;
+    }
+
+    public void setIncludeMetadataResolution(boolean includeMetadataResolution) {
+        this.includeMetadataResolution.set(includeMetadataResolution);
     }
 
     @OutputDirectory
@@ -390,7 +403,9 @@ public class CycloneDxTask extends DefaultTask {
                         // components and dependencies sections. They will also be augmented with
                         // metadata from their poms
                         Component component = convertArtifact(artifact, version);
-                        augmentComponentMetadata(artifact, component, dependencyName);
+                        if (getIncludeMetadataResolution().get()) {
+                            augmentComponentMetadata(artifact, component, dependencyName);
+                        }
                         components.putIfAbsent(component.getBomRef(), component);
                         depsFromConfig.add(dependencyName);
                     }
@@ -759,14 +774,15 @@ public class CycloneDxTask extends DefaultTask {
         if (getLogger().isInfoEnabled()) {
             getLogger().info("CycloneDX: Parameters");
             getLogger().info("------------------------------------------------------------------------");
-            getLogger().info("schemaVersion          : " + schemaVersion.get());
-            getLogger().info("includeLicenseText     : " + includeLicenseText.get());
-            getLogger().info("includeBomSerialNumber : " + includeBomSerialNumber.get());
-            getLogger().info("includeConfigs         : " + includeConfigs.get());
-            getLogger().info("skipConfigs            : " + skipConfigs.get());
-            getLogger().info("skipProjects           : " + skipProjects.get());
-            getLogger().info("destination            : " + destination.get());
-            getLogger().info("outputName             : " + outputName.get());
+            getLogger().info("schemaVersion             : " + schemaVersion.get());
+            getLogger().info("includeLicenseText        : " + includeLicenseText.get());
+            getLogger().info("includeBomSerialNumber    : " + includeBomSerialNumber.get());
+            getLogger().info("includeConfigs            : " + includeConfigs.get());
+            getLogger().info("skipConfigs               : " + skipConfigs.get());
+            getLogger().info("skipProjects              : " + skipProjects.get());
+            getLogger().info("includeMetadataResolution : " + includeMetadataResolution.get());
+            getLogger().info("destination               : " + destination.get());
+            getLogger().info("outputName                : " + outputName.get());
             getLogger().info("------------------------------------------------------------------------");
         }
     }
