@@ -39,12 +39,13 @@ jobs:
           cache: "gradle"
 
       - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@5188e9b5527a0a094cee21e2fe9a8ca44b4629af
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Build with Gradle
-        uses: gradle/gradle-build-action@e2097ccd7e8ed48671dc068ac4efa86d25745b39
-        with:
-          arguments: build
+        run: ./gradlew build
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4.3.4
