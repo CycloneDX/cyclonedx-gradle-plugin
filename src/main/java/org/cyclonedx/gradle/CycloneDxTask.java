@@ -360,12 +360,8 @@ public class CycloneDxTask extends DefaultTask {
             String projectReference = generatePackageUrl(project);
             for (Configuration configuration : configurations) {
                 final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
-                final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
-
                 final org.cyclonedx.model.Dependency moduleDependency = new org.cyclonedx.model.Dependency(projectReference);
-
-                final Set<ResolvedDependency> directModuleDependencies = configuration.getResolvedConfiguration()
-                    .getFirstLevelModuleDependencies();
+                final Set<ResolvedDependency> directModuleDependencies = configuration.getResolvedConfiguration().getFirstLevelModuleDependencies();
 
                 while (directModuleDependencies.stream().anyMatch(this::dependencyWithoutJarArtifact)) {
                     Set<ResolvedDependency> depWithNoArtifacts = directModuleDependencies.stream()
@@ -407,10 +403,8 @@ public class CycloneDxTask extends DefaultTask {
                             augmentComponentMetadata(artifact, component, dependencyName);
                         }
                         components.putIfAbsent(component.getBomRef(), component);
-                        depsFromConfig.add(dependencyName);
                     }
                 });
-                Collections.sort(depsFromConfig);
             }
         });
         addSubProjectsAsComponents(rootDependency, version, projectsToScan, components);
