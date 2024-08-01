@@ -338,8 +338,8 @@ public class CycloneDxTask extends DefaultTask {
         getLogger().info(MESSAGE_RESOLVING_DEPS);
         final Set<String> builtDependencies = allBuiltProjects();
 
-        final Map<String, Component> components = new HashMap<>();
-        final Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
+        final Map<String, Component> components = new TreeMap<>();
+        final Map<String, org.cyclonedx.model.Dependency> dependencies = new TreeMap<>();
 
         final Metadata metadata = createMetadata();
         Project rootProject = getProject();
@@ -360,12 +360,8 @@ public class CycloneDxTask extends DefaultTask {
             String projectReference = generatePackageUrl(project);
             for (Configuration configuration : configurations) {
                 final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
-                final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
-
                 final org.cyclonedx.model.Dependency moduleDependency = new org.cyclonedx.model.Dependency(projectReference);
-
-                final Set<ResolvedDependency> directModuleDependencies = configuration.getResolvedConfiguration()
-                    .getFirstLevelModuleDependencies();
+                final Set<ResolvedDependency> directModuleDependencies = configuration.getResolvedConfiguration().getFirstLevelModuleDependencies();
 
                 while (directModuleDependencies.stream().anyMatch(this::dependencyWithoutJarArtifact)) {
                     Set<ResolvedDependency> depWithNoArtifacts = directModuleDependencies.stream()
@@ -393,24 +389,17 @@ public class CycloneDxTask extends DefaultTask {
 
                 resolvedConfiguration.getResolvedArtifacts().forEach(artifact -> {
                     String dependencyName = DependencyUtils.getDependencyName(artifact);
-                    if (builtDependencies.contains(dependencyName)) {
-                        // Resources built as part of this Gradle project will be added to the
-                        // components section but not the dependencies sections
-                        Component component = convertArtifact(artifact, version);
-                        components.putIfAbsent(component.getBomRef(), component);
-                    } else {
-                        // Resources not built as part of this Gradle project will be added to the
-                        // components and dependencies sections. They will also be augmented with
-                        // metadata from their poms
-                        Component component = convertArtifact(artifact, version);
-                        if (getIncludeMetadataResolution().get()) {
+                    Component component = convertArtifact(artifact, version);
+
+                    // Resources not built as part of this Gradle project will be augmented with metadata from their poms
+                    if (!builtDependencies.contains(dependencyName)) {
+                        if(getIncludeMetadataResolution().get()) {
                             augmentComponentMetadata(artifact, component, dependencyName);
                         }
-                        components.putIfAbsent(component.getBomRef(), component);
-                        depsFromConfig.add(dependencyName);
                     }
+
+                    components.putIfAbsent(component.getBomRef(), component);
                 });
-                Collections.sort(depsFromConfig);
             }
         });
         addSubProjectsAsComponents(rootDependency, version, projectsToScan, components);
