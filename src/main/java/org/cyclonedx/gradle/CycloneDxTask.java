@@ -389,21 +389,16 @@ public class CycloneDxTask extends DefaultTask {
 
                 resolvedConfiguration.getResolvedArtifacts().forEach(artifact -> {
                     String dependencyName = DependencyUtils.getDependencyName(artifact);
-                    if (builtDependencies.contains(dependencyName)) {
-                        // Resources built as part of this Gradle project will be added to the
-                        // components section but not the dependencies sections
-                        Component component = convertArtifact(artifact, version);
-                        components.putIfAbsent(component.getBomRef(), component);
-                    } else {
-                        // Resources not built as part of this Gradle project will be added to the
-                        // components and dependencies sections. They will also be augmented with
-                        // metadata from their poms
-                        Component component = convertArtifact(artifact, version);
-                        if (getIncludeMetadataResolution().get()) {
+                    Component component = convertArtifact(artifact, version);
+
+                    // Resources not built as part of this Gradle project will be augmented with metadata from their poms
+                    if (!builtDependencies.contains(dependencyName)) {
+                        if(getIncludeMetadataResolution().get()) {
                             augmentComponentMetadata(artifact, component, dependencyName);
                         }
-                        components.putIfAbsent(component.getBomRef(), component);
                     }
+
+                    components.putIfAbsent(component.getBomRef(), component);
                 });
             }
         });
