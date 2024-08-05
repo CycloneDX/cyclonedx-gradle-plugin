@@ -32,16 +32,16 @@ jobs:
           settings-path: "${{ github.workspace }}" # location for the settings.xml file
 
       - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v3
+        uses: gradle/actions/wrapper-validation@v4
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Build with Gradle
         run: ./gradlew build
 
       - name: Publish to Gradle portal
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
         with:
           arguments: |-
             publishPlugin
