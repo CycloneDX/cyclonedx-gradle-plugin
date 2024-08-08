@@ -38,11 +38,8 @@ jobs:
           java-version: "${{ matrix.java-version }}"
           cache: "gradle"
 
-      - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v3
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4.0.0
 
       - name: Build with Gradle
         run: ./gradlew build
@@ -52,3 +49,16 @@ jobs:
         with:
           name: assembled-plugin-jdk_${{ matrix.java-version }}
           path: build/
+
+  dependency-submission:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.7
+      - name: Setup Java
+        uses: actions/setup-java@v4.2.1
+        with:
+          distribution: 'temurin'
+          java-version: 8
+      - name: Generate and submit dependency graph
+        uses: gradle/actions/dependency-submission@v4.0.0
