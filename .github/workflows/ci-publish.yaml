@@ -31,20 +31,14 @@ jobs:
           server-id: "github" # Value of the distributionManagement/repository/id field of the pom.xml
           settings-path: "${{ github.workspace }}" # location for the settings.xml file
 
-      - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v3
-
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4.0.0
 
       - name: Build with Gradle
         run: ./gradlew build
 
       - name: Publish to Gradle portal
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          arguments: |-
-            publishPlugin
+        run: |-
+            ./gradlew publishPlugin
             -Pgradle.publish.key=${{ secrets.GRADLE_PUBLISH_KEY }}
             -Pgradle.publish.secret=${{ secrets.GRADLE_PUBLISH_SECRET }}
-
