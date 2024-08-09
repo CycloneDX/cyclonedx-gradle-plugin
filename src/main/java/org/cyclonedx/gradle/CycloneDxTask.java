@@ -60,6 +60,7 @@ import org.gradle.api.tasks.TaskAction;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -564,8 +565,12 @@ public class CycloneDxTask extends DefaultTask {
 
     private Properties readPluginProperties() {
         final Properties props = new Properties();
-        try {
-            props.load(this.getClass().getResourceAsStream("plugin.properties"));
+        try (InputStream inputStream = this.getClass().getResourceAsStream("plugin.properties")) {
+            if (inputStream == null) {
+                getLogger().warn("Failed to locate plugin.properties");
+            } else {
+                props.load(inputStream);
+            }
         } catch (NullPointerException | IOException e) {
             getLogger().warn("Unable to load plugin.properties", e);
         }
