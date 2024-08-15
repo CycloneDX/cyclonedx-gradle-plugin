@@ -734,14 +734,13 @@ public class CycloneDxTask extends DefaultTask {
 
     private void writeJSONBom(final Version schemaVersion, final Bom bom) throws IOException {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
-        final String bomString = bomGenerator.toJsonString();
-        final File bomFile = new File(getDestination().get(), getOutputName().get() + ".json");
-        getLogger().info(MESSAGE_WRITING_BOM_JSON);
-        FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
-        getLogger().info(MESSAGE_VALIDATING_BOM);
-
-        final Parser bomParser = new JsonParser();
         try {
+            final String bomString = bomGenerator.toJsonString();
+            final File bomFile = new File(getDestination().get(), getOutputName().get() + ".json");
+            getLogger().info(MESSAGE_WRITING_BOM_JSON);
+            FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
+            getLogger().info(MESSAGE_VALIDATING_BOM);
+            final Parser bomParser = new JsonParser();
             final List<ParseException> exceptions = bomParser.validate(bomFile, schemaVersion);
             exceptions.forEach(it -> getLogger().error(it.getMessage()));
             if (!exceptions.isEmpty()) {

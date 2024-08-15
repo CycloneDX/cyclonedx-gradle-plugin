@@ -19,7 +19,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.cyclonedx:cyclonedx-core-java:9.0.4") {
+    implementation("org.cyclonedx:cyclonedx-core-java:9.0.5") {
         exclude(group = "org.apache.logging.log4j", module ="log4j-slf4j-impl")
     }
 
