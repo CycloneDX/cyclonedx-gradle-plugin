@@ -170,7 +170,7 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     public void setIncludeConfigs(Collection<String> includeConfigs) {
-        this.includeConfigs.addAll(includeConfigs);
+        this.includeConfigs.set(includeConfigs);
     }
 
     @Input
@@ -188,7 +188,7 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     public void setSkipConfigs(Collection<String> skipConfigs) {
-        this.skipConfigs.addAll(skipConfigs);
+        this.skipConfigs.set(skipConfigs);
     }
 
     @Input
@@ -197,7 +197,7 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     public void setSkipProjects(Collection<String> skipProjects) {
-        this.skipProjects.addAll(skipProjects);
+        this.skipProjects.set(skipProjects);
     }
 
     @Input
