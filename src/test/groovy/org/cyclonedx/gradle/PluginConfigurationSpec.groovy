@@ -310,6 +310,49 @@ class PluginConfigurationSpec extends Specification {
         assert !jsonBom.text.contains("serialNumber")
     }
 
+    def "kotlin-dsl-project default config should not contain testImplementation"() {
+        given:
+        File testDir = TestUtils.duplicate("kotlin-project")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--info", "-S")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        //  result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        assert !jsonBom.text.contains("commons-compress")
+    }
+
+    def "kotlin-dsl-project setting value with default value should be overwritten"() {
+        given:
+        File testDir = TestUtils.duplicate("kotlin-project-overwriting-default-value")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--info", "-S")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        //  result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+        println result.getOutput()
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        assert jsonBom.text.contains("commons-compress")
+    }
+
     def "kotlin-dsl-project-manufacture-licenses should allow definition of manufacture-data and licenses-data"() {
         given:
         File testDir = TestUtils.duplicate("kotlin-project-manufacture-licenses")

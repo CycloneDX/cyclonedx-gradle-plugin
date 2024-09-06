@@ -18,5 +18,6 @@ dependencies {
 }
 
 tasks.cyclonedxBom {
+    setIncludeConfigs(listOf())
     setIncludeBomSerialNumber(false)
 }

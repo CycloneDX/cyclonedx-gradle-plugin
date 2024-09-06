@@ -52,7 +52,6 @@ import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
-import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
@@ -135,6 +134,7 @@ public class CycloneDxTask extends DefaultTask {
         componentVersion.convention(getProject().getVersion().toString());
 
         includeConfigs = getProject().getObjects().listProperty(String.class);
+        includeConfigs.addAll("runtimeClasspath", "compileClasspath", "annotationProcessor");
         skipConfigs = getProject().getObjects().listProperty(String.class);
         skipProjects = getProject().getObjects().listProperty(String.class);
 
