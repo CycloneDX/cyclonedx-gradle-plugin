@@ -18,9 +18,9 @@
  */
 package org.cyclonedx.gradle
 
+import org.cyclonedx.model.Metadata
 import org.gradle.testfixtures.ProjectBuilder
 import spock.lang.Specification
-import org.cyclonedx.model.Metadata
 
 class CycloneDxSpec extends Specification {
     static final String PLUGIN_ID = 'org.cyclonedx.bom'

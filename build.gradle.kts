@@ -1,10 +1,11 @@
-import java.util.Properties
+import java.util.*
 
 plugins {
     id("java-gradle-plugin")
     id("com.gradle.plugin-publish")  version "1.2.1"
     id("org.cyclonedx.bom") version "1.10.0"
     id("groovy")
+    id("com.diffplug.spotless") version "6.13.0"
 }
 
 val organization = "CycloneDX"
@@ -20,7 +21,7 @@ repositories {
 
 dependencies {
     implementation("org.cyclonedx:cyclonedx-core-java:9.0.5") {
-        exclude(group = "org.apache.logging.log4j", module ="log4j-slf4j-impl")
+        exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j-impl")
     }
 
     implementation("commons-codec:commons-codec:1.17.1")
@@ -69,3 +70,31 @@ gradlePlugin {
     }
 }
 
+spotless {
+    java {
+        var palantirVersion = "1.1.0"
+        if (JavaVersion.current() == JavaVersion.VERSION_21) {
+            palantirVersion = "2.50.0"
+        }
+        palantirJavaFormat(palantirVersion)
+        formatAnnotations()
+        licenseHeader("/*\n" +
+            " * This file is part of CycloneDX Gradle Plugin.\n" +
+            " *\n" +
+            " * Licensed under the Apache License, Version 2.0 (the \"License\");\n" +
+            " * you may not use this file except in compliance with the License.\n" +
+            " * You may obtain a copy of the License at\n" +
+            " *\n" +
+            " *     http://www.apache.org/licenses/LICENSE-2.0\n" +
+            " *\n" +
+            " * Unless required by applicable law or agreed to in writing, software\n" +
+            " * distributed under the License is distributed on an \"AS IS\" BASIS,\n" +
+            " * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n" +
+            " * See the License for the specific language governing permissions and\n" +
+            " * limitations under the License.\n" +
+            " *\n" +
+            " * SPDX-License-Identifier: Apache-2.0\n" +
+            " * Copyright (c) OWASP Foundation. All Rights Reserved.\n" +
+            " */")
+    }
+}
