@@ -20,54 +20,15 @@ package org.cyclonedx.gradle;
 
 import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.maven.model.Model;
-import org.apache.maven.project.MavenProject;
-import org.cyclonedx.BomGeneratorFactory;
-import org.cyclonedx.CycloneDxSchema;
-import org.cyclonedx.exception.GeneratorException;
-import org.cyclonedx.exception.ParseException;
-import org.cyclonedx.generators.json.BomJsonGenerator;
-import org.cyclonedx.generators.xml.BomXmlGenerator;
-import org.cyclonedx.gradle.utils.CycloneDxUtils;
-import org.cyclonedx.gradle.utils.DependencyUtils;
-import org.cyclonedx.model.Hash;
-import org.cyclonedx.model.Metadata;
-import org.cyclonedx.model.Tool;
-import org.cyclonedx.model.OrganizationalEntity;
-import org.cyclonedx.model.LicenseChoice;
-import org.cyclonedx.model.Component;
-import org.cyclonedx.model.Bom;
-import org.cyclonedx.parsers.JsonParser;
-import org.cyclonedx.parsers.Parser;
-import org.cyclonedx.parsers.XmlParser;
-import org.cyclonedx.util.BomUtils;
-import org.gradle.api.DefaultTask;
-import org.gradle.api.GradleException;
-import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.ProjectDependency;
-import org.gradle.api.artifacts.ResolvedArtifact;
-import org.gradle.api.artifacts.ResolvedConfiguration;
-import org.gradle.api.artifacts.ResolvedDependency;
-import org.gradle.api.provider.ListProperty;
-import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.OutputDirectory;
-import org.gradle.api.tasks.TaskAction;
-
-import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -77,6 +38,45 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.annotation.Nullable;
+import javax.xml.parsers.ParserConfigurationException;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.maven.model.Model;
+import org.apache.maven.project.MavenProject;
+import org.cyclonedx.Version;
+import org.cyclonedx.exception.GeneratorException;
+import org.cyclonedx.exception.ParseException;
+import org.cyclonedx.generators.BomGeneratorFactory;
+import org.cyclonedx.generators.json.BomJsonGenerator;
+import org.cyclonedx.generators.xml.BomXmlGenerator;
+import org.cyclonedx.gradle.utils.CycloneDxUtils;
+import org.cyclonedx.gradle.utils.DependencyUtils;
+import org.cyclonedx.model.Bom;
+import org.cyclonedx.model.Component;
+import org.cyclonedx.model.Hash;
+import org.cyclonedx.model.LicenseChoice;
+import org.cyclonedx.model.Metadata;
+import org.cyclonedx.model.OrganizationalEntity;
+import org.cyclonedx.model.Tool;
+import org.cyclonedx.parsers.JsonParser;
+import org.cyclonedx.parsers.Parser;
+import org.cyclonedx.parsers.XmlParser;
+import org.cyclonedx.util.BomUtils;
+import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
+import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ResolvedArtifact;
+import org.gradle.api.artifacts.ResolvedConfiguration;
+import org.gradle.api.artifacts.ResolvedDependency;
+import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.TaskAction;
 
 public class CycloneDxTask extends DefaultTask {
 
@@ -84,6 +84,7 @@ public class CycloneDxTask extends DefaultTask {
      * Various messages sent to console.
      */
     private static final String MESSAGE_RESOLVING_DEPS = "CycloneDX: Resolving Dependencies";
+
     private static final String MESSAGE_CREATING_BOM = "CycloneDX: Creating BOM";
     private static final String MESSAGE_CALCULATING_HASHES = "CycloneDX: Calculating Hashes";
     private static final String MESSAGE_WRITING_BOM_XML = "CycloneDX: Writing BOM XML";
@@ -96,6 +97,7 @@ public class CycloneDxTask extends DefaultTask {
     private MavenHelper mavenHelper;
 
     private final Property<String> schemaVersion;
+    private final Property<String> componentName;
     private final Property<String> componentVersion;
     private final Property<String> outputName;
     private final Property<String> outputFormat;
@@ -106,6 +108,7 @@ public class CycloneDxTask extends DefaultTask {
     private final ListProperty<String> skipConfigs;
     private final ListProperty<String> skipProjects;
     private final Property<File> destination;
+    private final Property<Boolean> includeMetadataResolution;
     private OrganizationalEntity organizationalEntity;
     private LicenseChoice licenseChoice;
     private final Map<File, List<Hash>> artifactHashes = Collections.synchronizedMap(new HashMap<>());
@@ -130,6 +133,9 @@ public class CycloneDxTask extends DefaultTask {
         includeBomSerialNumber = getProject().getObjects().property(Boolean.class);
         includeBomSerialNumber.convention(true);
 
+        componentName = getProject().getObjects().property(String.class);
+        componentName.convention(getProject().getName());
+
         componentVersion = getProject().getObjects().property(String.class);
         componentVersion.convention(getProject().getVersion().toString());
 
@@ -138,8 +144,16 @@ public class CycloneDxTask extends DefaultTask {
         skipConfigs = getProject().getObjects().listProperty(String.class);
         skipProjects = getProject().getObjects().listProperty(String.class);
 
+        includeMetadataResolution = getProject().getObjects().property(Boolean.class);
+        includeMetadataResolution.convention(true);
+
         destination = getProject().getObjects().property(File.class);
-        destination.convention(getProject().getLayout().getBuildDirectory().dir("reports").get().getAsFile());
+        destination.convention(getProject()
+                .getLayout()
+                .getBuildDirectory()
+                .dir("reports")
+                .get()
+                .getAsFile());
 
         organizationalEntity = new OrganizationalEntity();
 
@@ -171,6 +185,15 @@ public class CycloneDxTask extends DefaultTask {
 
     public void setIncludeConfigs(Collection<String> includeConfigs) {
         this.includeConfigs.set(includeConfigs);
+    }
+
+    @Input
+    public Property<String> getComponentName() {
+        return componentName;
+    }
+
+    public void setComponentName(String componentName) {
+        this.componentName.set(componentName);
     }
 
     @Input
@@ -236,6 +259,15 @@ public class CycloneDxTask extends DefaultTask {
         this.includeBomSerialNumber.set(includeBomSerialNumber);
     }
 
+    @Input
+    public Property<Boolean> getIncludeMetadataResolution() {
+        return includeMetadataResolution;
+    }
+
+    public void setIncludeMetadataResolution(boolean includeMetadataResolution) {
+        this.includeMetadataResolution.set(includeMetadataResolution);
+    }
+
     @OutputDirectory
     public Property<File> getDestination() {
         return destination;
@@ -245,127 +277,141 @@ public class CycloneDxTask extends DefaultTask {
         this.destination.set(destination);
     }
 
-    public void setOrganizationalEntity(Consumer<OrganizationalEntity> customizer){
+    public void setOrganizationalEntity(Consumer<OrganizationalEntity> customizer) {
         OrganizationalEntity origin = new OrganizationalEntity();
         customizer.accept(origin);
         this.organizationalEntity = origin;
 
-        Map<String,String> organizationalEntity = new HashMap<>();
+        Map<String, String> organizationalEntity = new HashMap<>();
 
         organizationalEntity.put("name", this.organizationalEntity.getName());
-        if(this.organizationalEntity.getUrls() !=null){
-            for(int i = 0; i < this.organizationalEntity.getUrls().size();i++){
-                organizationalEntity.put("url"+i,this.organizationalEntity.getUrls().get(i));
+        if (this.organizationalEntity.getUrls() != null) {
+            for (int i = 0; i < this.organizationalEntity.getUrls().size(); i++) {
+                organizationalEntity.put(
+                        "url" + i, this.organizationalEntity.getUrls().get(i));
             }
         }
-        if(this.organizationalEntity.getContacts() != null){
-            for (int i = 0; i < this.organizationalEntity.getContacts().size();i++){
-                organizationalEntity.put("contact_name"+i,this.organizationalEntity.getContacts().get(i).getName());
-                organizationalEntity.put("contact_email"+i,this.organizationalEntity.getContacts().get(i).getEmail());
-                organizationalEntity.put("contact_phone"+i,this.organizationalEntity.getContacts().get(i).getPhone());
+        if (this.organizationalEntity.getContacts() != null) {
+            for (int i = 0; i < this.organizationalEntity.getContacts().size(); i++) {
+                organizationalEntity.put(
+                        "contact_name" + i,
+                        this.organizationalEntity.getContacts().get(i).getName());
+                organizationalEntity.put(
+                        "contact_email" + i,
+                        this.organizationalEntity.getContacts().get(i).getEmail());
+                organizationalEntity.put(
+                        "contact_phone" + i,
+                        this.organizationalEntity.getContacts().get(i).getPhone());
             }
         }
-        //Definition of gradle Input via Hashmap because Hashmap is serializable (OrganizationalEntity isn't serializable)
+        // Definition of gradle Input via Hashmap because Hashmap is serializable
+        // (OrganizationalEntity isn't serializable)
         getInputs().property("OrganizationalEntity", organizationalEntity);
     }
 
-    public void setLicenseChoice(Consumer<LicenseChoice> customizer){
+    public void setLicenseChoice(Consumer<LicenseChoice> customizer) {
         LicenseChoice origin = new LicenseChoice();
         customizer.accept(origin);
         this.licenseChoice = origin;
 
-        Map<String,String> licenseChoice = new HashMap<>();
+        Map<String, String> licenseChoice = new HashMap<>();
 
-        if(this.licenseChoice.getLicenses() != null){
-            for (int i = 0; i < this.licenseChoice.getLicenses().size();i++){
-                if (this.licenseChoice.getLicenses().get(i).getName() != null){
-                    licenseChoice.put("licenseChoice"+i+"name",this.licenseChoice.getLicenses().get(i).getName());
+        if (this.licenseChoice.getLicenses() != null) {
+            for (int i = 0; i < this.licenseChoice.getLicenses().size(); i++) {
+                if (this.licenseChoice.getLicenses().get(i).getName() != null) {
+                    licenseChoice.put(
+                            "licenseChoice" + i + "name",
+                            this.licenseChoice.getLicenses().get(i).getName());
                 }
-                if (this.licenseChoice.getLicenses().get(i).getId() != null){
-                    licenseChoice.put("licenseChoice"+i+"id",this.licenseChoice.getLicenses().get(i).getId());
+                if (this.licenseChoice.getLicenses().get(i).getId() != null) {
+                    licenseChoice.put(
+                            "licenseChoice" + i + "id",
+                            this.licenseChoice.getLicenses().get(i).getId());
                 }
-                licenseChoice.put("licenseChoice"+i+"text",this.licenseChoice.getLicenses().get(i).getAttachmentText().getText());
-                licenseChoice.put("licenseChoice"+i+"url",this.licenseChoice.getLicenses().get(i).getUrl());
+                licenseChoice.put(
+                        "licenseChoice" + i + "text",
+                        this.licenseChoice
+                                .getLicenses()
+                                .get(i)
+                                .getAttachmentText()
+                                .getText());
+                licenseChoice.put(
+                        "licenseChoice" + i + "url",
+                        this.licenseChoice.getLicenses().get(i).getUrl());
             }
         }
 
-        if(this.licenseChoice.getExpression() != null){
-            licenseChoice.put("licenseChoice_Expression",this.licenseChoice.getExpression());
+        if (this.licenseChoice.getExpression() != null) {
+            licenseChoice.put(
+                    "licenseChoice_Expression",
+                    this.licenseChoice.getExpression().getValue());
         }
-        //Definition of gradle Input via Hashmap because Hashmap is serializable (LicenseChoice isn't serializable)
+        // Definition of gradle Input via Hashmap because Hashmap is serializable
+        // (LicenseChoice isn't serializable)
         getInputs().property("LicenseChoice", licenseChoice);
     }
 
     @TaskAction
     public void createBom() {
         if (!outputFormat.get().trim().equalsIgnoreCase("all")
-            && !outputFormat.get().trim().equalsIgnoreCase("xml")
-            && !outputFormat.get().trim().equalsIgnoreCase("json")) {
+                && !outputFormat.get().trim().equalsIgnoreCase("xml")
+                && !outputFormat.get().trim().equalsIgnoreCase("json")) {
             throw new GradleException("Unsupported output format. Must be one of all, xml, or json");
         }
+        if (getProject().getGroup().equals("")
+                || getProject().getName().isEmpty()
+                || getProject().getVersion().equals("")) {
+            throw new GradleException("Project group, name, and version must be set for the root project");
+        }
 
-        CycloneDxSchema.Version version = computeSchemaVersion();
+        Version version = computeSchemaVersion();
         logParameters();
         getLogger().info(MESSAGE_RESOLVING_DEPS);
-        final Set<String> builtDependencies = getProject()
-                .getSubprojects()
-                .stream()
-                .map(p -> p.getGroup() + ":" + p.getName() + ":" + p.getVersion())
-                .collect(Collectors.toSet());
+        final Set<String> builtDependencies = allBuiltProjects();
 
-        final Set<Component> components = new HashSet<>();
-        final Map<String, org.cyclonedx.model.Dependency> dependencies = new HashMap<>();
+        final Map<String, Component> components = new TreeMap<>();
+        final Map<String, org.cyclonedx.model.Dependency> dependencies = new TreeMap<>();
 
         final Metadata metadata = createMetadata();
         Project rootProject = getProject();
 
-        org.cyclonedx.model.Dependency rootDependency = new org.cyclonedx.model.Dependency(generatePackageUrl(rootProject));
+        org.cyclonedx.model.Dependency rootDependency =
+                new org.cyclonedx.model.Dependency(generatePackageUrl(rootProject));
         dependencies.put(generatePackageUrl(rootProject), rootDependency);
 
-
-        Set<Project> projectsToScan = new HashSet<>();
-        projectsToScan.add(rootProject);
-        projectsToScan.addAll(rootProject.getSubprojects());
-
-        projectsToScan.stream().filter(p -> !shouldSkipProject(p)).forEach(project -> {
-            Set<Configuration> configurations = project.getConfigurations()
-                .stream()
-                .filter(configuration -> shouldIncludeConfiguration(configuration) && !shouldSkipConfiguration(configuration) && DependencyUtils.canBeResolved(configuration))
+        Set<Project> projectsToScan = Stream.concat(Stream.of(rootProject), rootProject.getSubprojects().stream())
+                .filter(p -> !shouldSkipProject(p))
                 .collect(Collectors.toSet());
 
+        projectsToScan.forEach(project -> {
+            Set<Configuration> configurations = project.getConfigurations().stream()
+                    .filter(configuration -> shouldIncludeConfiguration(configuration)
+                            && !shouldSkipConfiguration(configuration)
+                            && DependencyUtils.canBeResolved(configuration))
+                    .collect(Collectors.toSet());
+
             String projectReference = generatePackageUrl(project);
-
-
-            if (!rootProject.equals(project)) {
-                rootDependency.addDependency(new org.cyclonedx.model.Dependency(projectReference));
-                // declare sub-project as component
-                components.add(generateProjectComponent(project, version));
-            }
-
             for (Configuration configuration : configurations) {
-                addLocalProjectDependenciesToBuiltDependencies(builtDependencies, configuration);
-
-                final Set<Component> componentsFromConfig = Collections.synchronizedSet(new LinkedHashSet<>());
                 final ResolvedConfiguration resolvedConfiguration = configuration.getResolvedConfiguration();
-                final List<String> depsFromConfig = Collections.synchronizedList(new ArrayList<>());
-
-                final org.cyclonedx.model.Dependency moduleDependency = new org.cyclonedx.model.Dependency(projectReference);
-
-                final Set<ResolvedDependency> directModuleDependencies = configuration.getResolvedConfiguration()
-                    .getFirstLevelModuleDependencies();
+                final org.cyclonedx.model.Dependency moduleDependency =
+                        new org.cyclonedx.model.Dependency(projectReference);
+                final Set<ResolvedDependency> directModuleDependencies =
+                        configuration.getResolvedConfiguration().getFirstLevelModuleDependencies();
 
                 while (directModuleDependencies.stream().anyMatch(this::dependencyWithoutJarArtifact)) {
                     Set<ResolvedDependency> depWithNoArtifacts = directModuleDependencies.stream()
-                        .filter(this::dependencyWithoutJarArtifact).collect(Collectors.toSet());
+                            .filter(this::dependencyWithoutJarArtifact)
+                            .collect(Collectors.toSet());
 
                     directModuleDependencies.removeAll(depWithNoArtifacts);
                     depWithNoArtifacts.forEach(dmd -> directModuleDependencies.addAll(dmd.getChildren()));
                 }
 
                 for (ResolvedDependency directModuleDependency : directModuleDependencies) {
-                    ResolvedArtifact directJarArtifact = getJarArtifact(directModuleDependency);
+                    @Nullable ResolvedArtifact directJarArtifact = getJarOrZipArtifact(directModuleDependency);
                     if (directJarArtifact != null) {
-                        moduleDependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(directJarArtifact)));
+                        moduleDependency.addDependency(
+                                new org.cyclonedx.model.Dependency(generatePackageUrl(directJarArtifact)));
                         buildDependencyGraph(dependencies, directModuleDependency, directJarArtifact);
                     }
                 }
@@ -373,67 +419,83 @@ public class CycloneDxTask extends DefaultTask {
                     if (v == null) {
                         return moduleDependency;
                     } else if (moduleDependency.getDependencies() != null) {
-                        moduleDependency.getDependencies().stream().forEach(v::addDependency);
+                        moduleDependency.getDependencies().forEach(v::addDependency);
                     }
                     return v;
                 });
 
                 resolvedConfiguration.getResolvedArtifacts().forEach(artifact -> {
-                    // Don't include other resources built from this Gradle project.
-                    final String dependencyName = DependencyUtils.getDependencyName(artifact);
-                    if (builtDependencies.contains(dependencyName)) {
-                        return;
+                    String dependencyName = DependencyUtils.getDependencyName(artifact);
+                    Component component = convertArtifact(artifact, version);
+
+                    // Resources not built as part of this Gradle project will be augmented with
+                    // metadata from their poms
+                    if (!builtDependencies.contains(dependencyName)) {
+                        if (getIncludeMetadataResolution().get()) {
+                            augmentComponentMetadata(artifact, component, dependencyName);
+                        }
                     }
 
-                    depsFromConfig.add(dependencyName);
-
-                    // Convert into a Component and augment with pom metadata if available.
-                    final Component component = convertArtifact(artifact, version);
-                    augmentComponentMetadata(component, dependencyName);
-                    componentsFromConfig.add(component);
+                    components.putIfAbsent(component.getBomRef(), component);
                 });
-                Collections.sort(depsFromConfig);
-                components.addAll(componentsFromConfig);
             }
         });
-
-        writeBom(metadata, components, dependencies.values(), version);
+        addSubProjectsAsComponents(rootDependency, version, projectsToScan, components);
+        writeBom(metadata, new HashSet<>(components.values()), dependencies.values(), version);
     }
 
-    private void addLocalProjectDependenciesToBuiltDependencies(Set<String> builtDependencies, Configuration configuration) {
-        for (Dependency dependency : configuration.getAllDependencies()) {
-            if (dependency instanceof ProjectDependency) {
-                ProjectDependency projectDependency = (ProjectDependency) dependency;
-                Project project = projectDependency.getDependencyProject();
-                String dependencyId = projectDependency.getGroup() + ":" + projectDependency.getName() + ":" + project.getVersion();
-                builtDependencies.add(dependencyId);
+    private Set<String> allBuiltProjects() {
+        return getProject().getRootProject().getAllprojects().stream()
+                .filter(it -> !Objects.equals(it.getVersion(), "unspecified"))
+                .map(it -> it.getGroup() + ":" + it.getName() + ":" + it.getVersion())
+                .collect(Collectors.toSet());
+    }
+
+    private void addSubProjectsAsComponents(
+            org.cyclonedx.model.Dependency rootDependency,
+            Version version,
+            Set<Project> projectsToScan,
+            Map<String, Component> components) {
+        Project rootProject = getProject();
+        for (Project project : projectsToScan) {
+            String projectReference = generatePackageUrl(project);
+            if (!rootProject.equals(project)) {
+                rootDependency.addDependency(new org.cyclonedx.model.Dependency(projectReference));
+                // declare sub-project as component
+                Component component = generateProjectComponent(project, version);
+                String bomRef = component.getBomRef();
+                components.putIfAbsent(bomRef, component);
             }
         }
     }
 
     private boolean dependencyWithoutJarArtifact(ResolvedDependency dependency) {
-        return getJarArtifact(dependency) == null;
+        return getJarOrZipArtifact(dependency) == null;
     }
 
-    private CycloneDxSchema.Version computeSchemaVersion() {
-        CycloneDxSchema.Version version = CycloneDxUtils.schemaVersion(getSchemaVersion().get());
-        mavenHelper = new MavenHelper(getLogger(), version, getIncludeLicenseText().get());
-        if (version == CycloneDxSchema.Version.VERSION_10) {
+    private Version computeSchemaVersion() {
+        Version version = CycloneDxUtils.schemaVersion(getSchemaVersion().get());
+        mavenHelper =
+                new MavenHelper(getLogger(), version, getIncludeLicenseText().get());
+        if (version == Version.VERSION_10) {
             setIncludeBomSerialNumber(false);
         }
         return version;
     }
 
-    private Map<String, org.cyclonedx.model.Dependency> buildDependencyGraph(Map<String, org.cyclonedx.model.Dependency> dependenciesSoFar, ResolvedDependency resolvedDependency, ResolvedArtifact jarArtifact) {
+    private Map<String, org.cyclonedx.model.Dependency> buildDependencyGraph(
+            Map<String, org.cyclonedx.model.Dependency> dependenciesSoFar,
+            ResolvedDependency resolvedDependency,
+            ResolvedArtifact jarArtifact) {
         String dependencyPurl = generatePackageUrl(jarArtifact);
         org.cyclonedx.model.Dependency dependency = new org.cyclonedx.model.Dependency(dependencyPurl);
-        if (dependenciesSoFar.containsKey(dependencyPurl)){
+        if (dependenciesSoFar.containsKey(dependencyPurl)) {
             return dependenciesSoFar;
         }
         dependenciesSoFar.put(dependencyPurl, dependency);
 
         for (ResolvedDependency childDependency : resolvedDependency.getChildren()) {
-            ResolvedArtifact childJarArtifact = getJarArtifact(childDependency);
+            @Nullable ResolvedArtifact childJarArtifact = getJarOrZipArtifact(childDependency);
             if (childJarArtifact != null) {
                 dependency.addDependency(new org.cyclonedx.model.Dependency(generatePackageUrl(childJarArtifact)));
                 buildDependencyGraph(dependenciesSoFar, childDependency, childJarArtifact);
@@ -442,9 +504,11 @@ public class CycloneDxTask extends DefaultTask {
         return dependenciesSoFar;
     }
 
-    private ResolvedArtifact getJarArtifact(ResolvedDependency dependency) {
-        for(ResolvedArtifact artifact : dependency.getModuleArtifacts()) {
-            if (Objects.equals(artifact.getType(), "jar") || Objects.equals(artifact.getType(), "aar"))  {
+    @Nullable private ResolvedArtifact getJarOrZipArtifact(ResolvedDependency dependency) {
+        for (ResolvedArtifact artifact : dependency.getModuleArtifacts()) {
+            if (Objects.equals(artifact.getType(), "jar")
+                    || Objects.equals(artifact.getType(), "aar")
+                    || Objects.equals(artifact.getType(), "zip")) {
                 return artifact;
             }
         }
@@ -452,29 +516,26 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     /**
-     * @param dependencyName coordinate of a module dependency in the group:name:version format
+     * @param dependencyName
+     *            coordinate of a module dependency in the group:name:version format
      * @return the resolved maven POM file, or null upon resolve error
      */
-    private MavenProject getResolvedMavenProject(String dependencyName) {
-        synchronized(resolvedMavenProjects) {
-            if(resolvedMavenProjects.containsKey(dependencyName)) {
+    @Nullable private MavenProject getResolvedMavenProject(String dependencyName) {
+        synchronized (resolvedMavenProjects) {
+            if (resolvedMavenProjects.containsKey(dependencyName)) {
                 return resolvedMavenProjects.get(dependencyName);
             }
         }
-        final Dependency pomDep = getProject()
-            .getDependencies()
-            .create(dependencyName + "@pom");
-        final Configuration pomCfg = getProject()
-            .getConfigurations()
-            .detachedConfiguration(pomDep);
+        final Dependency pomDep = getProject().getDependencies().create(dependencyName + "@pom");
+        final Configuration pomCfg = getProject().getConfigurations().detachedConfiguration(pomDep);
 
         try {
-            final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
-            if(pomFile != null) {
-                final MavenProject project = mavenHelper.readPom(pomFile);
+            @Nullable final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);
+            if (pomFile != null) {
+                @Nullable final MavenProject project = mavenHelper.readPom(pomFile);
                 resolvedMavenProjects.put(dependencyName, project);
                 if (project != null) {
-                    Model model = mavenHelper.resolveEffectivePom(pomFile, getProject());
+                    @Nullable Model model = mavenHelper.resolveEffectivePom(pomFile, getProject());
                     if (model != null) {
                         project.setLicenses(model.getLicenses());
                     }
@@ -482,18 +543,24 @@ public class CycloneDxTask extends DefaultTask {
                     return project;
                 }
             }
-        } catch(Exception err) {
+        } catch (Exception err) {
             getLogger().error("Unable to resolve POM for " + dependencyName + ": " + err);
         }
         resolvedMavenProjects.put(dependencyName, null);
         return null;
     }
 
-    private void augmentComponentMetadata(Component component, String dependencyName) {
+    private void augmentComponentMetadata(ResolvedArtifact artifact, Component component, String dependencyName) {
+        if (!mavenHelper.isDescribedArtifact(artifact)) {
+            MavenProject project = mavenHelper.extractPom(artifact);
+            if (project != null) {
+                mavenHelper.getClosestMetadata(artifact, project, component);
+            }
+        }
         final MavenProject project = getResolvedMavenProject(dependencyName);
 
-        if(project != null) {
-            if(project.getOrganization() != null) {
+        if (project != null) {
+            if (project.getOrganization() != null) {
                 component.setPublisher(project.getOrganization().getName());
             }
             component.setDescription(project.getDescription());
@@ -505,6 +572,7 @@ public class CycloneDxTask extends DefaultTask {
 
     /**
      * Converts a MavenProject into a Metadata object.
+     *
      * @return a CycloneDX Metadata object
      */
     protected Metadata createMetadata() {
@@ -518,19 +586,24 @@ public class CycloneDxTask extends DefaultTask {
         metadata.addTool(tool);
 
         final Component component = new Component();
-        component.setGroup((StringUtils.trimToNull(project.getGroup().toString()) != null) ? project.getGroup().toString() : null);
-        component.setName(project.getName());
+        component.setGroup(
+                (StringUtils.trimToNull(project.getGroup().toString()) != null)
+                        ? project.getGroup().toString()
+                        : null);
+        component.setName(componentName.get());
         component.setVersion(componentVersion.get());
         component.setType(resolveProjectType());
         component.setPurl(generatePackageUrl(project));
         component.setBomRef(component.getPurl());
         metadata.setComponent(component);
 
-        if(organizationalEntity.getName() != null || organizationalEntity.getUrls() != null || organizationalEntity.getContacts() != null) {
+        if (organizationalEntity.getName() != null
+                || organizationalEntity.getUrls() != null
+                || organizationalEntity.getContacts() != null) {
             metadata.setManufacture(organizationalEntity);
         }
 
-        if(licenseChoice.getLicenses() !=null || licenseChoice.getExpression() != null){
+        if (licenseChoice.getLicenses() != null || licenseChoice.getExpression() != null) {
             metadata.setLicenseChoice(licenseChoice);
         }
 
@@ -539,8 +612,12 @@ public class CycloneDxTask extends DefaultTask {
 
     private Properties readPluginProperties() {
         final Properties props = new Properties();
-        try {
-            props.load(this.getClass().getResourceAsStream("plugin.properties"));
+        try (InputStream inputStream = this.getClass().getResourceAsStream("plugin.properties")) {
+            if (inputStream == null) {
+                getLogger().warn("Failed to locate plugin.properties");
+            } else {
+                props.load(inputStream);
+            }
         } catch (NullPointerException | IOException e) {
             getLogger().warn("Unable to load plugin.properties", e);
         }
@@ -548,20 +625,20 @@ public class CycloneDxTask extends DefaultTask {
     }
 
     private Component.Type resolveProjectType() {
-        for (Component.Type type: Component.Type.values()) {
+        for (Component.Type type : Component.Type.values()) {
             if (type.getTypeName().equalsIgnoreCase(getProjectType().get())) {
                 return type;
             }
         }
         getLogger().warn("Invalid project type. Defaulting to 'library'");
         getLogger().warn("Valid types are:");
-        for (Component.Type type: Component.Type.values()) {
+        for (Component.Type type : Component.Type.values()) {
             getLogger().warn("  " + type.getTypeName());
         }
         return Component.Type.LIBRARY;
     }
 
-    private Component generateProjectComponent(Project project, CycloneDxSchema.Version schemaVersion) {
+    private Component generateProjectComponent(Project project, Version schemaVersion) {
         final Component component = new Component();
         component.setGroup(project.getGroup().toString());
         component.setName(project.getName());
@@ -577,7 +654,8 @@ public class CycloneDxTask extends DefaultTask {
 
         return component;
     }
-    private Component convertArtifact(ResolvedArtifact artifact, CycloneDxSchema.Version schemaVersion) {
+
+    private Component convertArtifact(ResolvedArtifact artifact, Version schemaVersion) {
         final Component component = new Component();
         component.setGroup(artifact.getModuleVersion().getId().getGroup());
         component.setName(artifact.getModuleVersion().getId().getName());
@@ -587,7 +665,7 @@ public class CycloneDxTask extends DefaultTask {
         List<Hash> hashes = artifactHashes.computeIfAbsent(artifact.getFile(), f -> {
             try {
                 return BomUtils.calculateHashes(f, schemaVersion);
-            } catch(IOException e) {
+            } catch (IOException e) {
                 getLogger().error("Error encountered calculating hashes", e);
             }
             return Collections.emptyList();
@@ -601,19 +679,12 @@ public class CycloneDxTask extends DefaultTask {
             component.setModified(mavenHelper.isModified(artifact));
             component.setBomRef(packageUrl);
         }
-
-        if (mavenHelper.isDescribedArtifact(artifact)) {
-            final MavenProject project = mavenHelper.extractPom(artifact);
-            if (project != null) {
-                mavenHelper.getClosestMetadata(artifact, project, component);
-            }
-        }
-
         return component;
     }
 
     private boolean shouldIncludeConfiguration(Configuration configuration) {
-        return getIncludeConfigs().get().isEmpty() || getIncludeConfigs().get().stream().anyMatch(configuration.getName()::matches);
+        return getIncludeConfigs().get().isEmpty()
+                || getIncludeConfigs().get().stream().anyMatch(configuration.getName()::matches);
     }
 
     private boolean shouldSkipConfiguration(Configuration configuration) {
@@ -626,52 +697,69 @@ public class CycloneDxTask extends DefaultTask {
 
     private String generatePackageUrl(final ResolvedArtifact artifact) {
         TreeMap<String, String> qualifiers = new TreeMap<>();
-        qualifiers.put("type",  artifact.getType());
+        qualifiers.put("type", artifact.getType());
         if (artifact.getClassifier() != null) {
             qualifiers.put("classifier", artifact.getClassifier());
         }
-        return generatePackageUrl(artifact.getModuleVersion().getId().getGroup(),
+        return generatePackageUrl(
+                artifact.getModuleVersion().getId().getGroup(),
                 artifact.getModuleVersion().getId().getName(),
                 artifact.getModuleVersion().getId().getVersion(),
-                qualifiers );
+                qualifiers);
     }
 
     private String generatePackageUrl(final Project project) {
         TreeMap<String, String> qualifiers = new TreeMap<>();
         if (project.getChildProjects().isEmpty()) {
-            qualifiers.put("type",  "jar");
+            qualifiers.put("type", "jar");
         } else {
-            qualifiers.put("type",  "pom");
+            qualifiers.put("type", "pom");
         }
-        return generatePackageUrl(project.getGroup().toString(), project.getName(), project.getVersion().toString(), qualifiers );
+        return generatePackageUrl(
+                project.getGroup().toString(),
+                project.getName(),
+                project.getVersion().toString(),
+                qualifiers);
     }
 
-
-    private String generatePackageUrl(String groupId, String artifactId, String version, TreeMap<String, String> qualifiers) {
+    @Nullable private String generatePackageUrl(
+            String groupId, String artifactId, String version, TreeMap<String, String> qualifiers) {
         try {
-            return new PackageURL(PackageURL.StandardTypes.MAVEN, groupId, artifactId, version, qualifiers, null).canonicalize();
-        } catch(MalformedPackageURLException e) {
-            getLogger().warn("An unexpected issue occurred attempting to create a PackageURL for "
-                    + groupId + ":" + artifactId + ":" + version);
+            return new PackageURL(PackageURL.StandardTypes.MAVEN, groupId, artifactId, version, qualifiers, null)
+                    .canonicalize();
+        } catch (MalformedPackageURLException e) {
+            getLogger()
+                    .warn("An unexpected issue occurred attempting to create a PackageURL for " + groupId + ":"
+                            + artifactId + ":" + version);
         }
         return null;
     }
 
     /**
      * Ported from Maven plugin.
-     * @param metadata The CycloneDX metadata object
-     * @param components The CycloneDX components extracted from gradle dependencies
-     * @param version The CycloneDX schema version
+     *
+     * @param metadata
+     *            The CycloneDX metadata object
+     * @param components
+     *            The CycloneDX components extracted from gradle dependencies
+     * @param version
+     *            The CycloneDX schema version
      */
-    protected void writeBom(Metadata metadata, Set<Component> components, Collection<org.cyclonedx.model.Dependency> dependencies,
-                            CycloneDxSchema.Version version) throws GradleException{
+    protected void writeBom(
+            Metadata metadata,
+            Set<Component> components,
+            Collection<org.cyclonedx.model.Dependency> dependencies,
+            Version version)
+            throws GradleException {
         try {
             getLogger().info(MESSAGE_CREATING_BOM);
             final Bom bom = new Bom();
 
-            boolean includeSerialNumber = getBooleanParameter("cyclonedx.includeBomSerialNumber", getIncludeBomSerialNumber().get());
+            boolean includeSerialNumber = getBooleanParameter(
+                    "cyclonedx.includeBomSerialNumber",
+                    getIncludeBomSerialNumber().get());
 
-            if (CycloneDxSchema.Version.VERSION_10 != version && includeSerialNumber) {
+            if (Version.VERSION_10 != version && includeSerialNumber) {
                 bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
             }
             bom.setMetadata(metadata);
@@ -680,15 +768,17 @@ public class CycloneDxTask extends DefaultTask {
             if (outputFormat.get().equals("all") || outputFormat.get().equals("xml")) {
                 writeXMLBom(version, bom);
             }
-            if (CycloneDxUtils.schemaVersion(getSchemaVersion().get()).getVersion() >= 1.2 && (outputFormat.get().equals("all") || outputFormat.get().equals("json"))) {
+            if (CycloneDxUtils.schemaVersion(getSchemaVersion().get()).getVersion() >= 1.2
+                    && (outputFormat.get().equals("all") || outputFormat.get().equals("json"))) {
                 writeJSONBom(version, bom);
             }
         } catch (GeneratorException | ParserConfigurationException | IOException e) {
-            throw new GradleException("An error occurred executing " + this.getClass().getName(), e);
+            throw new GradleException(
+                    "An error occurred executing " + this.getClass().getName(), e);
         }
     }
 
-    private void writeXMLBom(final CycloneDxSchema.Version schemaVersion, final Bom bom)
+    private void writeXMLBom(final Version schemaVersion, final Bom bom)
             throws GeneratorException, ParserConfigurationException, IOException {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         bomGenerator.generate();
@@ -700,31 +790,35 @@ public class CycloneDxTask extends DefaultTask {
         final Parser bomParser = new XmlParser();
         try {
             final List<ParseException> exceptions = bomParser.validate(bomFile, schemaVersion);
+            exceptions.forEach(it -> getLogger().error(it.getMessage()));
             if (!exceptions.isEmpty()) {
                 throw exceptions.get(0);
             }
         } catch (Exception e) { // Changed to Exception.
-            // Gradle will erroneously report "exception IOException is never thrown in body of corresponding try statement"
+            // Gradle will erroneously report "exception IOException is never thrown in body
+            // of corresponding try statement"
             throw new GradleException(MESSAGE_VALIDATION_FAILURE, e);
         }
     }
 
-    private void writeJSONBom(final CycloneDxSchema.Version schemaVersion, final Bom bom) throws IOException {
+    private void writeJSONBom(final Version schemaVersion, final Bom bom) throws IOException {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
-        final String bomString = bomGenerator.toJsonString();
-        final File bomFile = new File(getDestination().get(), getOutputName().get() + ".json");
-        getLogger().info(MESSAGE_WRITING_BOM_JSON);
-        FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
-        getLogger().info(MESSAGE_VALIDATING_BOM);
-
-        final Parser bomParser = new JsonParser();
         try {
+            final String bomString = bomGenerator.toJsonString();
+            final File bomFile =
+                    new File(getDestination().get(), getOutputName().get() + ".json");
+            getLogger().info(MESSAGE_WRITING_BOM_JSON);
+            FileUtils.write(bomFile, bomString, StandardCharsets.UTF_8, false);
+            getLogger().info(MESSAGE_VALIDATING_BOM);
+            final Parser bomParser = new JsonParser();
             final List<ParseException> exceptions = bomParser.validate(bomFile, schemaVersion);
+            exceptions.forEach(it -> getLogger().error(it.getMessage()));
             if (!exceptions.isEmpty()) {
                 throw exceptions.get(0);
             }
         } catch (Exception e) { // Changed to Exception.
-            // Gradle will erroneously report "exception IOException is never thrown in body of corresponding try statement"
+            // Gradle will erroneously report "exception IOException is never thrown in body
+            // of corresponding try statement"
             throw new GradleException(MESSAGE_VALIDATION_FAILURE, e);
         }
     }
@@ -734,7 +828,7 @@ public class CycloneDxTask extends DefaultTask {
         if (project.hasProperty(parameter)) {
             final Object o = project.getProperties().get(parameter);
             if (o instanceof String) {
-                return Boolean.parseBoolean((String)o);
+                return Boolean.parseBoolean((String) o);
             }
         }
         return defaultValue;
@@ -744,17 +838,16 @@ public class CycloneDxTask extends DefaultTask {
         if (getLogger().isInfoEnabled()) {
             getLogger().info("CycloneDX: Parameters");
             getLogger().info("------------------------------------------------------------------------");
-            getLogger().info("schemaVersion          : " + schemaVersion.get());
-            getLogger().info("includeLicenseText     : " + includeLicenseText.get());
-            getLogger().info("includeBomSerialNumber : " + includeBomSerialNumber.get());
-            getLogger().info("includeConfigs         : " + includeConfigs.get());
-            getLogger().info("skipConfigs            : " + skipConfigs.get());
-            getLogger().info("skipProjects           : " + skipProjects.get());
-            getLogger().info("destination            : " + destination.get());
-            getLogger().info("outputName             : " + outputName.get());
+            getLogger().info("schemaVersion             : " + schemaVersion.get());
+            getLogger().info("includeLicenseText        : " + includeLicenseText.get());
+            getLogger().info("includeBomSerialNumber    : " + includeBomSerialNumber.get());
+            getLogger().info("includeConfigs            : " + includeConfigs.get());
+            getLogger().info("skipConfigs               : " + skipConfigs.get());
+            getLogger().info("skipProjects              : " + skipProjects.get());
+            getLogger().info("includeMetadataResolution : " + includeMetadataResolution.get());
+            getLogger().info("destination               : " + destination.get());
+            getLogger().info("outputName                : " + outputName.get());
             getLogger().info("------------------------------------------------------------------------");
         }
     }
-
-
 }

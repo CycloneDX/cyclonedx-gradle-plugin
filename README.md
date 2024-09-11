@@ -20,7 +20,7 @@ gradle cyclonedxBom
 
 __Output CycloneDX Generation Info:__
 ```bash
-gradle cyclonedxBom -info
+gradle cyclonedxBom --info
 ```
 
 __build.gradle__ (excerpt)
@@ -30,7 +30,7 @@ To generate BOM for a single project add the plugin to the `build.gradle`.
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '1.8.2'
+    id 'org.cyclonedx.bom' version '1.10.0'
 }
 ```
 
@@ -52,7 +52,7 @@ cyclonedxBom {
     // Specified the type of project being built. Defaults to 'library'
     projectType = "application"
     // Specified the version of the CycloneDX specification to use. Defaults to '1.5'
-    schemaVersion = "1.5"
+    schemaVersion = "1.6"
     // Boms destination directory. Defaults to 'build/reports'
     destination = file("build/reports")
     // The file name for the generated BOMs (before the file format suffix). Defaults to 'bom'
@@ -63,8 +63,12 @@ cyclonedxBom {
     includeBomSerialNumber = false
     // Exclude License Text. Defaults to 'true'
     includeLicenseText = false
+    // Include resolution of full metadata for components including licenses. Defaults to 'true'
+    includeMetadataResolution = true
     // Override component version. Defaults to the project version
     componentVersion = "2.0.0"
+    // Override component name. Defaults to the project name
+    componentName = "my-component"
 }
 ```
 
@@ -76,13 +80,15 @@ tasks.cyclonedxBom {
     setSkipConfigs(listOf("compileClasspath", "testCompileClasspath"))
     setSkipProjects(listOf(rootProject.name, "yourTestSubProject"))
     setProjectType("application")
-    setSchemaVersion("1.5")
+    setSchemaVersion("1.6")
     setDestination(project.file("build/reports"))
     setOutputName("bom")
     setOutputFormat("json")
     setIncludeBomSerialNumber(false)
     setIncludeLicenseText(true)
+    setIncludeMetadataResolution(true)
     setComponentVersion("2.0.0")
+    setComponentName("my-component")
 }
 ```
 
@@ -94,7 +100,7 @@ You can also build the BOM for multiple projects using the `--init-script` optio
 
 
 ```bash
-gradle --init-script <path-to-init.gradle> cyclonedxBom -info
+gradle --init-script <path-to-init.gradle> cyclonedxBom --info
 ```
 
 where the `init.gradle` can look like this:
@@ -107,7 +113,7 @@ initscript {
     }
   }
   dependencies {
-    classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.8.2"
+    classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.10.0"
   }
 }
 
@@ -118,13 +124,14 @@ allprojects{
     skipConfigs = ["compileClasspath", "testCompileClasspath"]
     skipProjects = [rootProject.name, "yourTestSubProject"]
     projectType = "application"
-    schemaVersion = "1.5"
+    schemaVersion = "1.6"
     destination = file("build/reports")
     outputName = "bom"
     outputFormat = "json"
     includeBomSerialNumber = false
     includeLicenseText = true
     componentVersion = "2.0.0"
+    componentName = "my-component"
   }
 }
 ```
@@ -132,7 +139,7 @@ allprojects{
 ## How to manually modify Metadata
 
 The Plugin makes it possible to manually add Manufacture-Data and Licenses-Data to the Metadata of the BOM. <br>
-The structure of the Metadata is shown on https://cyclonedx.org/docs/1.5/json/#metadata. <br>
+The structure of the Metadata is shown on https://cyclonedx.org/docs/1.6/json/#metadata. <br>
 The editing of the Manufacture and Licenses-Data is optional. If the Manufacture/Licenses-Date isn't edited,
 then the respective structure won't appear in the BOM.
 
@@ -184,7 +191,7 @@ cyclonedxBom {
 It should be noted that some Data like OrganizationalContact, Url, Name,... can be left out. <br>
 OrganizationalEntity can also include multiple OrganizationalContact.
 
-For details look at https://cyclonedx.org/docs/1.5/json/#metadata.
+For details look at https://cyclonedx.org/docs/1.6/json/#metadata.
 
 
 ## Adding Licenses-Data
@@ -263,7 +270,7 @@ cyclonedxBom {
 }
 ```
 ---
-For details of the BOM structure look at https://cyclonedx.org/docs/1.5/json/#metadata.
+For details of the BOM structure look at https://cyclonedx.org/docs/1.6/json/#metadata.
 
 ## CycloneDX Schema Support
 
@@ -273,6 +280,8 @@ the CycloneDX version supported by the target system.
 
 | Version | Schema Version | Format(s) |
 |---------|----------------| --------- |
+| 1.10.x  | CycloneDX v1.6 | XML/JSON |
+| 1.9.x   | CycloneDX v1.6 | XML/JSON |
 | 1.8.x   | CycloneDX v1.5 | XML/JSON |
 | 1.7.x   | CycloneDX v1.4 | XML/JSON |
 | 1.6.x   | CycloneDX v1.4 | XML/JSON |
