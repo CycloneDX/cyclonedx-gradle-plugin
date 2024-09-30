@@ -59,9 +59,9 @@ cyclonedxBom {
     outputName = "bom"
     // The file format generated, can be xml, json or all for generating both. Defaults to 'all'
     outputFormat = "json"
-    // Exclude BOM Serial Number. Defaults to 'true'
+    // Include BOM Serial Number. Defaults to 'true'
     includeBomSerialNumber = false
-    // Exclude License Text. Defaults to 'true'
+    // Include License Text. Defaults to 'true'
     includeLicenseText = false
     // Include resolution of full metadata for components including licenses. Defaults to 'true'
     includeMetadataResolution = true
