@@ -370,14 +370,13 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("kotlin-project-manufacture-licenses")
 
         when:
-        def result = GradleRunner.create()
+        GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments("cyclonedxBom", "--info", "-S", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
         then:
-        //  result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
@@ -402,14 +401,13 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("groovy-project-manufacture-licenses")
 
         when:
-        def result = GradleRunner.create()
+        GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments("cyclonedxBom", "--info", "-S", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
         then:
-        //  result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()

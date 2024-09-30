@@ -27,6 +27,7 @@ import javax.annotation.Nullable;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.model.Bom;
+import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.OrganizationalEntity;
 import org.gradle.api.DefaultTask;
@@ -66,6 +67,8 @@ public abstract class CycloneDxTask extends DefaultTask {
 
     @Nullable private LicenseChoice licenseChoice;
 
+    @Nullable private ExternalReference gitVCS;
+
     public CycloneDxTask() {
 
         componentsProvider = getProject().getProviders().provider(new SbomGraphProvider(getProject(), this));
@@ -104,6 +107,7 @@ public abstract class CycloneDxTask extends DefaultTask {
 
         organizationalEntity = new OrganizationalEntity();
         licenseChoice = new LicenseChoice();
+        gitVCS = new ExternalReference();
 
         destination = getProject().getObjects().property(File.class);
         destination.convention(getProject()
@@ -232,6 +236,11 @@ public abstract class CycloneDxTask extends DefaultTask {
         return licenseChoice;
     }
 
+    @Internal
+    @Nullable ExternalReference getGitVCS() {
+        return gitVCS;
+    }
+
     @OutputDirectory
     public Property<File> getDestination() {
         return destination;
@@ -334,6 +343,23 @@ public abstract class CycloneDxTask extends DefaultTask {
         }
         // Definition of gradle Input via Hashmap because Hashmap is serializable (LicenseChoice isn't serializable)
         getInputs().property("LicenseChoice", licenseChoice);
+    }
+
+    public void setVCSGit(final Consumer<ExternalReference> customizer) {
+        final ExternalReference origin = new ExternalReference();
+        customizer.accept(origin);
+        this.gitVCS = origin;
+        this.gitVCS.setType(ExternalReference.Type.VCS);
+
+        final Map<String, String> externalReference = new HashMap<>();
+
+        externalReference.put("type", this.gitVCS.getType().toString());
+        externalReference.put("url", this.gitVCS.getUrl());
+        externalReference.put("comment", this.gitVCS.getComment());
+
+        // Definition of gradle Input via Hashmap because Hashmap is serializable
+        // (OrganizationalEntity isn't serializable)
+        getInputs().property("GitVCS", externalReference);
     }
 
     private void logParameters() {

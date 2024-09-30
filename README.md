@@ -163,7 +163,7 @@ cyclonedxBom {
     organizationalContact.setEmail("max.mustermann@test.org")
     organizationalContact.setPhone("0000 99999999")
     //passing Data to the plugin
-    organizationalEntity {oe->
+    organizationalEntity { oe ->
         oe.name = 'Test'
         oe.url = ['www.test1.com', 'www.test2.com']
         oe.addContact(organizationalContact)
@@ -181,7 +181,7 @@ cyclonedxBom {
     organizationalContact1.setEmail("max.mustermann@test.org")
     organizationalContact1.setPhone("0000 99999999")
     //passing Data to the plugin
-    setOrganizationalEntity{oe->
+    setOrganizationalEntity { oe ->
         oe.name = "Test";
         oe.urls = listOf("www.test1.com", "www.test2.com")
         oe.addContact(organizationalContact1)
@@ -217,7 +217,7 @@ cyclonedxBom {
     license.setLicenseText(attachmentText);
     license.setUrl("https://www.test-Url.org/")
     //passing Data to Plugin
-    licenseChoice {lc->
+    licenseChoice { lc ->
         lc.addLicense(license)
     }
 }
@@ -237,38 +237,45 @@ cyclonedxBom {
     license.setLicenseText(attachmentText)
     license.setUrl("https://www.test-Url.org/")
     //passing Data to Plugin
-    setLicenseChoice{lc->
+    setLicenseChoice { lc ->
         lc.addLicense(license)
     }
 }
 ```
+
 It should be noted that License requires __either Id or Name__, but both can't be included at the same time.
 
 Text and Url are optional for inclusion and multiple License can be added to LicenseChoice.
 
 ---
 
-### Expression
+## Adding Git VCS url
 
-__Example (groovy):__
+You can add the Git VCS url by passing an Object of the Type __ExternalReference__ to the Plugin.
+
+### Git VCS
+
+__Example (groovy) and (Kotlin):__
+
 ```groovy
 cyclonedxBom {
-    //passing Expression to Plugin
-    licenseChoice {lc->
-        lc.setExpression("This is a Test Expression")
+    //passing Data to the plugin
+    setVCSGit { vcs ->
+        // set either the ssh or https URL[String] of the remote repository
+        // make sure that the ssh URL starts with the protocol (e.g. 'ssh://'), otherwise it will not be accepted
+        // e.g. vcs.url = "ssh://git@github.com:CycloneDX/cyclonedx-gradle-plugin.git"
+        vcs.url = "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"
+
+        // (optional) you an add a comment to describe your repository
+        // vcs.comment = "comment"
     }
 }
 ```
 
-__Example (Kotlin):__
-```kotlin
-cyclonedxBom {
-    //passing Expression to Plugin
-    setLicenseChoice{lc->
-        lc.setExpression("This is a Test Expression")
-    }
-}
-```
+It should be noted that __url is mandatory__ and type will be ignored. You may add a comment to describe the external reference.
+
+Text and Url are optional for inclusion and multiple License can be added to LicenseChoice.
+
 ---
 For details of the BOM structure look at https://cyclonedx.org/docs/1.6/json/#metadata.
 
@@ -279,17 +286,17 @@ as well as the output format options. Use the latest possible version of this pl
 the CycloneDX version supported by the target system.
 
 | Version | Schema Version | Format(s) |
-|---------|----------------| --------- |
-| 1.10.x  | CycloneDX v1.6 | XML/JSON |
-| 1.9.x   | CycloneDX v1.6 | XML/JSON |
-| 1.8.x   | CycloneDX v1.5 | XML/JSON |
-| 1.7.x   | CycloneDX v1.4 | XML/JSON |
-| 1.6.x   | CycloneDX v1.4 | XML/JSON |
-| 1.5.x   | CycloneDX v1.3 | XML/JSON |
-| 1.4.x   | CycloneDX v1.3 | XML/JSON |
-| 1.2.x   | CycloneDX v1.2 | XML/JSON |
-| 1.1.x   | CycloneDX v1.1 | XML |
-| 1.0x    | CycloneDX v1.0 | XML |
+|---------|----------------|-----------|
+| 1.10.x  | CycloneDX v1.6 | XML/JSON  |
+| 1.9.x   | CycloneDX v1.6 | XML/JSON  |
+| 1.8.x   | CycloneDX v1.5 | XML/JSON  |
+| 1.7.x   | CycloneDX v1.4 | XML/JSON  |
+| 1.6.x   | CycloneDX v1.4 | XML/JSON  |
+| 1.5.x   | CycloneDX v1.3 | XML/JSON  |
+| 1.4.x   | CycloneDX v1.3 | XML/JSON  |
+| 1.2.x   | CycloneDX v1.2 | XML/JSON  |
+| 1.1.x   | CycloneDX v1.1 | XML       |
+| 1.0x    | CycloneDX v1.0 | XML       |
 
 ## Copyright & License
 
