@@ -18,11 +18,11 @@
  */
 package org.cyclonedx.gradle;
 
+import static org.cyclonedx.gradle.utils.ExternalResourcesUtil.createExternalReferences;
+
 import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -53,13 +53,7 @@ import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.gradle.utils.DependencyUtils;
-import org.cyclonedx.model.Bom;
-import org.cyclonedx.model.Component;
-import org.cyclonedx.model.Hash;
-import org.cyclonedx.model.LicenseChoice;
-import org.cyclonedx.model.Metadata;
-import org.cyclonedx.model.OrganizationalEntity;
-import org.cyclonedx.model.Tool;
+import org.cyclonedx.model.*;
 import org.cyclonedx.parsers.JsonParser;
 import org.cyclonedx.parsers.Parser;
 import org.cyclonedx.parsers.XmlParser;
@@ -67,11 +61,8 @@ import org.cyclonedx.util.BomUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.*;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.ResolvedArtifact;
-import org.gradle.api.artifacts.ResolvedConfiguration;
-import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
@@ -614,6 +605,7 @@ public class CycloneDxTask extends DefaultTask {
         component.setType(resolveProjectType());
         component.setPurl(generatePackageUrl(project));
         component.setBomRef(component.getPurl());
+        component.setExternalReferences(createExternalReferences());
         metadata.setComponent(component);
 
         if (organizationalEntity.getName() != null
