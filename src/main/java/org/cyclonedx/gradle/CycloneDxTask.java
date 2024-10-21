@@ -547,6 +547,7 @@ public class CycloneDxTask extends DefaultTask {
         }
         final Dependency pomDep = getProject().getDependencies().create(dependencyName + "@pom");
         final Configuration pomCfg = getProject().getConfigurations().detachedConfiguration(pomDep);
+        pomCfg.getResolutionStrategy().disableDependencyVerification();
 
         try {
             @Nullable final File pomFile = pomCfg.resolve().stream().findFirst().orElse(null);

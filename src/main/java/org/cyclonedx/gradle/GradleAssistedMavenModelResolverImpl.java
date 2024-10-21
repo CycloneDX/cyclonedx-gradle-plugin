@@ -45,6 +45,7 @@ public class GradleAssistedMavenModelResolverImpl implements ModelResolver {
         org.gradle.api.artifacts.Dependency dependency =
                 project.getDependencies().create(depNotation);
         Configuration config = project.getConfigurations().detachedConfiguration(dependency);
+        config.getResolutionStrategy().disableDependencyVerification();
 
         File pomXml = config.getSingleFile();
         return new ModelSource2() {
