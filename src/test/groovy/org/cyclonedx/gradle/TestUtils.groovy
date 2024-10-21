@@ -20,6 +20,22 @@ class TestUtils {
         return tmpDir
     }
 
+    static File duplicateRepo(String testProject) {
+        def tmpDir = File.createTempDir( "copy", testProject)
+        def baseDir = new File("src/test/resources/test-repos/$testProject").toPath()
+
+        baseDir.eachFileRecurse {path ->
+            def relativePath = baseDir.relativize(path)
+            def targetPath = tmpDir.toPath().resolve(relativePath)
+            if (Files.isDirectory(path)) {
+                targetPath.toFile().mkdirs()
+            } else {
+                Files.copy(path, targetPath)
+            }
+        }
+        return tmpDir
+    }
+
     static File createFromString(String buildContent, String settingsContent) {
         def tmpDir = File.createTempDir( "from-literal")
         def settingsFile = new File(tmpDir, "settings.gradle")
