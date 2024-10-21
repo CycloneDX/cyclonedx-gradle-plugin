@@ -18,7 +18,15 @@
  */
 package org.cyclonedx.gradle.utils;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import org.apache.commons.io.FileUtils;
 import org.cyclonedx.Version;
+import org.cyclonedx.generators.BomGeneratorFactory;
+import org.cyclonedx.generators.json.BomJsonGenerator;
+import org.cyclonedx.model.Bom;
+import org.gradle.api.GradleException;
 
 public class CycloneDxUtils {
 
@@ -47,6 +55,26 @@ public class CycloneDxUtils {
                 return Version.VERSION_16;
             default:
                 return DEFAULT_SCHEMA_VERSION;
+        }
+    }
+
+    public static void writeBom(final Bom bom, final File destination) {
+        try {
+            writeJSONBom(Version.VERSION_16, bom, destination);
+        } catch (IOException e) {
+            throw new GradleException("An error occurred writing BOM", e);
+        }
+    }
+
+    private static void writeJSONBom(final Version schemaVersion, final Bom bom, final File destination)
+            throws IOException {
+
+        final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
+        try {
+            final String bomString = bomGenerator.toJsonString();
+            FileUtils.write(destination, bomString, StandardCharsets.UTF_8, false);
+        } catch (Exception e) {
+            throw new GradleException("Valid message", e);
         }
     }
 }

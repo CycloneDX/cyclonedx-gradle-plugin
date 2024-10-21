@@ -78,4 +78,37 @@ class DependencyResolutionSpec extends Specification {
         assert root.getDependencies().size() == 1
         assert root.getDependencies().get(0).getRef() == "pkg:maven/org.hibernate/hibernate-core@5.6.15.Final?type=jar"
     }
+
+    def "should contain correct components"() {
+        given:
+        File testRepoDir = TestUtils.duplicateRepo("test1")
+
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                maven{
+                    url 'file://${testRepoDir.absolutePath.replace("\\","/")}/repository'
+                }
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            dependencies {
+                implementation("com.test:componentb:1.0.0")
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--stacktrace", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        println(result.output)
+    }
 }
