@@ -338,7 +338,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--info", "-S")
+            .withArguments("cyclonedxBom", "--info", "-S", "--configuration-cache")
             .withPluginClasspath()
             .build()
         then:
@@ -354,9 +354,9 @@ class PluginConfigurationSpec extends Specification {
 
         def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?type=jar")
         assert appAComponent.hasComponentDefined()
-        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?type=jar")
+        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0")
 
-        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?type=jar")
+        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0")
         assert appBComponent.hasComponentDefined()
         assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?type=jar")
     }
@@ -382,13 +382,13 @@ class PluginConfigurationSpec extends Specification {
         assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
 
         assert jsonBom.metadata.component.type == "library"
-        assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-a@1.0.0?type=jar"
+        assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-a@1.0.0"
         assert jsonBom.metadata.component.group == "com.example"
         assert jsonBom.metadata.component.name == "app-a"
         assert jsonBom.metadata.component.version == "1.0.0"
-        assert jsonBom.metadata.component.purl == "pkg:maven/com.example/app-a@1.0.0?type=jar"
+        assert jsonBom.metadata.component.purl == "pkg:maven/com.example/app-a@1.0.0"
 
-        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?type=jar")
+        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0")
         assert !appAComponent.hasComponentDefined()
         assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?type=jar")
 
@@ -418,19 +418,19 @@ class PluginConfigurationSpec extends Specification {
         assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
 
         assert jsonBom.metadata.component.type == "library"
-        assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-b@1.0.0?type=jar"
+        assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-b@1.0.0"
         assert jsonBom.metadata.component.group == "com.example"
         assert jsonBom.metadata.component.name == "app-b"
         assert jsonBom.metadata.component.version == "1.0.0"
-        assert jsonBom.metadata.component.purl == "pkg:maven/com.example/app-b@1.0.0?type=jar"
+        assert jsonBom.metadata.component.purl == "pkg:maven/com.example/app-b@1.0.0"
 
         def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?type=jar")
         assert appAComponent.hasComponentDefined()
         assert appAComponent.component.hashes != null
         assert !appAComponent.component.hashes.empty
-        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?type=jar")
+        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0")
 
-        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?type=jar")
+        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0")
         assert !appBComponent.hasComponentDefined()
         assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?type=jar")
     }
