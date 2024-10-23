@@ -19,6 +19,7 @@
 package org.cyclonedx.gradle;
 
 import com.github.packageurl.MalformedPackageURLException;
+import com.networknt.schema.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -40,11 +41,7 @@ import org.gradle.api.logging.Logger;
 public class CycloneDxBomBuilder {
 
     private static final String MESSAGE_CALCULATING_HASHES = "CycloneDX: Calculating Hashes";
-    private static final TreeMap<String, String> DEFAULT_TYPE = new TreeMap<>();
-
-    static {
-        DEFAULT_TYPE.put("type", "jar");
-    }
+    private static final TreeMap<String, String> EMPTY_TYPE = new TreeMap<>();
 
     private final Logger logger;
     private final Map<File, List<Hash>> artifactHashes;
@@ -185,10 +182,16 @@ public class CycloneDxBomBuilder {
 
     private TreeMap<String, String> getType(final File file) {
         if (file == null) {
-            return DEFAULT_TYPE;
+            return EMPTY_TYPE;
         }
+
+        String fileExtension = FilenameUtils.getExtension(file.getName());
+        if (StringUtils.isBlank(fileExtension)) {
+            return EMPTY_TYPE;
+        }
+
         final TreeMap<String, String> type = new TreeMap<>();
-        type.put("type", FilenameUtils.getExtension(file.getName()));
+        type.put("type", fileExtension);
         return type;
     }
 }

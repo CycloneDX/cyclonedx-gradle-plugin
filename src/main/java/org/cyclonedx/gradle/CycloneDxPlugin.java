@@ -21,9 +21,7 @@ package org.cyclonedx.gradle;
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
-import org.cyclonedx.gradle.model.ArtifactInfo;
-import org.cyclonedx.gradle.model.ResolvedBuild;
-import org.cyclonedx.gradle.model.ResolvedConfiguration;
+import org.cyclonedx.gradle.model.*;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -35,7 +33,7 @@ public class CycloneDxPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getTasks().register("cyclonedxBom", CycloneDxTask.class, (task) -> {
             final ResolvedBuild resolvedBuild = getResolvedBuild(project);
-            final Optional<Provider<Set<ArtifactInfo>>> artifacts = getArtifacts(project);
+            final Set<Provider<ArtifactInfoSet>> artifacts = getArtifacts(project);
             final File destination =
                     project.getLayout().getBuildDirectory().dir("reports").get().getAsFile();
 
@@ -43,7 +41,7 @@ public class CycloneDxPlugin implements Plugin<Project> {
             task.getDestination().set(destination);
             task.setGroup("Reporting");
             task.setDescription("Generates a CycloneDX compliant Software Bill of Materials (SBOM)");
-            artifacts.ifPresent(provider -> task.getArtifacts().set(provider));
+            task.getArtifacts().set(new ResolvedArtifacts(artifacts));
         });
     }
 
@@ -61,23 +59,20 @@ public class CycloneDxPlugin implements Plugin<Project> {
         return resolvedBuild;
     }
 
-    private Optional<Provider<Set<ArtifactInfo>>> getArtifacts(final Project project) {
+    private Set<Provider<ArtifactInfoSet>> getArtifacts(final Project project) {
 
         return project.getAllprojects().stream()
                 .flatMap(v -> v.getConfigurations().stream())
                 .filter(Configuration::isCanBeResolved)
-                .map(v -> v.getIncoming().getArtifacts().getResolvedArtifacts())
-                .reduce(this::combineArtifactsProviders)
-                .map(provider ->
-                        provider.map(v -> v.stream().map(this::toArtifactInfo).collect(Collectors.toSet())));
-    }
-
-    private Provider<Set<ResolvedArtifactResult>> combineArtifactsProviders(
-            final Provider<Set<ResolvedArtifactResult>> left, final Provider<Set<ResolvedArtifactResult>> right) {
-        return left.zip(right, (u, v) -> {
-            u.addAll(v);
-            return u;
-        });
+                .map(config -> config.getIncoming()
+                        .getArtifacts()
+                        .getResolvedArtifacts()
+                        .map(artifacts -> {
+                            ArtifactInfoSet infoSet = new ArtifactInfoSet();
+                            artifacts.forEach(artifact -> infoSet.addInfo(toArtifactInfo(artifact)));
+                            return infoSet;
+                        }))
+                .collect(Collectors.toSet());
     }
 
     private ArtifactInfo toArtifactInfo(final ResolvedArtifactResult result) {
