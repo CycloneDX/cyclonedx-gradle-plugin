@@ -19,7 +19,6 @@
 package org.cyclonedx.gradle;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.cyclonedx.gradle.model.ArtifactInfo;
@@ -34,10 +33,10 @@ import org.gradle.api.tasks.TaskAction;
 
 public abstract class CycloneDxTask extends DefaultTask {
 
-    private final CycloneDxParser parser;
+    private final CycloneDxDependencyTraverser traverser;
 
     public CycloneDxTask() {
-        this.parser = new CycloneDxParser(getLogger());
+        this.traverser = new CycloneDxDependencyTraverser(getLogger(), new CycloneDxBomBuilder(getLogger()));
     }
 
     @Input
@@ -53,24 +52,26 @@ public abstract class CycloneDxTask extends DefaultTask {
     public void createBom() {
 
         final ResolvedBuild resolvedBuild = getResolvedBuild().get();
-        final Map<String, Set<ResolvedConfiguration>> configurations = new HashMap<>();
-        configurations.put(resolvedBuild.getProjectName(), resolvedBuild.getProjectConfigurations());
-        configurations.putAll(resolvedBuild.getSubProjectsConfigurations());
 
         registerArtifacts();
-        buildDependencies(configurations);
+        buildParentDependencies(resolvedBuild.getProjectName(), resolvedBuild.getProjectConfigurations());
+        buildChildDependencies(resolvedBuild.getSubProjectsConfigurations());
 
         File destination = new File(getDestination().get(), "bom.json");
-        CycloneDxUtils.writeBom(parser.getResultingBom(), destination);
+        CycloneDxUtils.writeBom(traverser.toBom(), destination);
     }
 
-    private void buildDependencies(final Map<String, Set<ResolvedConfiguration>> configurations) {
-        configurations.entrySet().forEach(project -> project.getValue()
-                .forEach(config -> parser.visitGraph(
-                        config.getDependencyGraph().get(), project.getKey(), config.getConfigurationName())));
+    private void buildParentDependencies(final String projectName, Set<ResolvedConfiguration> configurations) {
+        configurations.forEach(config -> traverser.traverseParentGraph(
+                config.getDependencyGraph().get(), projectName, config.getConfigurationName()));
+    }
+
+    private void buildChildDependencies(final Map<String, Set<ResolvedConfiguration>> configurations) {
+        configurations.forEach((key, value) -> value.forEach(config ->
+                traverser.traverseChildGraph(config.getDependencyGraph().get(), key, config.getConfigurationName())));
     }
 
     private void registerArtifacts() {
-        getArtifacts().get().forEach(parser::registerArtifact);
+        getArtifacts().get().forEach(traverser::registerArtifact);
     }
 }

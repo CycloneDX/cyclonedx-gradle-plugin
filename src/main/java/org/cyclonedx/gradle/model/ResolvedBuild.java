@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class ResolvedBuild {
-
     private final String projectName;
     private final Set<ResolvedConfiguration> projectConfigurations;
     private final Map<String, Set<ResolvedConfiguration>> subProjectsConfigurations;

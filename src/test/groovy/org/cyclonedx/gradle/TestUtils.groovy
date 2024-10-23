@@ -20,7 +20,7 @@ class TestUtils {
         return tmpDir
     }
 
-    static File duplicateRepo(String testProject) {
+    static String duplicateRepo(String testProject) {
         def tmpDir = File.createTempDir( "copy", testProject)
         def baseDir = new File("src/test/resources/test-repos/$testProject").toPath()
 
@@ -33,7 +33,8 @@ class TestUtils {
                 Files.copy(path, targetPath)
             }
         }
-        return tmpDir
+
+        return """file://${tmpDir.absolutePath.replace("\\","/")}/repository"""
     }
 
     static File createFromString(String buildContent, String settingsContent) {

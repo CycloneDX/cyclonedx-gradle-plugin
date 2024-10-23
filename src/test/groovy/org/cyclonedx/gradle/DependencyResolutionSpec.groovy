@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
 import org.cyclonedx.model.Dependency
+import org.cyclonedx.model.Hash
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import spock.lang.Specification
@@ -79,9 +80,9 @@ class DependencyResolutionSpec extends Specification {
         assert root.getDependencies().get(0).getRef() == "pkg:maven/org.hibernate/hibernate-core@5.6.15.Final?type=jar"
     }
 
-    def "should contain correct components"() {
+    def "should contain correct hashes"() {
         given:
-        File testRepoDir = TestUtils.duplicateRepo("test1")
+        String localRepoUri = TestUtils.duplicateRepo("local")
 
         File testDir = TestUtils.createFromString("""
             plugins {
@@ -90,25 +91,71 @@ class DependencyResolutionSpec extends Specification {
             }
             repositories {
                 maven{
-                    url 'file://${testRepoDir.absolutePath.replace("\\","/")}/repository'
+                    url '$localRepoUri'
                 }
             }
             group = 'com.example'
             version = '1.0.0'
 
             dependencies {
-                implementation("com.test:componentb:1.0.0")
-            }""", "rootProject.name = 'hello-world'")
+                implementation("com.test:componenta:1.0.0")
+                testImplementation("com.test:componentb:1.0.1")
+            }""", "rootProject.name = 'simple-project'")
 
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--stacktrace", "--configuration-cache")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        println(result.output)
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component componenta = bom.getComponents().find(c -> c.name == 'componenta')
+        Hash hasha =
+            componenta.hashes.find(c -> c.algorithm == "SHA-256" && c.value == "8b6a28fbdb87b7a521b61bc15d265820fb8dd1273cb44dd44a8efdcd6cd40848")
+        assert hasha != null
+        Component componentb = bom.getComponents().find(c -> c.name == 'componentb')
+        Hash hashb =
+            componentb.hashes.find(c -> c.algorithm == "SHA-256" && c.value == "5a5407bd92e71336b546642b8b62b6a9544bca5c4ab2fbb8864d9faa5400ba48")
+        assert hashb != null
+    }
+
+    def "should generate bom for non-jar artrifacts"() {
+        given:
+        String localRepoUri = TestUtils.duplicateRepo("local")
+
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                maven{
+                    url '$localRepoUri'
+                }
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            dependencies {
+                implementation("com.test:componentc:1.0.0")
+            }""", "rootProject.name = 'simple-project'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component componentc = bom.getComponents().find(c -> c.bomRef == 'pkg:maven/com.test/componentc@1.0.0?type=tgz')
+        assert componentc != null
     }
 }
