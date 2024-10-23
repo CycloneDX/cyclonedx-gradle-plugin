@@ -19,18 +19,19 @@
 package org.cyclonedx.gradle.model;
 
 import java.io.File;
+import org.gradle.api.artifacts.component.ComponentIdentifier;
 
 public class ArtifactInfo {
 
-    private final String componentId;
+    private final ComponentIdentifier componentId;
     private final File artifactFile;
 
-    public ArtifactInfo(final String componentId, final File artifactFile) {
+    public ArtifactInfo(final ComponentIdentifier componentId, final File artifactFile) {
         this.componentId = componentId;
         this.artifactFile = artifactFile;
     }
 
-    public String getComponentId() {
+    public ComponentIdentifier getComponentId() {
         return componentId;
     }
 

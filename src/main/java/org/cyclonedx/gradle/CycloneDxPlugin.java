@@ -69,24 +69,22 @@ public class CycloneDxPlugin implements Plugin<Project> {
                 .map(v -> v.getIncoming().getArtifacts().getResolvedArtifacts())
                 .reduce(this::combineArtifactsProviders)
                 .map(provider ->
-                        provider.map(v -> v.stream().map(this::mapResult).collect(Collectors.toSet())));
+                        provider.map(v -> v.stream().map(this::toArtifactInfo).collect(Collectors.toSet())));
     }
 
     private Provider<Set<ResolvedArtifactResult>> combineArtifactsProviders(
-            Provider<Set<ResolvedArtifactResult>> left, Provider<Set<ResolvedArtifactResult>> right) {
-        return left.flatMap(v -> right.map(w -> {
-            Set<ResolvedArtifactResult> result = new HashSet<>();
-            result.addAll(v);
-            result.addAll(w);
-            return result;
-        }));
+            final Provider<Set<ResolvedArtifactResult>> left, final Provider<Set<ResolvedArtifactResult>> right) {
+        return left.zip(right, (u, v) -> {
+            u.addAll(v);
+            return u;
+        });
     }
 
-    private ArtifactInfo mapResult(ResolvedArtifactResult result) {
-        return new ArtifactInfo(result.getId().getComponentIdentifier().getDisplayName(), result.getFile());
+    private ArtifactInfo toArtifactInfo(final ResolvedArtifactResult result) {
+        return new ArtifactInfo(result.getId().getComponentIdentifier(), result.getFile());
     }
 
-    private ResolvedConfiguration resolvedConfiguration(Configuration config) {
+    private ResolvedConfiguration resolvedConfiguration(final Configuration config) {
         return new ResolvedConfiguration(
                 config.getName(), config.getIncoming().getResolutionResult().getRootComponent());
     }

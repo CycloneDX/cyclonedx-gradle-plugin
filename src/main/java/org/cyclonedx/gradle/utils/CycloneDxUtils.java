@@ -30,7 +30,7 @@ import org.gradle.api.GradleException;
 
 public class CycloneDxUtils {
 
-    public static final Version DEFAULT_SCHEMA_VERSION = Version.VERSION_15;
+    public static final Version DEFAULT_SCHEMA_VERSION = Version.VERSION_16;
 
     /**
      * Resolves the CycloneDX schema the mojo has been requested to use.
@@ -60,7 +60,7 @@ public class CycloneDxUtils {
 
     public static void writeBom(final Bom bom, final File destination) {
         try {
-            writeJSONBom(Version.VERSION_16, bom, destination);
+            writeJSONBom(DEFAULT_SCHEMA_VERSION, bom, destination);
         } catch (IOException e) {
             throw new GradleException("An error occurred writing BOM", e);
         }
