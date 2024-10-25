@@ -33,7 +33,7 @@ public class CycloneDxPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getTasks().register("cyclonedxBom", CycloneDxTask.class, (task) -> {
             final ResolvedBuild resolvedBuild = getResolvedBuild(project);
-            final Set<Provider<ArtifactInfoSet>> artifacts = getArtifacts(project);
+            final Provider<Set<ArtifactInfo>> artifacts = getArtifacts(project);
             final File destination =
                     project.getLayout().getBuildDirectory().dir("reports").get().getAsFile();
 
@@ -41,7 +41,7 @@ public class CycloneDxPlugin implements Plugin<Project> {
             task.getDestination().set(destination);
             task.setGroup("Reporting");
             task.setDescription("Generates a CycloneDX compliant Software Bill of Materials (SBOM)");
-            task.getArtifacts().set(new ResolvedArtifacts(artifacts));
+            task.getArtifacts().set(artifacts);
         });
     }
 
@@ -59,20 +59,17 @@ public class CycloneDxPlugin implements Plugin<Project> {
         return resolvedBuild;
     }
 
-    private Set<Provider<ArtifactInfoSet>> getArtifacts(final Project project) {
+    private Provider<Set<ArtifactInfo>> getArtifacts(final Project project) {
 
-        return project.getAllprojects().stream()
+        final List<Configuration> configurations = project.getAllprojects().stream()
                 .flatMap(v -> v.getConfigurations().stream())
+                .collect(Collectors.toList());
+
+        return project.getProviders().provider(() -> configurations.stream()
                 .filter(Configuration::isCanBeResolved)
-                .map(config -> config.getIncoming()
-                        .getArtifacts()
-                        .getResolvedArtifacts()
-                        .map(artifacts -> {
-                            ArtifactInfoSet infoSet = new ArtifactInfoSet();
-                            artifacts.forEach(artifact -> infoSet.addInfo(toArtifactInfo(artifact)));
-                            return infoSet;
-                        }))
-                .collect(Collectors.toSet());
+                .flatMap(config -> config.getIncoming().getArtifacts().getArtifacts().stream()
+                        .map(artifact -> toArtifactInfo(artifact)))
+                .collect(Collectors.toSet()));
     }
 
     private ArtifactInfo toArtifactInfo(final ResolvedArtifactResult result) {

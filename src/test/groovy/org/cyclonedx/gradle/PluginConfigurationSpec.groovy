@@ -162,7 +162,29 @@ class PluginConfigurationSpec extends Specification {
             dependencies {
                 implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
                 implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+                implementation group: 'org.jetbrains.kotlin', name: 'kotlin-native-prebuilt', version: '2.0.20'
             }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles().length == 1
+        File jsonBom = new File(reportDir, "bom.json")
+        assert jsonBom.text.contains("\"name\" : \"hello-world\"")
+    }
+
+    def "should build bom successfully for native kotlin project"() {
+        given:
+        File testDir = TestUtils.duplicate("native-kotlin-project")
 
         when:
         def result = GradleRunner.create()
@@ -177,8 +199,6 @@ class PluginConfigurationSpec extends Specification {
 
         assert reportDir.exists()
         reportDir.listFiles().length == 1
-        File jsonBom = new File(reportDir, "bom.json")
-        assert jsonBom.text.contains("\"name\" : \"hello-world\"")
     }
 
     @Ignore
@@ -343,7 +363,6 @@ class PluginConfigurationSpec extends Specification {
             .build()
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        println(result.output)
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()

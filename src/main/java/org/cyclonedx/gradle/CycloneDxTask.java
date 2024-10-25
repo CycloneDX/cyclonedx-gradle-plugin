@@ -21,12 +21,13 @@ package org.cyclonedx.gradle;
 import java.io.File;
 import java.util.Map;
 import java.util.Set;
-import org.cyclonedx.gradle.model.ResolvedArtifacts;
+import org.cyclonedx.gradle.model.ArtifactInfo;
 import org.cyclonedx.gradle.model.ResolvedBuild;
 import org.cyclonedx.gradle.model.ResolvedConfiguration;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 
@@ -45,7 +46,7 @@ public abstract class CycloneDxTask extends DefaultTask {
     public abstract Property<File> getDestination();
 
     @Input
-    public abstract Property<ResolvedArtifacts> getArtifacts();
+    public abstract SetProperty<ArtifactInfo> getArtifacts();
 
     @TaskAction
     public void createBom() {
@@ -71,6 +72,6 @@ public abstract class CycloneDxTask extends DefaultTask {
     }
 
     private void registerArtifacts() {
-        getArtifacts().get().getArtifacts().forEach(v -> v.get().getInfoSet().forEach(traverser::registerArtifact));
+        getArtifacts().get().forEach(traverser::registerArtifact);
     }
 }
