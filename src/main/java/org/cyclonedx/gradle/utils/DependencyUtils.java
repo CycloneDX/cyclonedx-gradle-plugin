@@ -21,18 +21,18 @@ package org.cyclonedx.gradle.utils;
 import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
 import java.util.TreeMap;
-import org.gradle.api.artifacts.ModuleVersionIdentifier;
+import org.cyclonedx.gradle.model.SerializableComponent;
 
 public class DependencyUtils {
 
     public static String generatePackageUrl(
-            final ModuleVersionIdentifier version, final TreeMap<String, String> qualifiers)
+            final SerializableComponent component, final TreeMap<String, String> qualifiers)
             throws MalformedPackageURLException {
         return new PackageURL(
                         PackageURL.StandardTypes.MAVEN,
-                        version.getGroup(),
-                        version.getName(),
-                        version.getVersion(),
+                        component.getGroup(),
+                        component.getName(),
+                        component.getVersion(),
                         qualifiers,
                         null)
                 .canonicalize();

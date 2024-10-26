@@ -159,6 +159,7 @@ class PluginConfigurationSpec extends Specification {
             cyclonedxBom {
                 // No componentName override -> Use rootProject.name
             }
+
             dependencies {
                 implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
                 implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'

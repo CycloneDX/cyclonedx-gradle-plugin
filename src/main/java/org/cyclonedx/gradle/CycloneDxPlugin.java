@@ -19,65 +19,24 @@
 package org.cyclonedx.gradle;
 
 import java.io.File;
-import java.util.*;
-import java.util.stream.Collectors;
-import org.cyclonedx.gradle.model.*;
+import org.cyclonedx.gradle.model.SerializableComponents;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.provider.Provider;
 
 public class CycloneDxPlugin implements Plugin<Project> {
 
     public void apply(Project project) {
         project.getTasks().register("cyclonedxBom", CycloneDxTask.class, (task) -> {
-            final ResolvedBuild resolvedBuild = getResolvedBuild(project);
-            final Provider<Set<ArtifactInfo>> artifacts = getArtifacts(project);
+            final Provider<SerializableComponents> components =
+                    project.getProviders().provider(new ComponentProvider(project));
             final File destination =
                     project.getLayout().getBuildDirectory().dir("reports").get().getAsFile();
 
-            task.getResolvedBuild().set(resolvedBuild);
+            task.getComponents().set(components);
             task.getDestination().set(destination);
             task.setGroup("Reporting");
             task.setDescription("Generates a CycloneDX compliant Software Bill of Materials (SBOM)");
-            task.getArtifacts().set(artifacts);
         });
-    }
-
-    private ResolvedBuild getResolvedBuild(final Project project) {
-
-        final ResolvedBuild resolvedBuild = new ResolvedBuild(project.getName());
-        project.getConfigurations().stream()
-                .filter(Configuration::isCanBeResolved)
-                .forEach(v -> resolvedBuild.addProjectConfiguration(resolvedConfiguration(v)));
-
-        project.getChildProjects().forEach((k, v) -> v.getConfigurations().stream()
-                .filter(Configuration::isCanBeResolved)
-                .forEach(w -> resolvedBuild.addSubProjectConfiguration(k, resolvedConfiguration(w))));
-
-        return resolvedBuild;
-    }
-
-    private Provider<Set<ArtifactInfo>> getArtifacts(final Project project) {
-
-        final List<Configuration> configurations = project.getAllprojects().stream()
-                .flatMap(v -> v.getConfigurations().stream())
-                .collect(Collectors.toList());
-
-        return project.getProviders().provider(() -> configurations.stream()
-                .filter(Configuration::isCanBeResolved)
-                .flatMap(config -> config.getIncoming().getArtifacts().getArtifacts().stream()
-                        .map(artifact -> toArtifactInfo(artifact)))
-                .collect(Collectors.toSet()));
-    }
-
-    private ArtifactInfo toArtifactInfo(final ResolvedArtifactResult result) {
-        return new ArtifactInfo(result.getId().getComponentIdentifier(), result.getFile());
-    }
-
-    private ResolvedConfiguration resolvedConfiguration(final Configuration config) {
-        return new ResolvedConfiguration(
-                config.getName(), config.getIncoming().getResolutionResult().getRootComponent());
     }
 }
