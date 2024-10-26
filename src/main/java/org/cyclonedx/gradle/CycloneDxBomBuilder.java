@@ -22,20 +22,30 @@ import com.github.packageurl.MalformedPackageURLException;
 import com.networknt.schema.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 import org.cyclonedx.Version;
 import org.cyclonedx.gradle.model.ComponentComparator;
 import org.cyclonedx.gradle.model.DependencyComparator;
-import org.cyclonedx.gradle.model.GraphNode;
+import org.cyclonedx.gradle.model.SerializableComponent;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.gradle.utils.DependencyUtils;
-import org.cyclonedx.model.*;
+import org.cyclonedx.model.Bom;
+import org.cyclonedx.model.Component;
+import org.cyclonedx.model.Dependency;
+import org.cyclonedx.model.Hash;
+import org.cyclonedx.model.Metadata;
+import org.cyclonedx.model.Property;
 import org.cyclonedx.util.BomUtils;
-import org.gradle.api.artifacts.ModuleVersionIdentifier;
-import org.gradle.api.artifacts.component.ComponentIdentifier;
-import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.logging.Logger;
 
 public class CycloneDxBomBuilder {
@@ -56,30 +66,29 @@ public class CycloneDxBomBuilder {
     }
 
     public Bom buildBom(
-            final Map<GraphNode, Set<GraphNode>> resultGraph,
-            final GraphNode parentNode,
-            final Map<ComponentIdentifier, File> resolvedArtifacts) {
+            final Map<SerializableComponent, Set<SerializableComponent>> resultGraph,
+            final SerializableComponent parentComponent) {
 
         final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
         final Set<Component> components = new TreeSet<>(new ComponentComparator());
 
-        resultGraph.keySet().forEach(node -> {
-            addDependency(dependencies, resultGraph.get(node), node, resolvedArtifacts);
-            addComponent(components, node, parentNode, resolvedArtifacts);
+        resultGraph.keySet().forEach(component -> {
+            addDependency(dependencies, resultGraph.get(component), component);
+            addComponent(components, component, parentComponent);
         });
 
         final Bom bom = new Bom();
         bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
-        bom.setMetadata(buildMetadata(parentNode));
+        bom.setMetadata(buildMetadata(parentComponent));
         bom.setComponents(new ArrayList<>(components));
         bom.setDependencies(new ArrayList<>(dependencies));
         return bom;
     }
 
-    private Metadata buildMetadata(final GraphNode parentNode) {
+    private Metadata buildMetadata(final SerializableComponent parentComponent) {
         final Metadata metadata = new Metadata();
         try {
-            metadata.setComponent(toComponent(parentNode, null));
+            metadata.setComponent(toComponent(parentComponent, null));
         } catch (MalformedPackageURLException e) {
             logger.warn("Error constructing packageUrl for parent component. Skipping...", e);
         }
@@ -88,78 +97,74 @@ public class CycloneDxBomBuilder {
 
     private void addDependency(
             final Set<Dependency> dependencies,
-            final Set<GraphNode> dependencyNodes,
-            final GraphNode node,
-            final Map<ComponentIdentifier, File> resolvedArtifacts) {
+            final Set<SerializableComponent> dependencyComponents,
+            final SerializableComponent component) {
 
         final Dependency dependency;
         try {
-            dependency = toDependency(node.getResult(), resolvedArtifacts);
+            dependency = toDependency(component);
         } catch (MalformedPackageURLException e) {
-            logger.warn("Error constructing packageUrl for node. Skipping...", e);
+            logger.warn("Error constructing packageUrl for component. Skipping...", e);
             return;
         }
-        dependencyNodes.forEach(dependencyNode -> {
+        dependencyComponents.forEach(dependencyComponent -> {
             try {
-                dependency.addDependency(toDependency(dependencyNode.getResult(), resolvedArtifacts));
+                dependency.addDependency(toDependency(dependencyComponent));
             } catch (MalformedPackageURLException e) {
-                logger.warn("Error constructing packageUrl for node dependency. Skipping...", e);
+                logger.warn("Error constructing packageUrl for component dependency. Skipping...", e);
             }
         });
         dependencies.add(dependency);
     }
 
-    private Dependency toDependency(
-            final ResolvedComponentResult component, final Map<ComponentIdentifier, File> resolvedArtifacts)
-            throws MalformedPackageURLException {
+    private Dependency toDependency(final SerializableComponent component) throws MalformedPackageURLException {
 
-        final File artifactFile = resolvedArtifacts.get(component.getId());
-        final String ref = DependencyUtils.generatePackageUrl(component.getModuleVersion(), getType(artifactFile));
+        final String ref = DependencyUtils.generatePackageUrl(
+                component, getType(component.getArtifactFile().orElse(null)));
         return new Dependency(ref);
     }
 
     private void addComponent(
             final Set<Component> components,
-            final GraphNode node,
-            final GraphNode parentNode,
-            final Map<ComponentIdentifier, File> resolvedArtifacts) {
-        if (!node.equals(parentNode)) {
-            final File artifactFile = resolvedArtifacts.get(node.getResult().getId());
+            final SerializableComponent component,
+            final SerializableComponent parentComponent) {
+        if (!component.equals(parentComponent)) {
+            final File artifactFile = component.getArtifactFile().orElse(null);
             try {
-                components.add(toComponent(node, artifactFile));
+                components.add(toComponent(component, artifactFile));
             } catch (MalformedPackageURLException e) {
-                logger.warn("Error constructing packageUrl for node component. Skipping...", e);
+                logger.warn("Error constructing packageUrl for component. Skipping...", e);
             }
         }
     }
 
-    private Component toComponent(final GraphNode node, final File artifactFile) throws MalformedPackageURLException {
+    private Component toComponent(final SerializableComponent component, final File artifactFile)
+            throws MalformedPackageURLException {
 
-        final ModuleVersionIdentifier moduleVersion = node.getResult().getModuleVersion();
-        final String packageUrl = DependencyUtils.generatePackageUrl(moduleVersion, getType(artifactFile));
+        final String packageUrl = DependencyUtils.generatePackageUrl(component, getType(artifactFile));
 
-        final Component component = new Component();
-        component.setGroup(moduleVersion.getGroup());
-        component.setName(moduleVersion.getName());
-        component.setVersion(moduleVersion.getVersion());
-        component.setType(Component.Type.LIBRARY);
-        component.setPurl(packageUrl);
-        component.setProperties(buildProperties(node));
+        final Component resultComponent = new Component();
+        resultComponent.setGroup(component.getGroup());
+        resultComponent.setName(component.getName());
+        resultComponent.setVersion(component.getVersion());
+        resultComponent.setType(Component.Type.LIBRARY);
+        resultComponent.setPurl(packageUrl);
+        resultComponent.setProperties(buildProperties(component));
         if (version.getVersion() >= 1.1) {
-            component.setModified(mavenHelper.isModified(null));
-            component.setBomRef(packageUrl);
+            resultComponent.setModified(mavenHelper.isModified(null));
+            resultComponent.setBomRef(packageUrl);
         }
 
         logger.debug(MESSAGE_CALCULATING_HASHES);
         if (artifactFile != null) {
-            component.setHashes(calculateHashes(artifactFile));
+            resultComponent.setHashes(calculateHashes(artifactFile));
         }
 
-        return component;
+        return resultComponent;
     }
 
-    private List<Property> buildProperties(GraphNode node) {
-        return node.getInScopeConfigurations().stream()
+    private List<Property> buildProperties(SerializableComponent component) {
+        return component.getInScopeConfigurations().stream()
                 .map(v -> {
                     Property property = new Property();
                     property.setName("inScopeConfiguration");

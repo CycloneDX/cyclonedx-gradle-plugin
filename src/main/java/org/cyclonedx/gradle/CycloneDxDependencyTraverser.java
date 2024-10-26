@@ -22,14 +22,17 @@ import com.networknt.schema.utils.StringUtils;
 import java.io.File;
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.cyclonedx.gradle.model.ArtifactInfo;
-import org.cyclonedx.gradle.model.GraphNode;
-import org.cyclonedx.model.*;
+import java.util.stream.Collectors;
+import org.cyclonedx.gradle.model.ConfigurationScope;
+import org.cyclonedx.gradle.model.SerializableComponent;
+import org.cyclonedx.gradle.model.SerializableComponents;
 import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
@@ -37,6 +40,7 @@ import org.gradle.api.artifacts.result.DependencyResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.logging.Logger;
+import org.jetbrains.annotations.NotNull;
 
 public class CycloneDxDependencyTraverser {
 
@@ -53,8 +57,8 @@ public class CycloneDxDependencyTraverser {
         this.resultGraph = new HashMap<>();
     }
 
-    public void registerArtifact(final ArtifactInfo artifact) {
-        resolvedArtifacts.put(artifact.getComponentId(), artifact.getArtifactFile());
+    public void registerArtifact(final ComponentIdentifier componentId, final File artifactFile) {
+        resolvedArtifacts.put(componentId, artifactFile);
     }
 
     public void traverseParentGraph(
@@ -123,8 +127,35 @@ public class CycloneDxDependencyTraverser {
                 .forEach(v -> v.inScopeConfiguration(projectName, configName));
     }
 
-    public Bom toBom() {
-        return builder.buildBom(this.resultGraph, this.parentNode, this.resolvedArtifacts);
+    public SerializableComponents serializableComponents() {
+
+        Map<SerializableComponent, Set<SerializableComponent>> result = new HashMap<>();
+        this.resultGraph.forEach((k, v) -> {
+            result.put(
+                    serializableComponent(k),
+                    v.stream().map(w -> serializableComponent(w)).collect(Collectors.toSet()));
+        });
+
+        return new SerializableComponents(result, serializableComponent(this.parentNode));
+    }
+
+    private SerializableComponent serializableComponent(final GraphNode node) {
+
+        ResolvedComponentResult resolvedComponent = node.getResult();
+        if (this.resolvedArtifacts.containsKey(resolvedComponent.getId())) {
+            return new SerializableComponent(
+                    resolvedComponent.getModuleVersion().getGroup(),
+                    resolvedComponent.getModuleVersion().getName(),
+                    resolvedComponent.getModuleVersion().getVersion(),
+                    node.getInScopeConfigurations(),
+                    this.resolvedArtifacts.get(resolvedComponent.getId()));
+        } else {
+            return new SerializableComponent(
+                    resolvedComponent.getModuleVersion().getGroup(),
+                    resolvedComponent.getModuleVersion().getName(),
+                    resolvedComponent.getModuleVersion().getVersion(),
+                    node.getInScopeConfigurations());
+        }
     }
 
     private String getRef(final ModuleVersionIdentifier identifier) {
@@ -139,5 +170,52 @@ public class CycloneDxDependencyTraverser {
         }
 
         return String.format("%s:%s:%s", identifier.getGroup(), identifier.getName(), identifier.getVersion());
+    }
+
+    private static class GraphNode implements Comparable<GraphNode> {
+
+        private final String ref;
+        private final ResolvedComponentResult result;
+        private final Set<ConfigurationScope> inScopeConfigurations;
+
+        private GraphNode(final String ref, final ResolvedComponentResult result) {
+            this.ref = ref;
+            this.result = result;
+            this.inScopeConfigurations = new HashSet<>();
+        }
+
+        private String getRef() {
+            return ref;
+        }
+
+        private ResolvedComponentResult getResult() {
+            return result;
+        }
+
+        private void inScopeConfiguration(final String projectName, final String configName) {
+            inScopeConfigurations.add(new ConfigurationScope(projectName, configName));
+        }
+
+        private Set<ConfigurationScope> getInScopeConfigurations() {
+            return inScopeConfigurations;
+        }
+
+        @Override
+        public int compareTo(@NotNull GraphNode o) {
+            return this.ref.compareTo(o.ref);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            GraphNode graphNode = (GraphNode) o;
+            return Objects.equals(ref, graphNode.ref);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(ref);
+        }
     }
 }

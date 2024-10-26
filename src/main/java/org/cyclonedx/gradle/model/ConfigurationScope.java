@@ -18,25 +18,23 @@
  */
 package org.cyclonedx.gradle.model;
 
-import org.gradle.api.artifacts.result.ResolvedComponentResult;
-import org.gradle.api.provider.Provider;
+import java.io.Serializable;
 
-public class ResolvedConfiguration {
+public class ConfigurationScope implements Serializable {
 
-    private final String configurationName;
-    private final Provider<ResolvedComponentResult> dependencyGraph;
+    private final String projectName;
+    private final String configName;
 
-    public ResolvedConfiguration(
-            final String configurationName, final Provider<ResolvedComponentResult> dependencyGraph) {
-        this.configurationName = configurationName;
-        this.dependencyGraph = dependencyGraph;
+    public ConfigurationScope(final String projectName, final String configName) {
+        this.projectName = projectName;
+        this.configName = configName;
     }
 
-    public String getConfigurationName() {
-        return configurationName;
+    public String getProjectName() {
+        return projectName;
     }
 
-    public Provider<ResolvedComponentResult> getDependencyGraph() {
-        return dependencyGraph;
+    public String getConfigName() {
+        return configName;
     }
 }

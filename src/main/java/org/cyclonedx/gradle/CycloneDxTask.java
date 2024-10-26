@@ -19,59 +19,33 @@
 package org.cyclonedx.gradle;
 
 import java.io.File;
-import java.util.Map;
-import java.util.Set;
-import org.cyclonedx.gradle.model.ArtifactInfo;
-import org.cyclonedx.gradle.model.ResolvedBuild;
-import org.cyclonedx.gradle.model.ResolvedConfiguration;
+import org.cyclonedx.gradle.model.SerializableComponents;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.provider.Property;
-import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 
 public abstract class CycloneDxTask extends DefaultTask {
 
-    private final CycloneDxDependencyTraverser traverser;
+    private final CycloneDxBomBuilder builder;
 
     public CycloneDxTask() {
-        this.traverser = new CycloneDxDependencyTraverser(getLogger(), new CycloneDxBomBuilder(getLogger()));
+        this.builder = new CycloneDxBomBuilder(getLogger());
     }
 
     @Input
-    public abstract Property<ResolvedBuild> getResolvedBuild();
+    public abstract Property<SerializableComponents> getComponents();
 
     @Input
     public abstract Property<File> getDestination();
 
-    @Input
-    public abstract SetProperty<ArtifactInfo> getArtifacts();
-
     @TaskAction
     public void createBom() {
 
-        final ResolvedBuild resolvedBuild = getResolvedBuild().get();
-
-        registerArtifacts();
-        buildParentDependencies(resolvedBuild.getProjectName(), resolvedBuild.getProjectConfigurations());
-        buildChildDependencies(resolvedBuild.getSubProjectsConfigurations());
-
         File destination = new File(getDestination().get(), "bom.json");
-        CycloneDxUtils.writeBom(traverser.toBom(), destination);
-    }
-
-    private void buildParentDependencies(final String projectName, Set<ResolvedConfiguration> configurations) {
-        configurations.forEach(config -> traverser.traverseParentGraph(
-                config.getDependencyGraph().get(), projectName, config.getConfigurationName()));
-    }
-
-    private void buildChildDependencies(final Map<String, Set<ResolvedConfiguration>> configurations) {
-        configurations.forEach((key, value) -> value.forEach(config ->
-                traverser.traverseChildGraph(config.getDependencyGraph().get(), key, config.getConfigurationName())));
-    }
-
-    private void registerArtifacts() {
-        getArtifacts().get().forEach(traverser::registerArtifact);
+        SerializableComponents components = getComponents().get();
+        CycloneDxUtils.writeBom(
+                builder.buildBom(components.getSerializableComponents(), components.getRootComponent()), destination);
     }
 }
