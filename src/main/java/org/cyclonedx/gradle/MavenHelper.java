@@ -39,7 +39,6 @@ import org.apache.maven.model.resolution.ModelResolver;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.ReaderFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-import org.cyclonedx.Version;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
@@ -54,13 +53,11 @@ import org.gradle.api.logging.Logger;
  */
 class MavenHelper {
 
-    private Logger logger;
-    private Version schemaVersion;
-    private Boolean includeLicenseText;
+    private final Logger logger;
+    private final Boolean includeLicenseText;
 
-    public MavenHelper(Logger logger, Version schemaVersion, Boolean includeLicenseText) {
+    public MavenHelper(final Logger logger, final Boolean includeLicenseText) {
         this.logger = logger;
-        this.schemaVersion = schemaVersion;
         this.includeLicenseText = includeLicenseText;
     }
 
@@ -77,14 +74,18 @@ class MavenHelper {
      * @param component
      *            the component to populate data for
      */
-    void getClosestMetadata(ResolvedArtifact artifact, MavenProject project, Component component) {
+    void getClosestMetadata(
+            final File artifact,
+            final MavenProject project,
+            final Component component,
+            final ModuleVersionIdentifier mid) {
         extractMetadata(project, component);
         if (project.getParent() != null) {
-            getClosestMetadata(artifact, project.getParent(), component);
+            getClosestMetadata(artifact, project.getParent(), component, mid);
         } else if (project.getModel().getParent() != null) {
-            @Nullable final MavenProject parentProject = retrieveParentProject(artifact, project);
+            @Nullable final MavenProject parentProject = retrieveParentProject(artifact, project, mid);
             if (parentProject != null) {
-                getClosestMetadata(artifact, parentProject, component);
+                getClosestMetadata(artifact, parentProject, component, mid);
             }
         }
     }
@@ -97,7 +98,7 @@ class MavenHelper {
      * @param component
      *            the component to add data to
      */
-    public void extractMetadata(MavenProject project, Component component) {
+    public void extractMetadata(final MavenProject project, final Component component) {
         if (component.getPublisher() == null) {
             // If we don't already have publisher information, retrieve it.
             if (project.getOrganization() != null) {
@@ -108,76 +109,65 @@ class MavenHelper {
             // If we don't already have description information, retrieve it.
             component.setDescription(project.getDescription());
         }
-        if (component.getLicenseChoice() == null
-                || component.getLicenseChoice().getLicenses() == null
-                || component.getLicenseChoice().getLicenses().isEmpty()) {
-            // If we don't already have license information, retrieve it.
-            if (project.getLicenses() != null) {
-                component.setLicenseChoice(resolveMavenLicenses(project.getLicenses()));
+        if (project.getOrganization() != null && project.getOrganization().getUrl() != null) {
+            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.WEBSITE)) {
+                addExternalReference(
+                        ExternalReference.Type.WEBSITE,
+                        project.getOrganization().getUrl(),
+                        component);
             }
         }
-        if (Version.VERSION_10 != schemaVersion) {
-            if (project.getOrganization() != null && project.getOrganization().getUrl() != null) {
-                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.WEBSITE)) {
-                    addExternalReference(
-                            ExternalReference.Type.WEBSITE,
-                            project.getOrganization().getUrl(),
-                            component);
-                }
+        if (project.getCiManagement() != null && project.getCiManagement().getUrl() != null) {
+            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.BUILD_SYSTEM)) {
+                addExternalReference(
+                        ExternalReference.Type.BUILD_SYSTEM,
+                        project.getCiManagement().getUrl(),
+                        component);
             }
-            if (project.getCiManagement() != null && project.getCiManagement().getUrl() != null) {
-                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.BUILD_SYSTEM)) {
-                    addExternalReference(
-                            ExternalReference.Type.BUILD_SYSTEM,
-                            project.getCiManagement().getUrl(),
-                            component);
-                }
+        }
+        if (project.getDistributionManagement() != null
+                && project.getDistributionManagement().getDownloadUrl() != null) {
+            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
+                addExternalReference(
+                        ExternalReference.Type.DISTRIBUTION,
+                        project.getDistributionManagement().getDownloadUrl(),
+                        component);
             }
-            if (project.getDistributionManagement() != null
-                    && project.getDistributionManagement().getDownloadUrl() != null) {
-                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
-                    addExternalReference(
-                            ExternalReference.Type.DISTRIBUTION,
-                            project.getDistributionManagement().getDownloadUrl(),
-                            component);
-                }
+        }
+        if (project.getDistributionManagement() != null
+                && project.getDistributionManagement().getRepository() != null) {
+            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
+                addExternalReference(
+                        ExternalReference.Type.DISTRIBUTION,
+                        project.getDistributionManagement().getRepository().getUrl(),
+                        component);
             }
-            if (project.getDistributionManagement() != null
-                    && project.getDistributionManagement().getRepository() != null) {
-                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
-                    addExternalReference(
-                            ExternalReference.Type.DISTRIBUTION,
-                            project.getDistributionManagement().getRepository().getUrl(),
-                            component);
-                }
+        }
+        if (project.getIssueManagement() != null && project.getIssueManagement().getUrl() != null) {
+            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.ISSUE_TRACKER)) {
+                addExternalReference(
+                        ExternalReference.Type.ISSUE_TRACKER,
+                        project.getIssueManagement().getUrl(),
+                        component);
             }
-            if (project.getIssueManagement() != null
-                    && project.getIssueManagement().getUrl() != null) {
-                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.ISSUE_TRACKER)) {
-                    addExternalReference(
-                            ExternalReference.Type.ISSUE_TRACKER,
-                            project.getIssueManagement().getUrl(),
-                            component);
-                }
-            }
-            if (project.getMailingLists() != null && project.getMailingLists().size() > 0) {
-                for (MailingList list : project.getMailingLists()) {
-                    if (list.getArchive() != null) {
-                        if (!doesComponentHaveExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
-                            addExternalReference(ExternalReference.Type.MAILING_LIST, list.getArchive(), component);
-                        }
-                    } else if (list.getSubscribe() != null) {
-                        if (!doesComponentHaveExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
-                            addExternalReference(ExternalReference.Type.MAILING_LIST, list.getSubscribe(), component);
-                        }
+        }
+        if (project.getMailingLists() != null && project.getMailingLists().size() > 0) {
+            for (MailingList list : project.getMailingLists()) {
+                if (list.getArchive() != null) {
+                    if (!doesComponentHaveExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
+                        addExternalReference(ExternalReference.Type.MAILING_LIST, list.getArchive(), component);
+                    }
+                } else if (list.getSubscribe() != null) {
+                    if (!doesComponentHaveExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
+                        addExternalReference(ExternalReference.Type.MAILING_LIST, list.getSubscribe(), component);
                     }
                 }
             }
-            if (project.getScm() != null && project.getScm().getUrl() != null) {
-                if (!doesComponentHaveExternalReference(component, ExternalReference.Type.VCS)) {
-                    addExternalReference(
-                            ExternalReference.Type.VCS, project.getScm().getUrl(), component);
-                }
+        }
+        if (project.getScm() != null && project.getScm().getUrl() != null) {
+            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.VCS)) {
+                addExternalReference(
+                        ExternalReference.Type.VCS, project.getScm().getUrl(), component);
             }
         }
     }
@@ -213,13 +203,13 @@ class MavenHelper {
             boolean resolved = false;
             if (artifactLicense.getName() != null) {
                 final LicenseChoice resolvedByName =
-                        LicenseResolver.resolve(artifactLicense.getName(), this.includeLicenseText);
+                        LicenseResolver.resolve(artifactLicense.getName(), includeLicenseText);
                 if (resolvedByName != null) {
                     if (resolvedByName.getLicenses() != null
                             && !resolvedByName.getLicenses().isEmpty()) {
                         resolved = true;
                         licenseChoice.addLicense(resolvedByName.getLicenses().get(0));
-                    } else if (resolvedByName.getExpression() != null && Version.VERSION_10 != schemaVersion) {
+                    } else if (resolvedByName.getExpression() != null) {
                         resolved = true;
                         licenseChoice.setExpression(resolvedByName.getExpression());
                     }
@@ -233,7 +223,7 @@ class MavenHelper {
                             && !resolvedByUrl.getLicenses().isEmpty()) {
                         resolved = true;
                         licenseChoice.addLicense(resolvedByUrl.getLicenses().get(0));
-                    } else if (resolvedByUrl.getExpression() != null && Version.VERSION_10 != schemaVersion) {
+                    } else if (resolvedByUrl.getExpression() != null) {
                         resolved = true;
                         licenseChoice.setExpression(resolvedByUrl.getExpression());
                     }
@@ -269,10 +259,9 @@ class MavenHelper {
      * @param project
      *            the maven project the artifact is part of
      */
-    @Nullable private MavenProject retrieveParentProject(ResolvedArtifact artifact, MavenProject project) {
-        if (artifact.getFile() == null
-                || artifact.getFile().getParentFile() == null
-                || !isDescribedArtifact(artifact)) {
+    @Nullable private MavenProject retrieveParentProject(
+            final File artifact, MavenProject project, final ModuleVersionIdentifier mid) {
+        if (artifact == null || artifact.getParentFile() == null) {
             return null;
         }
         final Model model = project.getModel();
@@ -281,14 +270,13 @@ class MavenHelper {
             // Navigate out of version, artifactId, and first (possibly only) level of
             // groupId
             final StringBuilder getout = new StringBuilder("../../../");
-            final ModuleVersionIdentifier mid = artifact.getModuleVersion().getId();
             final int periods =
                     mid.getGroup().length() - mid.getGroup().replace(".", "").length();
             for (int i = 0; i < periods; i++) {
                 getout.append("../");
             }
             final File parentFile = new File(
-                    artifact.getFile().getParentFile(),
+                    artifact.getParentFile(),
                     getout + parent.getGroupId().replace(".", "/") + "/" + parent.getArtifactId() + "/"
                             + parent.getVersion() + "/" + parent.getArtifactId() + "-" + parent.getVersion() + ".pom");
             if (parentFile.exists() && parentFile.isFile()) {
@@ -309,14 +297,10 @@ class MavenHelper {
      *            the artifact to extract the pom from
      * @return a Maven project
      */
-    @Nullable MavenProject extractPom(ResolvedArtifact artifact) {
-        if (!isDescribedArtifact(artifact)) {
-            return null;
-        }
-        if (artifact.getFile() != null && artifact.getFile().exists()) {
+    @Nullable MavenProject extractPom(final File artifact, final ModuleVersionIdentifier mid) {
+        if (artifact != null && artifact.exists()) {
             try {
-                final JarFile jarFile = new JarFile(artifact.getFile());
-                final ModuleVersionIdentifier mid = artifact.getModuleVersion().getId();
+                final JarFile jarFile = new JarFile(artifact);
                 final JarEntry entry =
                         jarFile.getJarEntry("META-INF/maven/" + mid.getGroup() + "/" + mid.getName() + "/pom.xml");
                 if (entry != null) {
@@ -340,7 +324,12 @@ class MavenHelper {
      * @throws IOException
      *             oops
      */
-    @Nullable MavenProject readPom(File file) {
+    @Nullable static MavenProject readPom(final File file) {
+
+        if (file == null) {
+            return null;
+        }
+
         try {
             final MavenXpp3Reader mavenreader = new MavenXpp3Reader();
             try (final Reader reader = ReaderFactory.newXmlReader(file)) {
@@ -348,9 +337,8 @@ class MavenHelper {
                 return new MavenProject(model);
             }
         } catch (XmlPullParserException | IOException e) {
-            logger.error("An error occurred attempting to read POM", e);
+            throw new IllegalStateException("An error occurred attempting to read POM", e);
         }
-        return null;
     }
 
     /**
@@ -360,7 +348,7 @@ class MavenHelper {
      *            the inputstream to read from
      * @return a MavenProject
      */
-    @Nullable MavenProject readPom(InputStream in) {
+    @Nullable static MavenProject readPom(final InputStream in) {
         try {
             final MavenXpp3Reader mavenreader = new MavenXpp3Reader();
             try (final Reader reader = ReaderFactory.newXmlReader(in)) {
@@ -368,7 +356,7 @@ class MavenHelper {
                 return new MavenProject(model);
             }
         } catch (XmlPullParserException | IOException e) {
-            logger.error("An error occurred attempting to read POM", e);
+            // logger.error("An error occurred attempting to read POM", e);
         }
         return null;
     }
@@ -383,23 +371,23 @@ class MavenHelper {
      *            the current gradle project which gets used as the base resolver
      * @return model for effective pom
      */
-    Model resolveEffectivePom(File pomFile, Project gradleProject) {
+    static Model resolveEffectivePom(final File pomFile, final Project gradleProject) {
         // force the parent POMs and BOMs to be resolved
-        ModelResolver modelResolver = new GradleAssistedMavenModelResolverImpl(gradleProject);
-        ModelBuildingRequest req = new DefaultModelBuildingRequest();
+        final ModelResolver modelResolver = new GradleAssistedMavenModelResolverImpl(gradleProject);
+        final ModelBuildingRequest req = new DefaultModelBuildingRequest();
         req.setModelResolver(modelResolver);
         req.setPomFile(pomFile);
         req.getSystemProperties().putAll(System.getProperties());
         req.setValidationLevel(ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL);
 
         // execute the model building request
-        DefaultModelBuilderFactory factory = new DefaultModelBuilderFactory();
-        DefaultModelBuilder builder = factory.newInstance();
+        final DefaultModelBuilderFactory factory = new DefaultModelBuilderFactory();
+        final DefaultModelBuilder builder = factory.newInstance();
         Model effectiveModel = null;
         try {
             effectiveModel = builder.build(req).getEffectiveModel();
         } catch (ModelBuildingException e) {
-            logger.error("An error occurred attempting to resolve effective POM", e);
+            throw new IllegalStateException("An error occurred attempting to resolve effective POM", e);
         }
         return effectiveModel;
     }
@@ -412,7 +400,7 @@ class MavenHelper {
      *            the artifact
      * @return true if artifact will have a POM, false if not
      */
-    boolean isDescribedArtifact(Artifact artifact) {
+    boolean isDescribedArtifact(final Artifact artifact) {
         return artifact.getType().equalsIgnoreCase("jar");
     }
 
@@ -424,11 +412,11 @@ class MavenHelper {
      *            the artifact
      * @return true if artifact will have a POM, false if not
      */
-    boolean isDescribedArtifact(ResolvedArtifact artifact) {
+    static boolean isDescribedArtifact(final ResolvedArtifact artifact) {
         return artifact.getType().equalsIgnoreCase("jar");
     }
 
-    boolean isModified(ResolvedArtifact artifact) {
+    boolean isModified(final ResolvedArtifact artifact) {
         // todo: compare hashes + GAV with what the artifact says against Maven Central
         // to determine if component has been modified.
         return false;

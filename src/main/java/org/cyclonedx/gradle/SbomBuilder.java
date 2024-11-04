@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,23 +33,25 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.apache.commons.io.FilenameUtils;
 import org.cyclonedx.Version;
 import org.cyclonedx.gradle.model.ComponentComparator;
 import org.cyclonedx.gradle.model.DependencyComparator;
-import org.cyclonedx.gradle.model.SerializableComponent;
+import org.cyclonedx.gradle.model.SbomComponent;
+import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Dependency;
+import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.Hash;
+import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.Metadata;
 import org.cyclonedx.model.Property;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.logging.Logger;
 
-public class CycloneDxBomBuilder {
+class SbomBuilder {
 
     private static final String MESSAGE_CALCULATING_HASHES = "CycloneDX: Calculating Hashes";
     private static final TreeMap<String, String> EMPTY_TYPE = new TreeMap<>();
@@ -57,57 +60,61 @@ public class CycloneDxBomBuilder {
     private final Map<File, List<Hash>> artifactHashes;
     private final MavenHelper mavenHelper;
     private final Version version;
+    private final CycloneDxTask task;
 
-    public CycloneDxBomBuilder(final Logger logger) {
+    SbomBuilder(final Logger logger, final CycloneDxTask task) {
         this.logger = logger;
         this.version = CycloneDxUtils.DEFAULT_SCHEMA_VERSION;
         this.artifactHashes = new HashMap<>();
-        this.mavenHelper = new MavenHelper(logger, version, false);
+        this.mavenHelper = new MavenHelper(logger, task.getIncludeLicenseText().get());
+        this.task = task;
     }
 
-    public Bom buildBom(
-            final Map<SerializableComponent, Set<SerializableComponent>> resultGraph,
-            final SerializableComponent parentComponent) {
+    Bom buildBom(final Map<SbomComponentId, SbomComponent> resultGraph, final SbomComponent rootComponent) {
 
         final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
         final Set<Component> components = new TreeSet<>(new ComponentComparator());
 
-        resultGraph.keySet().forEach(component -> {
-            addDependency(dependencies, resultGraph.get(component), component);
-            addComponent(components, component, parentComponent);
+        resultGraph.keySet().forEach(componentId -> {
+            addDependency(dependencies, resultGraph.get(componentId));
+            addComponent(components, resultGraph.get(componentId), rootComponent);
         });
 
         final Bom bom = new Bom();
-        bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
-        bom.setMetadata(buildMetadata(parentComponent));
+        if (task.getIncludeBomSerialNumber().get()) bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
+        bom.setMetadata(buildMetadata(rootComponent));
         bom.setComponents(new ArrayList<>(components));
         bom.setDependencies(new ArrayList<>(dependencies));
         return bom;
     }
 
-    private Metadata buildMetadata(final SerializableComponent parentComponent) {
+    private Metadata buildMetadata(final SbomComponent parentComponent) {
         final Metadata metadata = new Metadata();
         try {
-            metadata.setComponent(toComponent(parentComponent, null));
+            final Component component = toComponent(parentComponent, null, resolveProjectType());
+            component.setProperties(null);
+            component.setName(task.getComponentName().get());
+            component.setVersion(task.getComponentVersion().get());
+            metadata.setComponent(component);
         } catch (MalformedPackageURLException e) {
             logger.warn("Error constructing packageUrl for parent component. Skipping...", e);
         }
+        metadata.setLicenseChoice(task.getLicenseChoice());
+        metadata.setManufacture(task.getOrganizationalEntity());
+
         return metadata;
     }
 
-    private void addDependency(
-            final Set<Dependency> dependencies,
-            final Set<SerializableComponent> dependencyComponents,
-            final SerializableComponent component) {
+    private void addDependency(final Set<Dependency> dependencies, final SbomComponent component) {
 
         final Dependency dependency;
         try {
-            dependency = toDependency(component);
+            dependency = toDependency(component.getId());
         } catch (MalformedPackageURLException e) {
             logger.warn("Error constructing packageUrl for component. Skipping...", e);
             return;
         }
-        dependencyComponents.forEach(dependencyComponent -> {
+        component.getDependencyComponents().forEach(dependencyComponent -> {
             try {
                 dependency.addDependency(toDependency(dependencyComponent));
             } catch (MalformedPackageURLException e) {
@@ -117,43 +124,55 @@ public class CycloneDxBomBuilder {
         dependencies.add(dependency);
     }
 
-    private Dependency toDependency(final SerializableComponent component) throws MalformedPackageURLException {
+    private Dependency toDependency(final SbomComponentId componentId) throws MalformedPackageURLException {
 
-        final String ref = DependencyUtils.generatePackageUrl(
-                component, getType(component.getArtifactFile().orElse(null)));
+        final String ref = DependencyUtils.generatePackageUrl(componentId, getQualifiers(componentId.getType()));
         return new Dependency(ref);
     }
 
     private void addComponent(
-            final Set<Component> components,
-            final SerializableComponent component,
-            final SerializableComponent parentComponent) {
+            final Set<Component> components, final SbomComponent component, final SbomComponent parentComponent) {
         if (!component.equals(parentComponent)) {
             final File artifactFile = component.getArtifactFile().orElse(null);
             try {
-                components.add(toComponent(component, artifactFile));
+                components.add(toComponent(component, artifactFile, Component.Type.LIBRARY));
             } catch (MalformedPackageURLException e) {
                 logger.warn("Error constructing packageUrl for component. Skipping...", e);
             }
         }
     }
 
-    private Component toComponent(final SerializableComponent component, final File artifactFile)
+    private Component toComponent(final SbomComponent component, final File artifactFile, final Component.Type type)
             throws MalformedPackageURLException {
 
-        final String packageUrl = DependencyUtils.generatePackageUrl(component, getType(artifactFile));
+        final String packageUrl = DependencyUtils.generatePackageUrl(
+                component.getId(), getQualifiers(component.getId().getType()));
 
         final Component resultComponent = new Component();
-        resultComponent.setGroup(component.getGroup());
-        resultComponent.setName(component.getName());
-        resultComponent.setVersion(component.getVersion());
-        resultComponent.setType(Component.Type.LIBRARY);
+        resultComponent.setGroup(component.getId().getGroup());
+        resultComponent.setName(component.getId().getName());
+        resultComponent.setVersion(component.getId().getVersion());
+        resultComponent.setType(type);
         resultComponent.setPurl(packageUrl);
         resultComponent.setProperties(buildProperties(component));
-        if (version.getVersion() >= 1.1) {
-            resultComponent.setModified(mavenHelper.isModified(null));
-            resultComponent.setBomRef(packageUrl);
-        }
+        resultComponent.setModified(mavenHelper.isModified(null));
+        resultComponent.setBomRef(packageUrl);
+
+        component.getSbomMetaData().ifPresent(metaData -> {
+            resultComponent.setDescription(metaData.getDescription());
+            resultComponent.setPublisher(metaData.getPublisher());
+            metaData.getExternalReferences().forEach(reference -> {
+                final ExternalReference ref = new ExternalReference();
+                ref.setType(ExternalReference.Type.valueOf(reference.getType()));
+                ref.setUrl(reference.getUrl());
+                resultComponent.addExternalReference(ref);
+            });
+        });
+
+        component.getLicenses().ifPresent(licenses -> {
+            LicenseChoice licenseChoice = mavenHelper.resolveMavenLicenses(licenses);
+            resultComponent.setLicenses(licenseChoice);
+        });
 
         logger.debug(MESSAGE_CALCULATING_HASHES);
         if (artifactFile != null) {
@@ -163,7 +182,7 @@ public class CycloneDxBomBuilder {
         return resultComponent;
     }
 
-    private List<Property> buildProperties(SerializableComponent component) {
+    private List<Property> buildProperties(final SbomComponent component) {
         return component.getInScopeConfigurations().stream()
                 .map(v -> {
                     Property property = new Property();
@@ -171,6 +190,7 @@ public class CycloneDxBomBuilder {
                     property.setValue(String.format("%s:%s", v.getProjectName(), v.getConfigName()));
                     return property;
                 })
+                .sorted(Comparator.comparing(Property::getValue))
                 .collect(Collectors.toList());
     }
 
@@ -185,18 +205,27 @@ public class CycloneDxBomBuilder {
         });
     }
 
-    private TreeMap<String, String> getType(final File file) {
-        if (file == null) {
+    private Component.Type resolveProjectType() {
+        for (Component.Type type : Component.Type.values()) {
+            if (type.getTypeName().equalsIgnoreCase(task.getProjectType().get())) {
+                return type;
+            }
+        }
+        logger.warn("Invalid project type. Defaulting to 'library'");
+        logger.warn("Valid types are:");
+        for (Component.Type type : Component.Type.values()) {
+            logger.warn("  " + type.getTypeName());
+        }
+        return Component.Type.LIBRARY;
+    }
+
+    private TreeMap<String, String> getQualifiers(final String type) {
+        if (StringUtils.isBlank(type)) {
             return EMPTY_TYPE;
         }
 
-        String fileExtension = FilenameUtils.getExtension(file.getName());
-        if (StringUtils.isBlank(fileExtension)) {
-            return EMPTY_TYPE;
-        }
-
-        final TreeMap<String, String> type = new TreeMap<>();
-        type.put("type", fileExtension);
-        return type;
+        final TreeMap<String, String> qualifiers = new TreeMap<>();
+        qualifiers.put("type", type);
+        return qualifiers;
     }
 }

@@ -18,23 +18,20 @@
  */
 package org.cyclonedx.gradle;
 
-import java.io.File;
-import org.cyclonedx.gradle.model.SerializableComponents;
+import org.cyclonedx.gradle.model.SbomGraph;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Provider;
 
 public class CycloneDxPlugin implements Plugin<Project> {
 
-    public void apply(Project project) {
+    public void apply(final Project project) {
+
         project.getTasks().register("cyclonedxBom", CycloneDxTask.class, (task) -> {
-            final Provider<SerializableComponents> components =
-                    project.getProviders().provider(new ComponentProvider(project));
-            final File destination =
-                    project.getLayout().getBuildDirectory().dir("reports").get().getAsFile();
+            final Provider<SbomGraph> components =
+                    project.getProviders().provider(new SbomGraphProvider(project, task));
 
             task.getComponents().set(components);
-            task.getDestination().set(destination);
             task.setGroup("Reporting");
             task.setDescription("Generates a CycloneDX compliant Software Bill of Materials (SBOM)");
         });

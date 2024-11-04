@@ -20,25 +20,22 @@ package org.cyclonedx.gradle.model;
 
 import java.io.Serializable;
 import java.util.Map;
-import java.util.Set;
 
-public class SerializableComponents implements Serializable {
+public class SbomGraph implements Serializable {
 
-    private final Map<SerializableComponent, Set<SerializableComponent>> serializableComponents;
-    private final SerializableComponent rootComponent;
+    private final Map<SbomComponentId, SbomComponent> graph;
+    private final SbomComponent rootComponent;
 
-    public SerializableComponents(
-            Map<SerializableComponent, Set<SerializableComponent>> serializableComponents,
-            SerializableComponent rootComponent) {
-        this.serializableComponents = serializableComponents;
+    public SbomGraph(final Map<SbomComponentId, SbomComponent> graph, final SbomComponent rootComponent) {
+        this.graph = graph;
         this.rootComponent = rootComponent;
     }
 
-    public Map<SerializableComponent, Set<SerializableComponent>> getSerializableComponents() {
-        return serializableComponents;
+    public Map<SbomComponentId, SbomComponent> getGraph() {
+        return graph;
     }
 
-    public SerializableComponent getRootComponent() {
+    public SbomComponent getRootComponent() {
         return rootComponent;
     }
 }
