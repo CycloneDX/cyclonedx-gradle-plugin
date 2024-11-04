@@ -26,7 +26,6 @@ import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomGraph;
@@ -48,7 +47,9 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
     @Override
     public SbomGraph call() throws Exception {
 
-        if (StringUtils.isBlank((String) project.getGroup()) || StringUtils.isBlank((String) project.getVersion())) {
+        if (project.getGroup().equals("")
+                || project.getName().isEmpty()
+                || project.getVersion().equals("")) {
             throw new IllegalStateException("Project group and version are required for the CycloneDx task");
         }
 
@@ -71,7 +72,10 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
             return new SbomGraph(graph, rootProject.get());
         } else {
             final SbomComponentId rootProjectId = new SbomComponentId(
-                    (String) project.getGroup(), project.getName(), (String) project.getVersion(), "");
+                    project.getGroup().toString(),
+                    project.getName(),
+                    project.getVersion().toString(),
+                    "");
             final SbomComponent sbomComponent = new SbomComponent.Builder()
                     .withId(rootProjectId)
                     .withDependencyComponents(new HashSet<>())
