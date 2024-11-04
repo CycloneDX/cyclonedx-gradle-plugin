@@ -63,10 +63,11 @@ class MavenProjectLookup {
                     mavenProject.setLicenses(model.getLicenses());
                 }
 
+                cache.put(result.getId(), mavenProject);
                 return mavenProject;
             }
         } catch (Exception err) {
-            project.getLogger().error("Unable to resolve POM for {}: {}", result.getId(), err);
+            project.getLogger().error("Unable to resolve POM for {}", result.getId(), err);
         }
         return null;
     }
