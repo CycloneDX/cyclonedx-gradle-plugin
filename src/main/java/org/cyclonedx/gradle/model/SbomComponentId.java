@@ -18,43 +18,21 @@
  */
 package org.cyclonedx.gradle.model;
 
-import java.io.File;
 import java.io.Serializable;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
 
-public final class SerializableComponent implements Serializable {
+public class SbomComponentId implements Serializable {
 
     private final String group;
     private final String name;
     private final String version;
-    private final File artifactFile;
-    private final Set<ConfigurationScope> inScopeConfigurations;
+    private final String type;
 
-    public SerializableComponent(
-            final String group,
-            final String name,
-            final String version,
-            final Set<ConfigurationScope> inScopeConfigurations) {
-        this(group, name, version, inScopeConfigurations, null);
-    }
-
-    public SerializableComponent(
-            final String group,
-            final String name,
-            final String version,
-            final Set<ConfigurationScope> inScopeConfigurations,
-            final File artifactFile) {
+    public SbomComponentId(final String group, final String name, final String version, final String type) {
         this.group = group;
         this.name = name;
         this.version = version;
-        this.artifactFile = artifactFile;
-        this.inScopeConfigurations = inScopeConfigurations;
-    }
-
-    public String getGroup() {
-        return group;
+        this.type = type;
     }
 
     public String getName() {
@@ -65,27 +43,27 @@ public final class SerializableComponent implements Serializable {
         return version;
     }
 
-    public Set<ConfigurationScope> getInScopeConfigurations() {
-        return inScopeConfigurations;
+    public String getGroup() {
+        return group;
     }
 
-    public Optional<File> getArtifactFile() {
-        return Optional.ofNullable(artifactFile);
+    public String getType() {
+        return type;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        SerializableComponent that = (SerializableComponent) o;
+        final SbomComponentId that = (SbomComponentId) o;
         return Objects.equals(group, that.group)
                 && Objects.equals(name, that.name)
                 && Objects.equals(version, that.version)
-                && Objects.equals(artifactFile, that.artifactFile);
+                && Objects.equals(type, that.type);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(group, name, version, artifactFile);
+        return Objects.hash(group, name, version, type);
     }
 }

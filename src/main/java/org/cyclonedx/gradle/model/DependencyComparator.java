@@ -23,7 +23,7 @@ import org.cyclonedx.model.Dependency;
 
 public class DependencyComparator implements Comparator<Dependency> {
     @Override
-    public int compare(Dependency o1, Dependency o2) {
+    public int compare(final Dependency o1, final Dependency o2) {
         return o1.getRef().compareTo(o2.getRef());
     }
 }

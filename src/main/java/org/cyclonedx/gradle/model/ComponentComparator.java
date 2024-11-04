@@ -24,7 +24,7 @@ import org.cyclonedx.model.Component;
 public class ComponentComparator implements Comparator<Component> {
 
     @Override
-    public int compare(Component o1, Component o2) {
+    public int compare(final Component o1, final Component o2) {
         return o1.getBomRef().compareTo(o2.getBomRef());
     }
 }

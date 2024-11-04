@@ -20,19 +20,108 @@ package org.cyclonedx.gradle.utils;
 
 import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
-import org.cyclonedx.gradle.model.SerializableComponent;
+import java.util.stream.Collectors;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.cyclonedx.gradle.model.SbomComponent;
+import org.cyclonedx.gradle.model.SbomComponentId;
+import org.gradle.api.Project;
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
+import org.gradle.api.artifacts.result.ResolvedComponentResult;
 
 public class DependencyUtils {
 
-    public static String generatePackageUrl(
-            final SerializableComponent component, final TreeMap<String, String> qualifiers)
+    public static Map<SbomComponentId, SbomComponent> mergeGraphs(
+            final Map<SbomComponentId, SbomComponent> firstGraph,
+            final Map<SbomComponentId, SbomComponent> secondGraph) {
+
+        final Map<SbomComponentId, SbomComponent> mergedGraph = new HashMap<>(firstGraph);
+        secondGraph.keySet().stream().forEach(id -> {
+            if (firstGraph.containsKey(id)) {
+                SbomComponent resultComponent = mergedGraph.get(id);
+                SbomComponent targetComponent = secondGraph.get(id);
+                resultComponent.getDependencyComponents().addAll(targetComponent.getDependencyComponents());
+                resultComponent.getInScopeConfigurations().addAll(targetComponent.getInScopeConfigurations());
+            } else {
+                mergedGraph.put(id, secondGraph.get(id));
+            }
+        });
+
+        return mergedGraph;
+    }
+
+    public static void connectRootWithSubProjects(
+            final Project project,
+            final SbomComponentId rootProjectId,
+            final Map<SbomComponentId, SbomComponent> graph) {
+
+        if (project.getSubprojects().isEmpty()) {
+            return;
+        }
+
+        final Set<SbomComponentId> dependencyComponentIds = project.getSubprojects().stream()
+                .map(subProject -> new SbomComponentId(
+                        (String) subProject.getGroup(), subProject.getName(), (String) subProject.getVersion(), ""))
+                .filter(componentId -> graph.containsKey(componentId))
+                .collect(Collectors.toSet());
+
+        graph.get(rootProjectId).getDependencyComponents().addAll(dependencyComponentIds);
+    }
+
+    public static Optional<SbomComponent> findRootComponent(
+            final Project project, final Map<SbomComponentId, SbomComponent> graph) {
+
+        final SbomComponentId rootProjectId =
+                new SbomComponentId((String) project.getGroup(), project.getName(), (String) project.getVersion(), "");
+
+        if (!graph.containsKey(rootProjectId)) {
+            return Optional.empty();
+        } else {
+            return Optional.of(graph.get(rootProjectId));
+        }
+    }
+
+    public static SbomComponentId toComponentId(final ResolvedComponentResult node, final File file) {
+
+        String type = "";
+        if (node.getId() instanceof ModuleComponentIdentifier) {
+            if (file != null) {
+                type = getType(file);
+            } else {
+                type = "pom";
+            }
+        }
+
+        return new SbomComponentId(
+                node.getModuleVersion().getGroup(),
+                node.getModuleVersion().getName(),
+                node.getModuleVersion().getVersion(),
+                type);
+    }
+
+    private static String getType(final File file) {
+
+        final String fileExtension = FilenameUtils.getExtension(file.getName());
+        if (StringUtils.isBlank(fileExtension)) {
+            return "pom";
+        }
+
+        return fileExtension;
+    }
+
+    public static String generatePackageUrl(final SbomComponentId componentId, final TreeMap<String, String> qualifiers)
             throws MalformedPackageURLException {
         return new PackageURL(
                         PackageURL.StandardTypes.MAVEN,
-                        component.getGroup(),
-                        component.getName(),
-                        component.getVersion(),
+                        componentId.getGroup(),
+                        componentId.getName(),
+                        componentId.getVersion(),
                         qualifiers,
                         null)
                 .canonicalize();
