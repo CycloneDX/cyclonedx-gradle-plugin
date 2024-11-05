@@ -21,29 +21,32 @@ package org.cyclonedx.gradle.model;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.cyclonedx.model.Component;
 
 public class SbomMetaData implements Serializable {
 
-    private String publisher;
-    private String description;
-    private List<ExternalReference> externalReferences = new ArrayList<>();
+    @Nullable private String publisher;
+
+    @Nullable private String description;
+
+    private final List<ExternalReference> externalReferences = new ArrayList<>();
 
     private SbomMetaData() {}
 
-    public String getPublisher() {
+    @Nullable public String getPublisher() {
         return publisher;
     }
 
-    public void setPublisher(final String publisher) {
+    public void setPublisher(@Nullable final String publisher) {
         this.publisher = publisher;
     }
 
-    public String getDescription() {
+    @Nullable public String getDescription() {
         return description;
     }
 
-    public void setDescription(final String description) {
+    public void setDescription(@Nullable final String description) {
         this.description = description;
     }
 

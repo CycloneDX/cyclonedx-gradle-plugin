@@ -67,8 +67,11 @@ public class DependencyUtils {
 
         final Set<SbomComponentId> dependencyComponentIds = project.getSubprojects().stream()
                 .map(subProject -> new SbomComponentId(
-                        (String) subProject.getGroup(), subProject.getName(), (String) subProject.getVersion(), ""))
-                .filter(componentId -> graph.containsKey(componentId))
+                        subProject.getGroup().toString(),
+                        subProject.getName(),
+                        subProject.getVersion().toString(),
+                        ""))
+                .filter(graph::containsKey)
                 .collect(Collectors.toSet());
 
         graph.get(rootProjectId).getDependencyComponents().addAll(dependencyComponentIds);
@@ -77,8 +80,11 @@ public class DependencyUtils {
     public static Optional<SbomComponent> findRootComponent(
             final Project project, final Map<SbomComponentId, SbomComponent> graph) {
 
-        final SbomComponentId rootProjectId =
-                new SbomComponentId((String) project.getGroup(), project.getName(), (String) project.getVersion(), "");
+        final SbomComponentId rootProjectId = new SbomComponentId(
+                project.getGroup().toString(),
+                project.getName(),
+                project.getVersion().toString(),
+                "");
 
         if (!graph.containsKey(rootProjectId)) {
             return Optional.empty();
@@ -98,11 +104,15 @@ public class DependencyUtils {
             }
         }
 
-        return new SbomComponentId(
-                node.getModuleVersion().getGroup(),
-                node.getModuleVersion().getName(),
-                node.getModuleVersion().getVersion(),
-                type);
+        if (node.getModuleVersion() != null) {
+            return new SbomComponentId(
+                    node.getModuleVersion().getGroup(),
+                    node.getModuleVersion().getName(),
+                    node.getModuleVersion().getVersion(),
+                    type);
+        } else {
+            return new SbomComponentId("N/A", node.getId().getDisplayName(), "N/A", type);
+        }
     }
 
     private static String getType(final File file) {

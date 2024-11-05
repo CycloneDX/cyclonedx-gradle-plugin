@@ -21,6 +21,10 @@ package org.cyclonedx.gradle.model;
 import java.io.Serializable;
 import java.util.Map;
 
+/**
+ * Represents the aggregated dependency graph across all the configurations of the projects in scope. It is fully
+ * serializable to support the build cache.
+ */
 public class SbomGraph implements Serializable {
 
     private final Map<SbomComponentId, SbomComponent> graph;

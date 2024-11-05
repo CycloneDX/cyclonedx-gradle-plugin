@@ -20,6 +20,7 @@ package org.cyclonedx.gradle;
 
 import java.io.File;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -43,6 +44,10 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.logging.Logger;
 
+/**
+ * Traverses the dependency graph of a configuration which returns a data model that 1) contains all the information
+ * required to generate the CycloneDX Bom and 2) is fully serializable to support the build cache
+ */
 class DependencyGraphTraverser {
 
     private final Logger logger;
@@ -63,6 +68,16 @@ class DependencyGraphTraverser {
         this.mavenHelper = new MavenHelper(logger, task.getIncludeLicenseText().get());
     }
 
+    /**
+     * Traverses the dependency graph of a configuration belonging to the specified project
+     *
+     * @param rootNode entry point into the graph which is typically represents a project
+     * @param projectName project to which the configuration belongs to
+     * @param configName name of the configuration
+     *
+     * @return a graph represented as map which is fully serializable. The graph nodes are instances of
+     * SbomComponent which contain the necessary information to generate the Bom
+     */
     Map<SbomComponentId, SbomComponent> traverseGraph(
             final ResolvedComponentResult rootNode, final String projectName, final String configName) {
 
@@ -73,14 +88,20 @@ class DependencyGraphTraverser {
         rootGraphNode.inScopeConfiguration(projectName, configName);
         queue.add(rootGraphNode);
 
+        logger.debug("CycloneDX: Traversal of graph for configuration {} of project {}", configName, projectName);
         while (!queue.isEmpty()) {
             final GraphNode graphNode = queue.poll();
             if (!graph.containsKey(graphNode)) {
                 graph.put(graphNode, new HashSet<>());
-                for (DependencyResult dep : graphNode.getResult().getDependencies()) {
+                logger.debug("CycloneDX: Traversing node with ID {}", graphNode.id);
+                for (final DependencyResult dep : graphNode.getResult().getDependencies()) {
                     if (dep instanceof ResolvedDependencyResult) {
                         final ResolvedComponentResult dependencyComponent =
                                 ((ResolvedDependencyResult) dep).getSelected();
+                        logger.debug(
+                                "CycloneDX: Node with ID {} has dependency with ID {}",
+                                graphNode.id,
+                                dependencyComponent);
                         final GraphNode dependencyNode = new GraphNode(dependencyComponent);
                         dependencyNode.inScopeConfiguration(projectName, configName);
                         graph.get(graphNode).add(dependencyNode);
@@ -107,6 +128,7 @@ class DependencyGraphTraverser {
         List<License> licenses = null;
         SbomMetaData metaData = null;
         if (includeMetaData && node.id instanceof ModuleComponentIdentifier) {
+            logger.debug("CycloneDX: Including meta data for node {}", node.id);
             final Component component = new Component();
             extractMetaDataFromArtifactPom(artifactFile, component, node.getResult());
             licenses = extractMetaDataFromRepository(component, node.getResult());
@@ -126,12 +148,13 @@ class DependencyGraphTraverser {
     private void extractMetaDataFromArtifactPom(
             final File artifactFile, final Component component, final ResolvedComponentResult result) {
 
-        if (artifactFile == null) {
+        if (artifactFile == null || result.getModuleVersion() == null) {
             return;
         }
 
         final MavenProject mavenProject = mavenHelper.extractPom(artifactFile, result.getModuleVersion());
         if (mavenProject != null) {
+            logger.debug("CycloneDX: parse artifact pom file of component {}", result.getId());
             mavenHelper.getClosestMetadata(artifactFile, mavenProject, component, result.getModuleVersion());
         }
     }
@@ -144,7 +167,7 @@ class DependencyGraphTraverser {
             return mavenProject.getLicenses();
         }
 
-        return null;
+        return new ArrayList<>();
     }
 
     private Set<SbomComponentId> getSbomDependencies(final Set<GraphNode> dependencyNodes) {

@@ -33,8 +33,15 @@ import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 
+/**
+ * Provider that lazily calculates the aggregated dependency graph. The usage of a provider is essential to support
+ * configuration cache and also to ensure that all dependencies have been resolved when the CycloneDxTask is executed.
+ */
 public class SbomGraphProvider implements Callable<SbomGraph> {
+
+    private static final String MESSAGE_RESOLVING_DEPS = "CycloneDX: Resolving Dependencies";
 
     private final Project project;
     private final CycloneDxTask task;
@@ -44,6 +51,15 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
         this.task = task;
     }
 
+    /**
+     * Calculates the aggregated dependency graph across all the configurations of both the parent project and
+     * child projects. The steps are as follows:
+     *  1) generate dependency graphs for the parent project, one for each configuration
+     *  2) if child projects exist, generate dependency graphs across all the child projects
+     *  3) merge all generated graphs from the step 1) and 2)
+     *
+     * @return the aggregated dependency graph
+     */
     @Override
     public SbomGraph call() throws Exception {
 
@@ -53,11 +69,13 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
             throw new IllegalStateException("Project group and version are required for the CycloneDx task");
         }
 
+        project.getLogger().info(MESSAGE_RESOLVING_DEPS);
+
         final DependencyGraphTraverser traverser = new DependencyGraphTraverser(
                 project.getLogger(), getArtifacts(), new MavenProjectLookup(project), task);
 
         final Map<SbomComponentId, SbomComponent> graph = Stream.concat(
-                        traverseParentProject(traverser), traverseChildProjects(traverser))
+                        traverseCurrentProject(traverser), traverseChildProjects(traverser))
                 .reduce(new HashMap<>(), DependencyUtils::mergeGraphs);
 
         return buildSbomGraph(graph);
@@ -71,6 +89,7 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
                     project, rootProject.get().getId(), graph);
             return new SbomGraph(graph, rootProject.get());
         } else {
+            project.getLogger().debug("CycloneDX: root project not found. Constructing it.");
             final SbomComponentId rootProjectId = new SbomComponentId(
                     project.getGroup().toString(),
                     project.getName(),
@@ -86,7 +105,7 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
         }
     }
 
-    private Stream<Map<SbomComponentId, SbomComponent>> traverseParentProject(
+    private Stream<Map<SbomComponentId, SbomComponent>> traverseCurrentProject(
             final DependencyGraphTraverser traverser) {
 
         if (shouldSkipProject(project)) {
@@ -103,6 +122,7 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
     private Stream<Map<SbomComponentId, SbomComponent>> traverseChildProjects(
             final DependencyGraphTraverser traverser) {
         return project.getChildProjects().entrySet().stream()
+                .filter(project -> !shouldSkipProject(project.getValue()))
                 .flatMap(project -> project.getValue().getConfigurations().stream()
                         .filter(configuration -> shouldIncludeConfiguration(configuration)
                                 && !shouldSkipConfiguration(configuration)
@@ -123,7 +143,7 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
                 .flatMap(config -> config.getIncoming().getArtifacts().getArtifacts().stream())
                 .collect(Collectors.toMap(
                         artifact -> artifact.getId().getComponentIdentifier(),
-                        artifact -> artifact.getFile(),
+                        ResolvedArtifactResult::getFile,
                         (v1, v2) -> v1));
     }
 

@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import javax.annotation.Nullable;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.model.Bom;
@@ -36,8 +37,13 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 
+/**
+ * This task mainly acts a container for the user configurations (includeConfigs, projectType, schemaVersion, ...)
+ * and orchestrating the calls between the core objects (SbomGraphProvider and SbomBuilder)
+ */
 public abstract class CycloneDxTask extends DefaultTask {
 
+    private static final String MESSAGE_WRITING_BOM_OUTPUT = "CycloneDX: Writing BOM output";
     private static final String DEFAULT_PROJECT_TYPE = "library";
 
     private final Property<String> outputName;
@@ -53,8 +59,10 @@ public abstract class CycloneDxTask extends DefaultTask {
     private final Property<String> projectType;
     private final ListProperty<String> skipProjects;
     private final Property<File> destination;
-    private OrganizationalEntity organizationalEntity;
-    private LicenseChoice licenseChoice;
+
+    @Nullable private OrganizationalEntity organizationalEntity;
+
+    @Nullable private LicenseChoice licenseChoice;
 
     public CycloneDxTask() {
 
@@ -211,12 +219,12 @@ public abstract class CycloneDxTask extends DefaultTask {
     }
 
     @Internal
-    OrganizationalEntity getOrganizationalEntity() {
+    @Nullable OrganizationalEntity getOrganizationalEntity() {
         return organizationalEntity;
     }
 
     @Internal
-    LicenseChoice getLicenseChoice() {
+    @Nullable LicenseChoice getLicenseChoice() {
         return licenseChoice;
     }
 
@@ -232,12 +240,18 @@ public abstract class CycloneDxTask extends DefaultTask {
         this.destination.set(destination);
     }
 
+    /**
+     * Executes the main logic of the plugin by loading the dependency graph (SbomGraphProvider.get())
+     * and providing the result to SbomBuilder
+     */
     @TaskAction
     public void createBom() {
 
         final SbomBuilder builder = new SbomBuilder(getLogger(), this);
         final SbomGraph components = getComponents().get();
         final Bom bom = builder.buildBom(components.getGraph(), components.getRootComponent());
+
+        getLogger().info(MESSAGE_WRITING_BOM_OUTPUT);
 
         CycloneDxUtils.writeBom(
                 bom,

@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.maven.model.Model;
 import org.apache.maven.project.MavenProject;
 import org.gradle.api.Project;
@@ -34,6 +35,9 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.maven.MavenModule;
 import org.gradle.maven.MavenPomArtifact;
 
+/**
+ * Finds the pom.xml of a maven project in the gradle repositories and, if exists, instantiates a MavenProject object
+ */
 class MavenProjectLookup {
 
     private final Project project;
@@ -44,7 +48,15 @@ class MavenProjectLookup {
         this.cache = new HashMap<>();
     }
 
-    MavenProject getResolvedMavenProject(final ResolvedComponentResult result) {
+    /**
+     * Retrieve the MavenProject instance for the provided component
+     *
+     * @param result the resolved component for which to find the maven project,
+     *               or null if the pom.xml is not found
+     *
+     * @return a MavenProject instance for this component
+     */
+    @Nullable MavenProject getResolvedMavenProject(final ResolvedComponentResult result) {
 
         if (result == null) {
             return null;
@@ -58,6 +70,7 @@ class MavenProjectLookup {
             final File pomFile = buildMavenProject(result.getId());
             final MavenProject mavenProject = MavenHelper.readPom(pomFile);
             if (mavenProject != null) {
+                project.getLogger().debug("CycloneDX: parse queried pom file for component {}", result.getId());
                 final Model model = MavenHelper.resolveEffectivePom(pomFile, project);
                 if (model != null) {
                     mavenProject.setLicenses(model.getLicenses());
@@ -72,7 +85,7 @@ class MavenProjectLookup {
         return null;
     }
 
-    private File buildMavenProject(final ComponentIdentifier id) {
+    @Nullable File buildMavenProject(final ComponentIdentifier id) {
 
         final ArtifactResolutionResult result = project.getDependencies()
                 .createArtifactResolutionQuery()
@@ -94,6 +107,7 @@ class MavenProjectLookup {
 
         final ArtifactResult artifact = artifactIt.next();
         if (artifact instanceof ResolvedArtifactResult) {
+            project.getLogger().debug("CycloneDX: found pom file for component {}", id);
             final ResolvedArtifactResult resolvedArtifact = (ResolvedArtifactResult) artifact;
             return resolvedArtifact.getFile();
         }

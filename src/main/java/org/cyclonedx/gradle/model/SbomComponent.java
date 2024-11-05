@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import javax.annotation.Nullable;
 import org.apache.maven.model.License;
 
 public final class SbomComponent implements Serializable {
@@ -30,17 +31,20 @@ public final class SbomComponent implements Serializable {
     private final SbomComponentId id;
     private final Set<ConfigurationScope> inScopeConfigurations;
     private final Set<SbomComponentId> dependencyComponents;
-    private final File artifactFile;
-    private final SbomMetaData metaData;
-    private final List<License> licenses;
+
+    @Nullable private final File artifactFile;
+
+    @Nullable private final SbomMetaData metaData;
+
+    @Nullable private final List<License> licenses;
 
     public SbomComponent(
             final SbomComponentId id,
             final Set<ConfigurationScope> inScopeConfigurations,
             final Set<SbomComponentId> dependencyComponents,
-            final File artifactFile,
-            final SbomMetaData metaData,
-            final List<License> licenses) {
+            @Nullable final File artifactFile,
+            @Nullable final SbomMetaData metaData,
+            @Nullable final List<License> licenses) {
         this.id = id;
         this.inScopeConfigurations = inScopeConfigurations;
         this.dependencyComponents = dependencyComponents;
@@ -99,17 +103,17 @@ public final class SbomComponent implements Serializable {
             return this;
         }
 
-        public Builder withArtifactFile(final File artifactFile) {
+        public Builder withArtifactFile(@Nullable final File artifactFile) {
             this.artifactFile = artifactFile;
             return this;
         }
 
-        public Builder withMetaData(final SbomMetaData metaData) {
+        public Builder withMetaData(@Nullable final SbomMetaData metaData) {
             this.metaData = metaData;
             return this;
         }
 
-        public Builder withLicenses(final List<License> licenses) {
+        public Builder withLicenses(@Nullable final List<License> licenses) {
             this.licenses = licenses;
             return this;
         }
