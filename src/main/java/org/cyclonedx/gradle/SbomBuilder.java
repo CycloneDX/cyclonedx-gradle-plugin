@@ -22,9 +22,9 @@ import com.github.packageurl.MalformedPackageURLException;
 import com.networknt.schema.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,9 +51,15 @@ import org.cyclonedx.model.Property;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.logging.Logger;
 
+/**
+ * Generates the CycloneDX Bom from the aggregated dependency graph taking into account the provided
+ * user configuration (componentName, includeBomSerialNumber,...)
+ */
 class SbomBuilder {
 
     private static final String MESSAGE_CALCULATING_HASHES = "CycloneDX: Calculating Hashes";
+    private static final String MESSAGE_CREATING_BOM = "CycloneDX: Creating BOM";
+
     private static final TreeMap<String, String> EMPTY_TYPE = new TreeMap<>();
 
     private final Logger logger;
@@ -70,7 +76,17 @@ class SbomBuilder {
         this.task = task;
     }
 
+    /**
+     * Builds the CycloneDX Bom from the aggregated dependency graph
+     *
+     * @param resultGraph the aggregated dependency graph across all the configurations
+     * @param rootComponent the root component of the graph which is the parent project
+     *
+     * @return the CycloneDX Bom
+     */
     Bom buildBom(final Map<SbomComponentId, SbomComponent> resultGraph, final SbomComponent rootComponent) {
+
+        task.getLogger().info(MESSAGE_CREATING_BOM);
 
         final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
         final Set<Component> components = new TreeSet<>(new ComponentComparator());
@@ -183,15 +199,17 @@ class SbomBuilder {
     }
 
     private List<Property> buildProperties(final SbomComponent component) {
-        return component.getInScopeConfigurations().stream()
-                .map(v -> {
-                    Property property = new Property();
-                    property.setName("inScopeConfiguration");
-                    property.setValue(String.format("%s:%s", v.getProjectName(), v.getConfigName()));
-                    return property;
-                })
-                .sorted(Comparator.comparing(Property::getValue))
-                .collect(Collectors.toList());
+
+        final String value = component.getInScopeConfigurations().stream()
+                .map(v -> String.format(
+                        "%s:%s", URLEncoder.encode(v.getProjectName()), URLEncoder.encode(v.getConfigName())))
+                .collect(Collectors.joining(","));
+
+        final Property property = new Property();
+        property.setName("inScopeConfiguration");
+        property.setValue(value);
+
+        return Collections.singletonList(property);
     }
 
     private List<Hash> calculateHashes(final File artifactFile) {

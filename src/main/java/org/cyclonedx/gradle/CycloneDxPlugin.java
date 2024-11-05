@@ -23,6 +23,9 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Provider;
 
+/**
+ * Entrypoint of the plugin which simply configures one task
+ */
 public class CycloneDxPlugin implements Plugin<Project> {
 
     public void apply(final Project project) {
