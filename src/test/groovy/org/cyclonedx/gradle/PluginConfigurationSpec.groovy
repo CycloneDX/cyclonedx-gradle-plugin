@@ -141,7 +141,7 @@ class PluginConfigurationSpec extends Specification {
 
             dependencies {
                 implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
-                implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+                testImplementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
                 implementation group: 'org.jetbrains.kotlin', name: 'kotlin-native-prebuilt', version: '2.0.20'
             }""", "rootProject.name = 'hello-world'")
 

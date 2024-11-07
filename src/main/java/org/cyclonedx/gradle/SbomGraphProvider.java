@@ -19,6 +19,7 @@
 package org.cyclonedx.gradle;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -45,16 +46,18 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
 
     private final Project project;
     private final CycloneDxTask task;
+    private final MavenProjectLookup mavenLookup;
 
     public SbomGraphProvider(final Project project, final CycloneDxTask task) {
         this.project = project;
         this.task = task;
+        this.mavenLookup = new MavenProjectLookup(project);
     }
 
     /**
-     * Calculates the aggregated dependency graph across all the configurations of both the parent project and
+     * Calculates the aggregated dependency graph across all the configurations of both the current project and
      * child projects. The steps are as follows:
-     *  1) generate dependency graphs for the parent project, one for each configuration
+     *  1) generate dependency graphs for the current project, one for each configuration
      *  2) if child projects exist, generate dependency graphs across all the child projects
      *  3) merge all generated graphs from the step 1) and 2)
      *
@@ -71,11 +74,10 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
 
         project.getLogger().info(MESSAGE_RESOLVING_DEPS);
 
-        final DependencyGraphTraverser traverser = new DependencyGraphTraverser(
-                project.getLogger(), getArtifacts(), new MavenProjectLookup(project), task);
-
         final Map<SbomComponentId, SbomComponent> graph = Stream.concat(
-                        traverseCurrentProject(traverser), traverseChildProjects(traverser))
+                        Stream.of(project), project.getSubprojects().stream())
+                .filter(project -> !shouldSkipProject(project))
+                .flatMap(this::traverseProject)
                 .reduce(new HashMap<>(), DependencyUtils::mergeGraphs);
 
         return buildSbomGraph(graph);
@@ -99,18 +101,18 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
                     .withId(rootProjectId)
                     .withDependencyComponents(new HashSet<>())
                     .withInScopeConfigurations(new HashSet<>())
+                    .withLicenses(new ArrayList<>())
                     .build();
 
             return new SbomGraph(graph, sbomComponent);
         }
     }
 
-    private Stream<Map<SbomComponentId, SbomComponent>> traverseCurrentProject(
-            final DependencyGraphTraverser traverser) {
+    private Stream<Map<SbomComponentId, SbomComponent>> traverseProject(final Project project) {
 
-        if (shouldSkipProject(project)) {
-            return Stream.empty();
-        }
+        final DependencyGraphTraverser traverser =
+                new DependencyGraphTraverser(project.getLogger(), getArtifacts(), mavenLookup, task);
+
         return project.getConfigurations().stream()
                 .filter(configuration -> shouldIncludeConfiguration(configuration)
                         && !shouldSkipConfiguration(configuration)
@@ -119,22 +121,8 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
                         config.getIncoming().getResolutionResult().getRoot(), project.getName(), config.getName()));
     }
 
-    private Stream<Map<SbomComponentId, SbomComponent>> traverseChildProjects(
-            final DependencyGraphTraverser traverser) {
-        return project.getChildProjects().entrySet().stream()
-                .filter(project -> !shouldSkipProject(project.getValue()))
-                .flatMap(project -> project.getValue().getConfigurations().stream()
-                        .filter(configuration -> shouldIncludeConfiguration(configuration)
-                                && !shouldSkipConfiguration(configuration)
-                                && configuration.isCanBeResolved())
-                        .map(config -> traverser.traverseGraph(
-                                config.getIncoming().getResolutionResult().getRoot(),
-                                project.getKey(),
-                                config.getName())));
-    }
-
     private Map<ComponentIdentifier, File> getArtifacts() {
-        return project.getAllprojects().stream()
+        return Stream.concat(Stream.of(project), project.getSubprojects().stream())
                 .filter(project -> !shouldSkipProject(project))
                 .flatMap(project -> project.getConfigurations().stream())
                 .filter(configuration -> shouldIncludeConfiguration(configuration)

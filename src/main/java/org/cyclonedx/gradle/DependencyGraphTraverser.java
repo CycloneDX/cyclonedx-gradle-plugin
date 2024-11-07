@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.apache.maven.model.License;
 import org.apache.maven.project.MavenProject;
 import org.cyclonedx.gradle.model.ConfigurationScope;
@@ -125,7 +126,7 @@ class DependencyGraphTraverser {
         final File artifactFile = getArtifactFile(node);
         final SbomComponentId id = DependencyUtils.toComponentId(node.getResult(), artifactFile);
 
-        List<License> licenses = null;
+        List<License> licenses = new ArrayList<>();
         SbomMetaData metaData = null;
         if (includeMetaData && node.id instanceof ModuleComponentIdentifier) {
             logger.debug("CycloneDX: Including meta data for node {}", node.id);
@@ -146,13 +147,13 @@ class DependencyGraphTraverser {
     }
 
     private void extractMetaDataFromArtifactPom(
-            final File artifactFile, final Component component, final ResolvedComponentResult result) {
+            @Nullable final File artifactFile, final Component component, final ResolvedComponentResult result) {
 
         if (artifactFile == null || result.getModuleVersion() == null) {
             return;
         }
 
-        final MavenProject mavenProject = mavenHelper.extractPom(artifactFile, result.getModuleVersion());
+        @Nullable final MavenProject mavenProject = mavenHelper.extractPom(artifactFile, result.getModuleVersion());
         if (mavenProject != null) {
             logger.debug("CycloneDX: parse artifact pom file of component {}", result.getId());
             mavenHelper.getClosestMetadata(artifactFile, mavenProject, component, result.getModuleVersion());

@@ -247,12 +247,13 @@ public abstract class CycloneDxTask extends DefaultTask {
     @TaskAction
     public void createBom() {
 
+        logParameters();
+
         final SbomBuilder builder = new SbomBuilder(getLogger(), this);
         final SbomGraph components = getComponents().get();
         final Bom bom = builder.buildBom(components.getGraph(), components.getRootComponent());
 
         getLogger().info(MESSAGE_WRITING_BOM_OUTPUT);
-
         CycloneDxUtils.writeBom(
                 bom,
                 getDestination().get(),
@@ -332,5 +333,26 @@ public abstract class CycloneDxTask extends DefaultTask {
         }
         // Definition of gradle Input via Hashmap because Hashmap is serializable (LicenseChoice isn't serializable)
         getInputs().property("LicenseChoice", licenseChoice);
+    }
+
+    private void logParameters() {
+        if (getLogger().isInfoEnabled()) {
+            getLogger().info("CycloneDX: Parameters");
+            getLogger().info("------------------------------------------------------------------------");
+            getLogger().info("schemaVersion             : " + schemaVersion.get());
+            getLogger().info("includeLicenseText        : " + includeLicenseText.get());
+            getLogger().info("includeBomSerialNumber    : " + includeBomSerialNumber.get());
+            getLogger().info("includeConfigs            : " + includeConfigs.get());
+            getLogger().info("skipConfigs               : " + skipConfigs.get());
+            getLogger().info("skipProjects              : " + skipProjects.get());
+            getLogger().info("includeMetadataResolution : " + includeMetadataResolution.get());
+            getLogger().info("destination               : " + destination.get());
+            getLogger().info("outputName                : " + outputName.get());
+            getLogger().info("componentName             : " + componentName.get());
+            getLogger().info("componentVersion          : " + componentVersion.get());
+            getLogger().info("outputFormat              : " + outputFormat.get());
+            getLogger().info("projectType               : " + projectType.get());
+            getLogger().info("------------------------------------------------------------------------");
+        }
     }
 }

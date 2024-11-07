@@ -20,12 +20,17 @@ package org.cyclonedx.gradle.utils;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.cyclonedx.Version;
+import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.generators.BomGeneratorFactory;
 import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.generators.xml.BomXmlGenerator;
 import org.cyclonedx.model.Bom;
+import org.cyclonedx.parsers.JsonParser;
+import org.cyclonedx.parsers.Parser;
+import org.cyclonedx.parsers.XmlParser;
 import org.gradle.api.GradleException;
 
 public class CycloneDxUtils {
@@ -84,6 +89,8 @@ public class CycloneDxUtils {
         } catch (Exception e) {
             throw new GradleException("Error writing json bom file", e);
         }
+
+        validateBom(new JsonParser(), schemaVersion, destination);
     }
 
     private static void writeXmlBom(final Version schemaVersion, final Bom bom, final File destination) {
@@ -94,6 +101,19 @@ public class CycloneDxUtils {
             FileUtils.write(destination, bomString, StandardCharsets.UTF_8, false);
         } catch (Exception e) {
             throw new GradleException("Error writing xml bom file", e);
+        }
+
+        validateBom(new XmlParser(), schemaVersion, destination);
+    }
+
+    private static void validateBom(final Parser bomParser, final Version schemaVersion, final File destination) {
+        try {
+            final List<ParseException> exceptions = bomParser.validate(destination, schemaVersion);
+            if (!exceptions.isEmpty()) {
+                throw exceptions.get(0);
+            }
+        } catch (Exception e) {
+            throw new GradleException("Error whilst validating XML BOM", e);
         }
     }
 }
