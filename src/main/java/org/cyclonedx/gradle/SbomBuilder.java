@@ -22,9 +22,9 @@ import com.github.packageurl.MalformedPackageURLException;
 import com.networknt.schema.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +33,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.cyclonedx.Version;
 import org.cyclonedx.gradle.model.ComponentComparator;
 import org.cyclonedx.gradle.model.DependencyComparator;
@@ -134,7 +135,10 @@ class SbomBuilder {
             try {
                 dependency.addDependency(toDependency(dependencyComponent));
             } catch (MalformedPackageURLException e) {
-                logger.warn("Error constructing packageUrl for component dependency. Skipping...", e);
+                logger.warn(
+                        "Error constructing packageUrl for component dependency {}. Skipping...",
+                        dependencyComponent.getName(),
+                        e);
             }
         });
         dependencies.add(dependency);
@@ -149,11 +153,14 @@ class SbomBuilder {
     private void addComponent(
             final Set<Component> components, final SbomComponent component, final SbomComponent parentComponent) {
         if (!component.equals(parentComponent)) {
-            final File artifactFile = component.getArtifactFile().orElse(null);
+            @Nullable final File artifactFile = component.getArtifactFile().orElse(null);
             try {
                 components.add(toComponent(component, artifactFile, Component.Type.LIBRARY));
             } catch (MalformedPackageURLException e) {
-                logger.warn("Error constructing packageUrl for component. Skipping...", e);
+                logger.warn(
+                        "Error constructing packageUrl for component {}. Skipping...",
+                        component.getId().getName(),
+                        e);
             }
         }
     }
@@ -185,10 +192,10 @@ class SbomBuilder {
             });
         });
 
-        component.getLicenses().ifPresent(licenses -> {
-            LicenseChoice licenseChoice = mavenHelper.resolveMavenLicenses(licenses);
+        if (!component.getLicenses().isEmpty()) {
+            LicenseChoice licenseChoice = mavenHelper.resolveMavenLicenses(component.getLicenses());
             resultComponent.setLicenses(licenseChoice);
-        });
+        }
 
         logger.debug(MESSAGE_CALCULATING_HASHES);
         if (artifactFile != null) {
@@ -199,17 +206,37 @@ class SbomBuilder {
     }
 
     private List<Property> buildProperties(final SbomComponent component) {
+        final List<Property> inScopeProperties = buildScopeProperties(component);
+        final Property isTestProperty = buildIsTestProperty(component);
 
-        final String value = component.getInScopeConfigurations().stream()
-                .map(v -> String.format(
-                        "%s:%s", URLEncoder.encode(v.getProjectName()), URLEncoder.encode(v.getConfigName())))
-                .collect(Collectors.joining(","));
+        final List<Property> resultProperties = new ArrayList<>();
+        resultProperties.addAll(inScopeProperties);
+        resultProperties.add(isTestProperty);
 
-        final Property property = new Property();
-        property.setName("inScopeConfiguration");
-        property.setValue(value);
+        return resultProperties;
+    }
 
-        return Collections.singletonList(property);
+    private List<Property> buildScopeProperties(final SbomComponent component) {
+        return component.getInScopeConfigurations().stream()
+                .map(v -> {
+                    Property property = new Property();
+                    property.setName("cdx:maven:package:projectsAndScopes");
+                    property.setValue(String.format("%s:%s", v.getProjectName(), v.getConfigName()));
+                    return property;
+                })
+                .sorted(Comparator.comparing(Property::getValue))
+                .collect(Collectors.toList());
+    }
+
+    private Property buildIsTestProperty(final SbomComponent component) {
+
+        boolean isTestComponent = component.getInScopeConfigurations().stream()
+                .allMatch(v -> v.getConfigName().startsWith("test"));
+
+        Property property = new Property();
+        property.setName("cdx:maven:package:test");
+        property.setValue(Boolean.toString(isTestComponent));
+        return property;
     }
 
     private List<Hash> calculateHashes(final File artifactFile) {

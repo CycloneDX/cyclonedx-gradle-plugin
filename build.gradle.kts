@@ -32,6 +32,8 @@ dependencies {
     testImplementation("org.spockframework:spock-core:2.2-M1-groovy-3.0") {
         exclude(module = "groovy-all")
     }
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.3")
 }
 
 tasks.withType<Test> {

@@ -56,7 +56,7 @@ class MavenProjectLookup {
      *
      * @return a MavenProject instance for this component
      */
-    @Nullable MavenProject getResolvedMavenProject(final ResolvedComponentResult result) {
+    @Nullable MavenProject getResolvedMavenProject(@Nullable final ResolvedComponentResult result) {
 
         if (result == null) {
             return null;

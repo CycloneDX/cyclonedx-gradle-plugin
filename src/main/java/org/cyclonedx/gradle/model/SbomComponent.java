@@ -36,15 +36,15 @@ public final class SbomComponent implements Serializable {
 
     @Nullable private final SbomMetaData metaData;
 
-    @Nullable private final List<License> licenses;
+    private final List<License> licenses;
 
-    public SbomComponent(
+    private SbomComponent(
             final SbomComponentId id,
             final Set<ConfigurationScope> inScopeConfigurations,
             final Set<SbomComponentId> dependencyComponents,
             @Nullable final File artifactFile,
             @Nullable final SbomMetaData metaData,
-            @Nullable final List<License> licenses) {
+            final List<License> licenses) {
         this.id = id;
         this.inScopeConfigurations = inScopeConfigurations;
         this.dependencyComponents = dependencyComponents;
@@ -73,8 +73,8 @@ public final class SbomComponent implements Serializable {
         return Optional.ofNullable(metaData);
     }
 
-    public Optional<List<License>> getLicenses() {
-        return Optional.ofNullable(licenses);
+    public List<License> getLicenses() {
+        return licenses;
     }
 
     public static class Builder {
@@ -113,7 +113,7 @@ public final class SbomComponent implements Serializable {
             return this;
         }
 
-        public Builder withLicenses(@Nullable final List<License> licenses) {
+        public Builder withLicenses(final List<License> licenses) {
             this.licenses = licenses;
             return this;
         }

@@ -111,7 +111,7 @@ public class DependencyUtils {
                     node.getModuleVersion().getVersion(),
                     type);
         } else {
-            return new SbomComponentId("N/A", node.getId().getDisplayName(), "N/A", type);
+            return new SbomComponentId("undefined", node.getId().getDisplayName(), "undefined", type);
         }
     }
 
