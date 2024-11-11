@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +31,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.cyclonedx.Version;
 import org.cyclonedx.gradle.model.ComponentComparator;
@@ -114,7 +112,10 @@ class SbomBuilder {
             component.setVersion(task.getComponentVersion().get());
             metadata.setComponent(component);
         } catch (MalformedPackageURLException e) {
-            logger.warn("Error constructing packageUrl for parent component. Skipping...", e);
+            logger.warn(
+                    "Error constructing packageUrl for parent component {}. Skipping...",
+                    parentComponent.getId().getName(),
+                    e);
         }
         metadata.setLicenseChoice(task.getLicenseChoice());
         metadata.setManufacture(task.getOrganizationalEntity());
@@ -128,7 +129,10 @@ class SbomBuilder {
         try {
             dependency = toDependency(component.getId());
         } catch (MalformedPackageURLException e) {
-            logger.warn("Error constructing packageUrl for component. Skipping...", e);
+            logger.warn(
+                    "Error constructing packageUrl for component {}. Skipping...",
+                    component.getId().getName(),
+                    e);
             return;
         }
         component.getDependencyComponents().forEach(dependencyComponent -> {
@@ -206,26 +210,11 @@ class SbomBuilder {
     }
 
     private List<Property> buildProperties(final SbomComponent component) {
-        final List<Property> inScopeProperties = buildScopeProperties(component);
         final Property isTestProperty = buildIsTestProperty(component);
-
         final List<Property> resultProperties = new ArrayList<>();
-        resultProperties.addAll(inScopeProperties);
         resultProperties.add(isTestProperty);
 
         return resultProperties;
-    }
-
-    private List<Property> buildScopeProperties(final SbomComponent component) {
-        return component.getInScopeConfigurations().stream()
-                .map(v -> {
-                    Property property = new Property();
-                    property.setName("cdx:maven:package:projectsAndScopes");
-                    property.setValue(String.format("%s:%s", v.getProjectName(), v.getConfigName()));
-                    return property;
-                })
-                .sorted(Comparator.comparing(Property::getValue))
-                .collect(Collectors.toList());
     }
 
     private Property buildIsTestProperty(final SbomComponent component) {
