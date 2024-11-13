@@ -527,7 +527,7 @@ class PluginConfigurationSpec extends Specification {
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         assert jsonBom.text.contains("\"specVersion\" : \"1.6\"")
     }
