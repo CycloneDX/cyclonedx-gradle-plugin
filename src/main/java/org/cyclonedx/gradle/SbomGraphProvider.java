@@ -40,7 +40,7 @@ import org.gradle.api.artifacts.result.ResolvedArtifactResult;
  * Provider that lazily calculates the aggregated dependency graph. The usage of a provider is essential to support
  * configuration cache and also to ensure that all dependencies have been resolved when the CycloneDxTask is executed.
  */
-public class SbomGraphProvider implements Callable<SbomGraph> {
+class SbomGraphProvider implements Callable<SbomGraph> {
 
     private static final String MESSAGE_RESOLVING_DEPS = "CycloneDX: Resolving Dependencies";
 
@@ -48,7 +48,7 @@ public class SbomGraphProvider implements Callable<SbomGraph> {
     private final CycloneDxTask task;
     private final MavenProjectLookup mavenLookup;
 
-    public SbomGraphProvider(final Project project, final CycloneDxTask task) {
+    SbomGraphProvider(final Project project, final CycloneDxTask task) {
         this.project = project;
         this.task = task;
         this.mavenLookup = new MavenProjectLookup(project);

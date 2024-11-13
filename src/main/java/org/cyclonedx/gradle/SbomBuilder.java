@@ -22,11 +22,13 @@ import com.github.packageurl.MalformedPackageURLException;
 import com.networknt.schema.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -47,6 +49,7 @@ import org.cyclonedx.model.Hash;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.Metadata;
 import org.cyclonedx.model.Property;
+import org.cyclonedx.model.Tool;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.logging.Logger;
 
@@ -119,6 +122,15 @@ class SbomBuilder {
         }
         metadata.setLicenseChoice(task.getLicenseChoice());
         metadata.setManufacture(task.getOrganizationalEntity());
+
+        final Properties pluginProperties = readPluginProperties();
+        if (!pluginProperties.isEmpty()) {
+            final Tool tool = new Tool();
+            tool.setVendor(pluginProperties.getProperty("vendor"));
+            tool.setName(pluginProperties.getProperty("name"));
+            tool.setVersion(pluginProperties.getProperty("version"));
+            metadata.addTool(tool);
+        }
 
         return metadata;
     }
@@ -261,5 +273,20 @@ class SbomBuilder {
         final TreeMap<String, String> qualifiers = new TreeMap<>();
         qualifiers.put("type", type);
         return qualifiers;
+    }
+
+    private Properties readPluginProperties() {
+
+        final Properties props = new Properties();
+        try (final InputStream inputStream = this.getClass().getResourceAsStream("plugin.properties")) {
+            if (inputStream == null) {
+                logger.info("plugin.properties is not found on the classpath");
+            } else {
+                props.load(inputStream);
+            }
+        } catch (Exception e) {
+            logger.warn("Error whilst loading plugin.properties", e);
+        }
+        return props;
     }
 }

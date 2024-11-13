@@ -32,6 +32,7 @@ import org.cyclonedx.model.OrganizationalEntity;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputDirectory;
@@ -59,12 +60,15 @@ public abstract class CycloneDxTask extends DefaultTask {
     private final Property<String> projectType;
     private final ListProperty<String> skipProjects;
     private final Property<File> destination;
+    private final Provider<SbomGraph> componentsProvider;
 
     @Nullable private OrganizationalEntity organizationalEntity;
 
     @Nullable private LicenseChoice licenseChoice;
 
     public CycloneDxTask() {
+
+        componentsProvider = getProject().getProviders().provider(new SbomGraphProvider(getProject(), this));
 
         outputName = getProject().getObjects().property(String.class);
         outputName.convention("bom");
@@ -228,9 +232,6 @@ public abstract class CycloneDxTask extends DefaultTask {
         return licenseChoice;
     }
 
-    @Input
-    public abstract Property<SbomGraph> getComponents();
-
     @OutputDirectory
     public Property<File> getDestination() {
         return destination;
@@ -250,7 +251,7 @@ public abstract class CycloneDxTask extends DefaultTask {
         logParameters();
 
         final SbomBuilder builder = new SbomBuilder(getLogger(), this);
-        final SbomGraph components = getComponents().get();
+        final SbomGraph components = componentsProvider.get();
         final Bom bom = builder.buildBom(components.getGraph(), components.getRootComponent());
 
         getLogger().info(MESSAGE_WRITING_BOM_OUTPUT);
