@@ -57,7 +57,7 @@ class DependencyGraphTraverser {
     private final boolean includeMetaData;
     private final MavenHelper mavenHelper;
 
-    public DependencyGraphTraverser(
+    DependencyGraphTraverser(
             final Logger logger,
             final Map<ComponentIdentifier, File> resolvedArtifacts,
             final MavenProjectLookup mavenLookup,
