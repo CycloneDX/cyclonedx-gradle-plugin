@@ -43,6 +43,7 @@ import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.result.DependencyResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
+import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 import org.gradle.api.logging.Logger;
 
 /**
@@ -107,6 +108,12 @@ class DependencyGraphTraverser {
                         dependencyNode.inScopeConfiguration(projectName, configName);
                         graph.get(graphNode).add(dependencyNode);
                         queue.add(dependencyNode);
+                    } else if (dep instanceof UnresolvedDependencyResult) {
+                        UnresolvedDependencyResult unresolved = (UnresolvedDependencyResult) dep;
+                        logger.info(
+                                "CycloneDX: Unable to resolve artifact {} because {}",
+                                unresolved.getAttempted().getDisplayName(),
+                                unresolved.getFailure().toString());
                     }
                 }
             }
