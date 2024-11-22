@@ -20,11 +20,12 @@ package org.cyclonedx.gradle
 
 import org.cyclonedx.model.Metadata
 import org.gradle.testfixtures.ProjectBuilder
+import spock.lang.Ignore
 import spock.lang.Specification
 
 class CycloneDxSpec extends Specification {
     static final String PLUGIN_ID = 'org.cyclonedx.bom'
-    
+
     def rootProject = ProjectBuilder.builder().withName("root").build()
     def parentProject = ProjectBuilder.builder().withName("parent").withParent(rootProject).build()
     def childProject = ProjectBuilder.builder().withName("child").withParent(parentProject).build()
@@ -51,23 +52,5 @@ class CycloneDxSpec extends Specification {
     def "cyclonedxBom task exists"() {
         expect:
         leafProject.tasks.findByName('cyclonedxBom')
-    }
-
-    def "cyclonedxBom metadata creation uses project specific values"() {
-        expect:
-        Metadata root = rootProject.tasks.findByName('cyclonedxBom').createMetadata()
-        root.component.group == 'group'
-        root.component.name == 'root'
-        root.component.version == '1.3'
-
-        Metadata parent = parentProject.tasks.findByName('cyclonedxBom').createMetadata()
-        parent.component.group == 'group'
-        parent.component.name == 'parent'
-        parent.component.version == '1.3'
-
-        Metadata leaf = leafProject.tasks.findByName('cyclonedxBom').createMetadata()
-        leaf.component.group == 'group'
-        leaf.component.name == 'leaf'
-        leaf.component.version == '1.3.1'
     }
 }

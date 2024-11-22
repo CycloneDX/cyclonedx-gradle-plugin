@@ -1,0 +1,25 @@
+plugins {
+    id 'org.cyclonedx.bom'
+    id 'org.jetbrains.kotlin.multiplatform' version '2.0.21'
+}
+
+repositories {
+    mavenCentral()
+}
+
+group = 'com.example'
+version = '1.0.0'
+kotlin {
+    // macosX64('native') { // on macOS
+    // linuxX64('native') // on Linux
+    mingwX64('native'){ // on Windows
+        binaries {
+            executable()
+        }
+    }
+}
+
+wrapper {
+    gradleVersion = '8.5'
+    distributionType = 'BIN'
+}

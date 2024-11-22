@@ -16,21 +16,14 @@
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) OWASP Foundation. All Rights Reserved.
  */
-package org.cyclonedx.gradle;
+package org.cyclonedx.gradle.model;
 
-import org.gradle.api.Plugin;
-import org.gradle.api.Project;
+import java.util.Comparator;
+import org.cyclonedx.model.Dependency;
 
-/**
- * Entrypoint of the plugin which simply configures one task
- */
-public class CycloneDxPlugin implements Plugin<Project> {
-
-    public void apply(final Project project) {
-
-        project.getTasks().register("cyclonedxBom", CycloneDxTask.class, (task) -> {
-            task.setGroup("Reporting");
-            task.setDescription("Generates a CycloneDX compliant Software Bill of Materials (SBOM)");
-        });
+public class DependencyComparator implements Comparator<Dependency> {
+    @Override
+    public int compare(final Dependency o1, final Dependency o2) {
+        return o1.getRef().compareTo(o2.getRef());
     }
 }

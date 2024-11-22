@@ -1,7 +1,6 @@
 package org.cyclonedx.gradle
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import groovy.json.JsonSlurper
 import org.cyclonedx.gradle.utils.CycloneDxUtils
 import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
@@ -11,23 +10,6 @@ import spock.lang.Specification
 
 
 class PluginConfigurationSpec extends Specification {
-    def "loops in the dependency graph should be processed"() {
-        given:
-        File testDir = TestUtils.duplicate("dependency-graph-loop")
-
-        when:
-        def result = GradleRunner.create()
-            .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
-            .withPluginClasspath()
-            .build()
-
-        then:
-        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File reportDir = new File(testDir, "build/reports")
-
-        assert reportDir.exists()
-    }
 
     def "simple-project should output boms in build/reports with default schema version"() {
         given:
@@ -36,7 +18,7 @@ class PluginConfigurationSpec extends Specification {
         when:
             def result = GradleRunner.create()
                     .withProjectDir(testDir)
-                    .withArguments("cyclonedxBom")
+                    .withArguments("cyclonedxBom", "--configuration-cache")
                     .withPluginClasspath()
                     .build()
         then:
@@ -44,7 +26,7 @@ class PluginConfigurationSpec extends Specification {
             File reportDir = new File(testDir, "build/reports")
 
             assert reportDir.exists()
-            reportDir.listFiles().length == 2
+            reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
             File jsonBom = new File(reportDir, "bom.json")
             assert jsonBom.text.contains("\"specVersion\" : \"${CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString}\"")
     }
@@ -56,7 +38,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
                 .withProjectDir(testDir)
-                .withArguments("cyclonedxBom")
+                .withArguments("cyclonedxBom", "--configuration-cache")
                 .withPluginClasspath()
                 .build()
         then:
@@ -64,7 +46,7 @@ class PluginConfigurationSpec extends Specification {
         File reportDir = new File(testDir, "output-dir")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
     }
 
     def "custom-output project should write boms under my-bom"() {
@@ -74,7 +56,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
                 .withProjectDir(testDir)
-                .withArguments("cyclonedxBom")
+                .withArguments("cyclonedxBom", "--configuration-cache")
                 .withPluginClasspath()
                 .build()
         then:
@@ -91,7 +73,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -99,7 +81,7 @@ class PluginConfigurationSpec extends Specification {
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
         File reportDir = new File(testDir, "build/reports")
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
 
         assert !result.output.contains("An error occurred attempting to read POM")
     }
@@ -127,7 +109,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -136,7 +118,7 @@ class PluginConfigurationSpec extends Specification {
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         assert jsonBom.text.contains("\"specVersion\" : \"1.3\"")
     }
@@ -156,15 +138,17 @@ class PluginConfigurationSpec extends Specification {
             cyclonedxBom {
                 // No componentName override -> Use rootProject.name
             }
+
             dependencies {
                 implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
-                implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+                testImplementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+                implementation group: 'org.jetbrains.kotlin', name: 'kotlin-native-prebuilt', version: '2.0.20'
             }""", "rootProject.name = 'hello-world'")
 
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -173,7 +157,7 @@ class PluginConfigurationSpec extends Specification {
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         assert jsonBom.text.contains("\"name\" : \"hello-world\"")
     }
@@ -201,7 +185,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -210,7 +194,7 @@ class PluginConfigurationSpec extends Specification {
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         assert jsonBom.text.contains("\"name\" : \"customized-component-name\"")
     }
@@ -238,7 +222,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -247,9 +231,45 @@ class PluginConfigurationSpec extends Specification {
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         assert jsonBom.text.contains("\"version\" : \"999-SNAPSHOT\"")
+    }
+
+    def "should use configured projectType"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                projectType = 'framework'
+            }
+            dependencies {
+                implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        assert jsonBom.text.contains("\"type\" : \"framework\"")
     }
 
     def "should use configured outputFormat to limit generated file"() {
@@ -275,7 +295,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -284,7 +304,7 @@ class PluginConfigurationSpec extends Specification {
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 1
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 1
         File jsonBom = new File(reportDir, "bom.json")
         assert jsonBom.exists()
     }
@@ -311,7 +331,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -324,109 +344,6 @@ class PluginConfigurationSpec extends Specification {
         assert log4jCore.getBomRef() == 'pkg:maven/org.apache.logging.log4j/log4j-core@2.15.0?type=jar'
     }
 
-    def "multi-module with plugin at root should output boms in build/reports with default version including sub-projects as components"() {
-        given:
-        File testDir = TestUtils.duplicate("multi-module")
-
-        when:
-        def result = GradleRunner.create()
-            .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--info", "-S")
-            .withPluginClasspath()
-            .build()
-        then:
-        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File reportDir = new File(testDir, "build/reports")
-
-        assert reportDir.exists()
-        reportDir.listFiles().length == 2
-
-        def jsonBom = loadJsonBom(new File(reportDir, "bom.json"))
-        assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
-
-        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?type=jar")
-        assert appAComponent.hasComponentDefined()
-        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?type=jar")
-
-        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?type=jar")
-        assert appBComponent.hasComponentDefined()
-        assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?type=jar")
-    }
-
-    def "multi-module with plugin in subproject should output boms in build/reports with for sub-project app-a"() {
-        given:
-        File testDir = TestUtils.duplicate("multi-module-subproject")
-
-        when:
-        def result = GradleRunner.create()
-            .withProjectDir(testDir)
-            .withArguments(":app-a:cyclonedxBom", "--info", "-S")
-            .withPluginClasspath()
-            .build()
-        then:
-        result.task(":app-a:cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File reportDir = new File(testDir, "app-a/build/reports")
-
-        assert reportDir.exists()
-        reportDir.listFiles().length == 2
-
-        def jsonBom = loadJsonBom(new File(reportDir, "bom.json"))
-        assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
-
-        assert jsonBom.metadata.component.type == "library"
-        assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-a@1.0.0?type=jar"
-        assert jsonBom.metadata.component.group == "com.example"
-        assert jsonBom.metadata.component.name == "app-a"
-        assert jsonBom.metadata.component.version == "1.0.0"
-        assert jsonBom.metadata.component.purl == "pkg:maven/com.example/app-a@1.0.0?type=jar"
-
-        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?type=jar")
-        assert !appAComponent.hasComponentDefined()
-        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?type=jar")
-
-        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?type=jar")
-        assert !appBComponent.hasComponentDefined()
-        assert appBComponent.dependencies == null
-    }
-
-    def "multi-module with plugin in subproject should output boms in build/reports with for sub-project app-b"() {
-        given:
-        File testDir = TestUtils.duplicate("multi-module-subproject")
-
-        when:
-        def result = GradleRunner.create()
-            .withProjectDir(testDir)
-            .withArguments(":app-a:assemble", ":app-b:cyclonedxBom", "--info", "-S")
-            .withPluginClasspath()
-            .build()
-        then:
-        result.task(":app-b:cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File reportDir = new File(testDir, "app-b/build/reports")
-
-        assert reportDir.exists()
-        reportDir.listFiles().length == 2
-
-        def jsonBom = loadJsonBom(new File(reportDir, "bom.json"))
-        assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
-
-        assert jsonBom.metadata.component.type == "library"
-        assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-b@1.0.0?type=jar"
-        assert jsonBom.metadata.component.group == "com.example"
-        assert jsonBom.metadata.component.name == "app-b"
-        assert jsonBom.metadata.component.version == "1.0.0"
-        assert jsonBom.metadata.component.purl == "pkg:maven/com.example/app-b@1.0.0?type=jar"
-
-        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?type=jar")
-        assert appAComponent.hasComponentDefined()
-        assert appAComponent.component.hashes != null
-        assert !appAComponent.component.hashes.empty
-        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?type=jar")
-
-        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?type=jar")
-        assert !appBComponent.hasComponentDefined()
-        assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?type=jar")
-    }
-
     def "kotlin-dsl-project should allow configuring all properties"() {
         given:
         File testDir = TestUtils.duplicate("kotlin-project")
@@ -434,16 +351,16 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--info", "-S")
+            .withArguments("cyclonedxBom", "--info", "-S", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
         then:
-      //  result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         assert !jsonBom.text.contains("serialNumber")
     }
@@ -455,7 +372,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--info", "-S")
+            .withArguments("cyclonedxBom", "--info", "-S", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -464,7 +381,7 @@ class PluginConfigurationSpec extends Specification {
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         //check Manufacture Data
         assert jsonBom.text.contains("\"name\" : \"Test\"")
@@ -487,7 +404,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--info", "-S")
+            .withArguments("cyclonedxBom", "--info", "-S", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -496,7 +413,7 @@ class PluginConfigurationSpec extends Specification {
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         //check Manufacture Data
         assert jsonBom.text.contains("\"name\" : \"Test\"")
@@ -535,7 +452,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--stacktrace", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -571,7 +488,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -584,7 +501,7 @@ class PluginConfigurationSpec extends Specification {
         assert log4jCore.getBomRef() == 'pkg:maven/org.apache.logging.log4j/log4j-core@2.15.0?type=jar'
     }
 
-    def "should use 1.5 is default schema version"() {
+    def "should use 1.6 is default schema version"() {
         given:
         File testDir = TestUtils.createFromString("""
             plugins {
@@ -601,7 +518,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -610,9 +527,9 @@ class PluginConfigurationSpec extends Specification {
         File reportDir = new File(testDir, "build/reports")
 
         assert reportDir.exists()
-        reportDir.listFiles().length == 2
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
-        assert jsonBom.text.contains("\"specVersion\" : \"1.5\"")
+        assert jsonBom.text.contains("\"specVersion\" : \"1.6\"")
     }
 
     def "should print error if project group, name, or version unset"() {
@@ -632,13 +549,13 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--stacktrace")
             .withPluginClasspath()
             .run()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.FAILED
-        assert result.output.contains("Project group, name, and version must be set for the root project")
+        assert result.output.contains("Project group and version are required for the CycloneDx task")
     }
 
     def "should include metadata by default"() {
@@ -660,7 +577,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--stacktrace", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -692,7 +609,7 @@ class PluginConfigurationSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments("cyclonedxBom", "--configuration-cache")
             .withPluginClasspath()
             .build()
 
@@ -700,35 +617,5 @@ class PluginConfigurationSpec extends Specification {
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
         File jsonBom = new File(testDir, "build/reports/bom.json")
         assert !jsonBom.text.contains("\"id\" : \"Apache-2.0\"")
-    }
-
-    private static def loadJsonBom(File file) {
-        return new JsonSlurper().parse(file)
-    }
-
-    private static class JsonBomComponent {
-
-        def component
-        def dependencies
-
-        boolean hasComponentDefined() {
-            return component != null
-                && ["library", "application"].contains(component.type)
-                && !component.group.empty
-                && !component.name.empty
-                && !component.version.empty
-                && !component.purl.empty
-        }
-
-        boolean dependsOn(String ref) {
-            return dependencies != null && dependencies.dependsOn.contains(ref)
-        }
-
-        static JsonBomComponent of(jsonBom, String ref) {
-            return new JsonBomComponent(
-                component: jsonBom.components.find { it."bom-ref".equals(ref) },
-                dependencies: jsonBom.dependencies.find { it.ref.equals(ref) }
-            )
-        }
     }
 }

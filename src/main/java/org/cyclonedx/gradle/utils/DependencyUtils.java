@@ -18,42 +18,122 @@
  */
 package org.cyclonedx.gradle.utils;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.ModuleVersionIdentifier;
-import org.gradle.api.artifacts.ResolvedArtifact;
-import org.gradle.api.artifacts.ResolvedDependency;
+import com.github.packageurl.MalformedPackageURLException;
+import com.github.packageurl.PackageURL;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.cyclonedx.gradle.model.SbomComponent;
+import org.cyclonedx.gradle.model.SbomComponentId;
+import org.gradle.api.Project;
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
+import org.gradle.api.artifacts.result.ResolvedComponentResult;
 
 public class DependencyUtils {
 
-    public static String getDependencyName(ResolvedDependency resolvedDependencies) {
-        final ModuleVersionIdentifier m = resolvedDependencies.getModule().getId();
-        return getDependencyName(m);
-    }
+    public static Map<SbomComponentId, SbomComponent> mergeGraphs(
+            final Map<SbomComponentId, SbomComponent> firstGraph,
+            final Map<SbomComponentId, SbomComponent> secondGraph) {
 
-    public static String getDependencyName(ResolvedArtifact artifact) {
-        final ModuleVersionIdentifier m = artifact.getModuleVersion().getId();
-        return getDependencyName(m);
-    }
-
-    public static boolean canBeResolved(Configuration configuration) {
-        // Configuration.isCanBeResolved() has been introduced with Gradle 3.3,
-        // thus we need to check for the method's existence first
-        try {
-            Method method = Configuration.class.getMethod("isCanBeResolved");
-            try {
-                return (Boolean) method.invoke(configuration);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                return true;
+        final Map<SbomComponentId, SbomComponent> mergedGraph = new HashMap<>(firstGraph);
+        secondGraph.keySet().stream().forEach(id -> {
+            if (firstGraph.containsKey(id)) {
+                SbomComponent resultComponent = mergedGraph.get(id);
+                SbomComponent targetComponent = secondGraph.get(id);
+                resultComponent.getDependencyComponents().addAll(targetComponent.getDependencyComponents());
+                resultComponent.getInScopeConfigurations().addAll(targetComponent.getInScopeConfigurations());
+            } else {
+                mergedGraph.put(id, secondGraph.get(id));
             }
-        } catch (NoSuchMethodException e) {
-            // prior to Gradle 3.3 all configurations were resolvable
-            return true;
+        });
+
+        return mergedGraph;
+    }
+
+    public static void connectRootWithSubProjects(
+            final Project project,
+            final SbomComponentId rootProjectId,
+            final Map<SbomComponentId, SbomComponent> graph) {
+
+        if (project.getSubprojects().isEmpty()) {
+            return;
+        }
+
+        final Set<SbomComponentId> dependencyComponentIds = project.getSubprojects().stream()
+                .map(subProject -> new SbomComponentId(
+                        subProject.getGroup().toString(),
+                        subProject.getName(),
+                        subProject.getVersion().toString(),
+                        ""))
+                .filter(graph::containsKey)
+                .collect(Collectors.toSet());
+
+        graph.get(rootProjectId).getDependencyComponents().addAll(dependencyComponentIds);
+    }
+
+    public static Optional<SbomComponent> findRootComponent(
+            final Project project, final Map<SbomComponentId, SbomComponent> graph) {
+
+        final SbomComponentId rootProjectId = new SbomComponentId(
+                project.getGroup().toString(),
+                project.getName(),
+                project.getVersion().toString(),
+                "");
+
+        if (!graph.containsKey(rootProjectId)) {
+            return Optional.empty();
+        } else {
+            return Optional.of(graph.get(rootProjectId));
         }
     }
 
-    private static String getDependencyName(ModuleVersionIdentifier moduleVersion) {
-        return String.format("%s:%s:%s", moduleVersion.getGroup(), moduleVersion.getName(), moduleVersion.getVersion());
+    public static SbomComponentId toComponentId(final ResolvedComponentResult node, final File file) {
+
+        String type = "";
+        if (node.getId() instanceof ModuleComponentIdentifier) {
+            if (file != null) {
+                type = getType(file);
+            } else {
+                type = "pom";
+            }
+        }
+
+        if (node.getModuleVersion() != null) {
+            return new SbomComponentId(
+                    node.getModuleVersion().getGroup(),
+                    node.getModuleVersion().getName(),
+                    node.getModuleVersion().getVersion(),
+                    type);
+        } else {
+            return new SbomComponentId("undefined", node.getId().getDisplayName(), "undefined", type);
+        }
+    }
+
+    private static String getType(final File file) {
+
+        final String fileExtension = FilenameUtils.getExtension(file.getName());
+        if (StringUtils.isBlank(fileExtension)) {
+            return "pom";
+        }
+
+        return fileExtension;
+    }
+
+    public static String generatePackageUrl(final SbomComponentId componentId, final TreeMap<String, String> qualifiers)
+            throws MalformedPackageURLException {
+        return new PackageURL(
+                        PackageURL.StandardTypes.MAVEN,
+                        componentId.getGroup(),
+                        componentId.getName(),
+                        componentId.getVersion(),
+                        qualifiers,
+                        null)
+                .canonicalize();
     }
 }
