@@ -40,6 +40,7 @@ public class CycloneDxUtils {
     /**
      * Resolves the CycloneDX schema the mojo has been requested to use.
      *
+     * @param version the CycloneDX schema version to resolve
      * @return the CycloneDX schema to use
      */
     public static Version schemaVersion(String version) {
