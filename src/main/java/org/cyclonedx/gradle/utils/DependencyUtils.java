@@ -78,13 +78,12 @@ public class DependencyUtils {
     }
 
     public static Optional<SbomComponent> findRootComponent(
-            final Project project, final Map<SbomComponentId, SbomComponent> graph) {
+            final Project project,
+            final Map<SbomComponentId, SbomComponent> graph,
+            final String configuredComponentVersion) {
 
-        final SbomComponentId rootProjectId = new SbomComponentId(
-                project.getGroup().toString(),
-                project.getName(),
-                project.getVersion().toString(),
-                "");
+        final SbomComponentId rootProjectId =
+                new SbomComponentId(project.getGroup().toString(), project.getName(), configuredComponentVersion, "");
 
         if (!graph.containsKey(rootProjectId)) {
             return Optional.empty();
