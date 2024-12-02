@@ -618,4 +618,40 @@ class PluginConfigurationSpec extends Specification {
         File jsonBom = new File(testDir, "build/reports/bom.json")
         assert !jsonBom.text.contains("\"id\" : \"Apache-2.0\"")
     }
+
+    def "should not use depecrated tool section if schema is 1.5 or higher"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                schemaVersion = "1.6"
+            }
+            dependencies {
+                implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.15.0'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        assert bom.getMetadata().getToolChoice().getComponents().size() == 1
+        Component cycloneDxTool = bom.getMetadata().getToolChoice().getComponents().get(0)
+        assert cycloneDxTool.getName() == "cyclonedx-gradle-plugin"
+        assert cycloneDxTool.getAuthor() == "CycloneDX"
+    }
 }
