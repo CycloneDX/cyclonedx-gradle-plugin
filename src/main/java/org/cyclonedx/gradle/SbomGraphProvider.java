@@ -128,7 +128,14 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                 .filter(configuration -> shouldIncludeConfiguration(configuration)
                         && !shouldSkipConfiguration(configuration)
                         && configuration.isCanBeResolved())
-                .flatMap(config -> config.getIncoming().getArtifacts().getArtifacts().stream())
+                .flatMap(config -> config
+                        .getIncoming()
+                        .artifactView(view -> {
+                            view.lenient(true);
+                        })
+                        .getArtifacts()
+                        .getArtifacts()
+                        .stream())
                 .collect(Collectors.toMap(
                         artifact -> artifact.getId().getComponentIdentifier(),
                         ResolvedArtifactResult::getFile,
