@@ -84,8 +84,8 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private SbomGraph buildSbomGraph(final Map<SbomComponentId, SbomComponent> graph) {
-
-        final Optional<SbomComponent> rootProject = DependencyUtils.findRootComponent(project, graph);
+        final Optional<SbomComponent> rootProject = DependencyUtils.findRootComponent(
+                project, graph, task.getComponentVersion().get());
         if (rootProject.isPresent()) {
             DependencyUtils.connectRootWithSubProjects(
                     project, rootProject.get().getId(), graph);
@@ -95,7 +95,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
             final SbomComponentId rootProjectId = new SbomComponentId(
                     project.getGroup().toString(),
                     project.getName(),
-                    project.getVersion().toString(),
+                    task.getComponentVersion().get(),
                     "");
             final SbomComponent sbomComponent = new SbomComponent.Builder()
                     .withId(rootProjectId)

@@ -234,6 +234,7 @@ class PluginConfigurationSpec extends Specification {
         reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         assert jsonBom.text.contains("\"version\" : \"999-SNAPSHOT\"")
+        assert jsonBom.text.contains("\"purl\" : \"pkg:maven/com.example/hello-world@999-SNAPSHOT\"")
     }
 
     def "should use configured projectType"() {
