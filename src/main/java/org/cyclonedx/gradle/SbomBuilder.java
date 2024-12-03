@@ -50,6 +50,7 @@ import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.Metadata;
 import org.cyclonedx.model.Property;
 import org.cyclonedx.model.Tool;
+import org.cyclonedx.model.metadata.ToolInformation;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.logging.Logger;
 
@@ -72,7 +73,7 @@ class SbomBuilder {
 
     SbomBuilder(final Logger logger, final CycloneDxTask task) {
         this.logger = logger;
-        this.version = CycloneDxUtils.DEFAULT_SCHEMA_VERSION;
+        this.version = CycloneDxUtils.schemaVersion(task.getSchemaVersion().get());
         this.artifactHashes = new HashMap<>();
         this.mavenHelper = new MavenHelper(logger, task.getIncludeLicenseText().get());
         this.task = task;
@@ -125,11 +126,23 @@ class SbomBuilder {
 
         final Properties pluginProperties = readPluginProperties();
         if (!pluginProperties.isEmpty()) {
-            final Tool tool = new Tool();
-            tool.setVendor(pluginProperties.getProperty("vendor"));
-            tool.setName(pluginProperties.getProperty("name"));
-            tool.setVersion(pluginProperties.getProperty("version"));
-            metadata.addTool(tool);
+            // if schema version is 1.5 or higher use tools instead of tool
+            if (version.compareTo(Version.VERSION_15) >= 0) {
+                final Component component = new Component();
+                component.setType(Component.Type.APPLICATION);
+                component.setAuthor(pluginProperties.getProperty("vendor"));
+                component.setName(pluginProperties.getProperty("name"));
+                component.setVersion(pluginProperties.getProperty("version"));
+                final ToolInformation tool = new ToolInformation();
+                tool.setComponents(Collections.singletonList(component));
+                metadata.setToolChoice(tool);
+            } else {
+                final Tool tool = new Tool();
+                tool.setVendor(pluginProperties.getProperty("vendor"));
+                tool.setName(pluginProperties.getProperty("name"));
+                tool.setVersion(pluginProperties.getProperty("version"));
+                metadata.addTool(tool);
+            }
         }
 
         return metadata;
