@@ -73,7 +73,7 @@ class SbomBuilder {
 
     SbomBuilder(final Logger logger, final CycloneDxTask task) {
         this.logger = logger;
-        this.version = CycloneDxUtils.DEFAULT_SCHEMA_VERSION;
+        this.version = CycloneDxUtils.schemaVersion(task.getSchemaVersion().get());
         this.artifactHashes = new HashMap<>();
         this.mavenHelper = new MavenHelper(logger, task.getIncludeLicenseText().get());
         this.task = task;
