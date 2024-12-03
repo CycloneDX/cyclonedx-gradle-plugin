@@ -51,7 +51,7 @@ cyclonedxBom {
     skipProjects = [rootProject.name, "yourTestSubProject"]
     // Specified the type of project being built. Defaults to 'library'
     projectType = "application"
-    // Specified the version of the CycloneDX specification to use. Defaults to '1.5'
+    // Specified the version of the CycloneDX specification to use. Defaults to '1.6'
     schemaVersion = "1.6"
     // Boms destination directory. Defaults to 'build/reports'
     destination = file("build/reports")
