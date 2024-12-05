@@ -20,3 +20,17 @@ cd cyclonedx-gradle-plugin
 ```
 
 This will build and publish the new plugin version locally
+
+## Using local plugin builds in your project
+
+In the settings.gradle.kts file, add:
+```
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+```
+In order for your local plugin version to be found, it is important that you add mavenLocal() to your plugin repositories.
