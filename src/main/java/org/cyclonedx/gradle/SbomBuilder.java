@@ -42,6 +42,7 @@ import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.gradle.utils.EnvironmentUtils;
+import org.cyclonedx.gradle.utils.ExternalReferencesUtil;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Dependency;
@@ -116,6 +117,8 @@ class SbomBuilder {
             component.setName(task.getComponentName().get());
             component.setVersion(task.getComponentVersion().get());
             addBuildSystemMetaData(component);
+            component.addExternalReference(task.getGitVCS());
+            ExternalReferencesUtil.complementByEnvironment(component);
             metadata.setComponent(component);
         } catch (MalformedPackageURLException e) {
             logger.warn(
