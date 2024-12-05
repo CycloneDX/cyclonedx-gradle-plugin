@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.cyclonedx.gradle.utils.CycloneDxUtils
 import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
+import org.cyclonedx.model.ExternalReference
 import org.cyclonedx.model.Tool
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
@@ -691,5 +692,78 @@ class PluginConfigurationSpec extends Specification {
         Tool tool = bom.getMetadata().getTools().get(0);
         assert tool.getName() == "cyclonedx-gradle-plugin"
         assert tool.getVendor() == "CycloneDX"
+    }
+
+    def "should include external reference - build-system"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                includeBuildSystem = true
+            }
+            dependencies {
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withEnvironment(["BUILD_URL" : "https://jenkins.example.com/job/123"])
+            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        assert bom.getMetadata().getComponent().getExternalReferences().size() == 1
+        ExternalReference buildSystemRef = bom.getMetadata().getComponent().getExternalReferences().get(0);
+        assert ExternalReference.Type.BUILD_SYSTEM == buildSystemRef.getType()
+        assert buildSystemRef.getUrl() == "https://jenkins.example.com/job/123"
+    }
+
+    def "should include external reference - build-system using configured environment variables"() {
+        given:
+        File testDir = TestUtils.createFromString('''
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                includeBuildSystem = true
+                buildSystemEnvironmentVariable = '${SERVER}/build/${BUILD_ID}'
+            }
+            dependencies {
+            }''', "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withEnvironment(["SERVER" : "https://ci.example.com", "BUILD_ID" : "123"])
+            .withArguments("cyclonedxBom", "--configuration-cache", "--stacktrace")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        assert bom.getMetadata().getComponent().getExternalReferences().size() == 1
+        ExternalReference buildSystemRef = bom.getMetadata().getComponent().getExternalReferences().get(0);
+        assert buildSystemRef.getType() == ExternalReference.Type.BUILD_SYSTEM
+        assert buildSystemRef.getUrl() == "https://ci.example.com/build/123"
     }
 }

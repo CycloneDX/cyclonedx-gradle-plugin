@@ -35,6 +35,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 
@@ -61,6 +62,8 @@ public abstract class CycloneDxTask extends DefaultTask {
     private final ListProperty<String> skipProjects;
     private final Property<File> destination;
     private final Provider<SbomGraph> componentsProvider;
+    private final Property<Boolean> includeBuildSystem;
+    private final Property<String> buildSystemEnvironmentVariable;
 
     @Nullable private OrganizationalEntity organizationalEntity;
 
@@ -112,6 +115,10 @@ public abstract class CycloneDxTask extends DefaultTask {
                 .dir("reports")
                 .get()
                 .getAsFile());
+
+        includeBuildSystem = getProject().getObjects().property(Boolean.class);
+        includeBuildSystem.convention(false);
+        buildSystemEnvironmentVariable = getProject().getObjects().property(String.class);
     }
 
     @Input
@@ -220,6 +227,34 @@ public abstract class CycloneDxTask extends DefaultTask {
 
     public void setSkipProjects(final Collection<String> skipProjects) {
         this.skipProjects.addAll(skipProjects);
+    }
+
+    @Input
+    public Property<Boolean> getIncludeBuildSystem() {
+        return includeBuildSystem;
+    }
+
+    public void setIncludeBuildSystem(final boolean includeBuildSystem) {
+        this.includeBuildSystem.set(includeBuildSystem);
+    }
+
+    /**
+     * The environment variable to use to determine the build system URL. If the
+     * build system URL needs to be constructed from multiple environment variables a
+     * pattern can be set using `buildSystemEnvironmentVariable = '${SERVER}/jobs/${JOB_ID}'`.
+     * Note, that when configuring in kotlin or groovy single quotes must be used to prevent the
+     * build itself from interpolating that variables.
+     *
+     * @return the environment variable to use to determine the build system
+     */
+    @Input
+    @Optional
+    public Property<String> getBuildSystemEnvironmentVariable() {
+        return buildSystemEnvironmentVariable;
+    }
+
+    public void setBuildSystemEnvironmentVariable(final String buildSystemEnvironmentVariable) {
+        this.buildSystemEnvironmentVariable.set(buildSystemEnvironmentVariable);
     }
 
     @Internal
