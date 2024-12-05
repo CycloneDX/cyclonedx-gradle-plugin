@@ -65,6 +65,10 @@ cyclonedxBom {
     includeLicenseText = false
     // Include resolution of full metadata for components including licenses. Defaults to 'true'
     includeMetadataResolution = true
+    // Attempt to include the build-system URL by reading environment variables from common CI system such as GitHub Actions, GitLab CI, Drone, Jenkins, Travis CI, and Circle CI. Defaults to 'false'
+    includeBuildSystem = true
+    // if includeBuildSystem is true, the given environment variables will be used to construct the build-system URL that will be included in the BOM. Optional, defaults to `null`.
+    buildSystemEnvironmentVariable = '${CUSTOM_CI_URL}/jobs/${CUSTOM_JOB_ID}'
     // Override component version. Defaults to the project version
     componentVersion = "2.0.0"
     // Override component name. Defaults to the project name
