@@ -167,10 +167,7 @@ class SbomBuilder {
                 ExternalReference buildRef = new ExternalReference();
                 buildRef.setType(ExternalReference.Type.BUILD_SYSTEM);
                 buildRef.setUrl(url);
-                if (component.getExternalReferences() == null) {
-                    component.setExternalReferences(new ArrayList<>());
-                }
-                component.getExternalReferences().add(buildRef);
+                component.addExternalReference(buildRef);
             }
         }
     }
