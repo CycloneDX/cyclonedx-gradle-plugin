@@ -25,7 +25,7 @@ gradle cyclonedxBom --info
 
 __build.gradle__ (excerpt)
 
-To generate BOM for a single project add the plugin to the `build.gradle`.
+To generate a BOM for a single project add the plugin to the `build.gradle`.
 
 
 ```groovy
@@ -156,13 +156,15 @@ You can add the Manufacture-Data by passing an Object of the Type __Organization
 __Example (groovy):__
 ```groovy
 cyclonedxBom {
-    //declaration of the Object from OrganizationalContact
+    // declaration of the Object from OrganizationalContact
     OrganizationalContact organizationalContact = new OrganizationalContact()
-    //setting the Name[String], Email[String] and Phone[String] of the Object
+
+    // setting the Name[String], Email[String] and Phone[String] of the Object
     organizationalContact.setName("Max_Mustermann")
     organizationalContact.setEmail("max.mustermann@test.org")
     organizationalContact.setPhone("0000 99999999")
-    //passing Data to the plugin
+
+    // passing Data to the plugin
     organizationalEntity { oe ->
         oe.name = 'Test'
         oe.url = ['www.test1.com', 'www.test2.com']
@@ -174,13 +176,15 @@ cyclonedxBom {
 __Example (Kotlin):__
 ```kotlin
 cyclonedxBom {
-    //declaration of the Object from OrganizationalContact
+    // declaration of the Object from OrganizationalContact
     var organizationalContact1 = OrganizationalContact()
-    //setting the Name[String], Email[String] and Phone[String] of the Object
+
+    // setting the Name[String], Email[String] and Phone[String] of the Object
     organizationalContact1.setName("Max_Mustermann")
     organizationalContact1.setEmail("max.mustermann@test.org")
     organizationalContact1.setPhone("0000 99999999")
-    //passing Data to the plugin
+
+    // passing data to the plugin
     setOrganizationalEntity { oe ->
         oe.name = "Test";
         oe.urls = listOf("www.test1.com", "www.test2.com")
@@ -188,35 +192,39 @@ cyclonedxBom {
     }
 }
 ```
-It should be noted that some Data like OrganizationalContact, Url, Name,... can be left out. <br>
+It should be noted that some data like OrganizationalContact, Url, Name,... can be left out. <br>
 OrganizationalEntity can also include multiple OrganizationalContact.
 
-For details look at https://cyclonedx.org/docs/1.6/json/#metadata.
+For details refer to https://cyclonedx.org/docs/1.6/json/#metadata.
 
 
 ## Adding Licenses-Data
 
-In order to be able to define the Manufacture-Data you must __import org.cyclonedx.model.*;__ into the build.gradle.
+In order to define the Manufacture-Data you must __import org.cyclonedx.model.*;__ to the build.gradle.
 
-You can add the Licenses-Data by passing an Object of the Type __LicenseChoice__ to the Plugin.
-The Object from LicenseChoice includes __either License or Expression__. It can't include both.
+You can add the license data by passing an object of the type __LicenseChoice__ to the plugin.
+The object from LicenseChoice includes __either license or expression__. It can't include both.
 
 ### License
 
 __Example (groovy):__
 ```groovy
 cyclonedxBom {
-    //declaration of the Object from AttachmentText -> Needed for the setting of LicenseText
+    // declaration of the object from AttachmentText -> Needed for the setting of LicenseText
     AttachmentText attachmentText = new AttachmentText()
-    attachmentText.setText("This is a Licenses-Test")
-    //declaration of the Object from License
+    attachmentText.setText("This is a Licenses-Text")
+
+    // declaration of the Object from License
     License license = new License()
-    //setting the Name[String], LicenseText[AttachmentText] and Url[String]
+
+    // setting the Name[String], LicenseText[AttachmentText] and Url[String]
     license.setName("XXXX XXXX Software")
-    //license.setId("Mup")     // either id or name -> both not possible
+
+    // license.setId("Mup")     // either id or name -> both not possible
     license.setLicenseText(attachmentText);
     license.setUrl("https://www.test-Url.org/")
-    //passing Data to Plugin
+
+    // passing Data to Plugin
     licenseChoice { lc ->
         lc.addLicense(license)
     }
@@ -226,32 +234,37 @@ cyclonedxBom {
 __Example (Kotlin):__
 ```kotlin
 cyclonedxBom {
-    //declaration of the Object from AttachmentText -> Needed for the setting of LicenseText
+    // declaration of the object from AttachmentText -> Needed for the setting of LicenseText
     val attachmentText = AttachmentText()
-    attachmentText.setText("This is a Licenses-Test")
-    //declaration of the Object from License
+    attachmentText.setText("This is a Licenses-Text")
+
+    // declaration of the object from License
     val license = License()
-    //setting the Name[String], LicenseText[AttachmentText] and Url[String]
+
+    // setting the Name[String], LicenseText[AttachmentText] and Url[String]
     license.setName("XXXX XXXX Software")
-    //license.setId("Mup")     // either id or name -> both not possible
+
+    // license.setId("Mup")
+    // either id or name -> both not possible
     license.setLicenseText(attachmentText)
     license.setUrl("https://www.test-Url.org/")
-    //passing Data to Plugin
+
+    // passing Data to Plugin
     setLicenseChoice { lc ->
         lc.addLicense(license)
     }
 }
 ```
 
-It should be noted that License requires __either Id or Name__, but both can't be included at the same time.
+It should be noted that License requires __either id or name__, but both can't be included at the same time.
 
-Text and Url are optional for inclusion and multiple License can be added to LicenseChoice.
+Text and url are optional for inclusion and multiple licenses can be added to LicenseChoice.
 
 ---
 
 ## Adding Git VCS url
 
-You can add the Git VCS url by passing an Object of the Type __ExternalReference__ to the Plugin.
+Add the Git VCS url by passing an object of the type __ExternalReference__ to the plugin.
 
 ### Git VCS
 
@@ -266,15 +279,13 @@ cyclonedxBom {
         // e.g. vcs.url = "ssh://git@github.com:CycloneDX/cyclonedx-gradle-plugin.git"
         vcs.url = "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"
 
-        // (optional) you an add a comment to describe your repository
+        // (optional) you can add a comment to describe your repository
         // vcs.comment = "comment"
     }
 }
 ```
 
 It should be noted that __url is mandatory__ and type will be ignored. You may add a comment to describe the external reference.
-
-Text and Url are optional for inclusion and multiple License can be added to LicenseChoice.
 
 ---
 For details of the BOM structure look at https://cyclonedx.org/docs/1.6/json/#metadata.
