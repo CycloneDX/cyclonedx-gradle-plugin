@@ -153,7 +153,7 @@ class SbomBuilder {
         return metadata;
     }
 
-    private void addBuildSystemMetaData(Component component) {
+    private void addBuildSystemMetaData(final Component component) {
         if (task.getIncludeBuildSystem().get()) {
             String url;
             if (task.getBuildSystemEnvironmentVariable().isPresent()

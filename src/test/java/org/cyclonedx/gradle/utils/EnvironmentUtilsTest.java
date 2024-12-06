@@ -97,6 +97,12 @@ class EnvironmentUtilsTest {
     }
 
     @Test
+    void getBuildURI_Null() throws Exception {
+        String uri = EnvironmentUtils.getBuildURI(null);
+        assertNull(uri);
+    }
+
+    @Test
     void getBuildURI_NoEnvVars() throws Exception {
         String uri = withEnvironmentVariable("GITHUB_REPOSITORY", null).execute(() -> {
             return EnvironmentUtils.getBuildURI();

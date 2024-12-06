@@ -18,98 +18,48 @@
  */
 package org.cyclonedx.gradle.utils;
 
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.StringUtils;
 
+/**
+ * Utility class for working with environment variables in common CI environments.
+ */
 public class EnvironmentUtils {
 
     /**
-     * Checks if a string is null or blank.
-     * @param value the string to check
-     * @return true if the string is null or blank, false otherwise
+     * Pattern to match environment variables in a string.
      */
-    private static boolean isNullOrBlank(String value) {
-        return value == null || value.trim().isEmpty();
-    }
+    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
+    /**
+     * Jenkins build URL environment variable.
+     */
+    private static final String JENKINS_BUILD_URL = "BUILD_URL";
+    /**
+     * Travis build URL environment variable.
+     */
+    private static final String TRAVIS_BUILD_WEB_URL = "TRAVIS_BUILD_WEB_URL";
+    /**
+     * CircleCI build URL environment variable.
+     */
+    private static final String CIRCLE_BUILD_URL = "CIRCLE_BUILD_URL";
+    /**
+     * Drone build link environment variable.
+     */
+    private static final String DRONE_BUILD_LINK = "DRONE_BUILD_LINK";
 
     /**
      * Get the URI of the current build from the environment variables set on common build systems like GitHub Actions, GitLab CI, etc.
      * @return the URI of the current build or null if it cannot be determined
      */
     public static String getBuildURI() {
-        // GitHub Actions
-        String githubServerUrl = System.getenv("GITHUB_SERVER_URL");
-        String githubRepository = System.getenv("GITHUB_REPOSITORY");
-        String githubRunId = System.getenv("GITHUB_RUN_ID");
-
-        if (!isNullOrBlank(githubServerUrl) && !isNullOrBlank(githubRepository) && !isNullOrBlank(githubRunId)) {
-            return String.format("%s/%s/actions/runs/%s", githubServerUrl, githubRepository, githubRunId);
-        }
-
-        // GitLab CI
-        String ciProjectUrl = System.getenv("CI_PROJECT_URL");
-        String ciJobId = System.getenv("CI_JOB_ID");
-        if (!isNullOrBlank(ciProjectUrl) && !isNullOrBlank(ciJobId)) {
-            return String.format("%s/-/jobs/%s", ciProjectUrl, ciJobId);
-        }
-
-        // Jenkins
-        String buildUrl = System.getenv("BUILD_URL");
-        if (!isNullOrBlank(buildUrl)) {
-            return buildUrl;
-        }
-        //        String jobUrl = System.getenv("JOB_URL");
-        //        if (!isNullOrBlank(jobUrl)) {
-        //            return jobUrl;
-        //        }
-
-        // Travis CI
-        String travisBuildUrl = System.getenv("TRAVIS_BUILD_WEB_URL");
-        if (!isNullOrBlank(travisBuildUrl)) {
-            return travisBuildUrl;
-        }
-        //        String travisJobUrl = System.getenv("TRAVIS_JOB_WEB_URL");
-        //        if (!isNullOrBlank(travisJobUrl)) {
-        //            return travisJobUrl;
-        //        }
-
-        // CircleCI
-        String circleBuildUrl = System.getenv("CIRCLE_BUILD_URL");
-        if (!isNullOrBlank(circleBuildUrl)) {
-            return circleBuildUrl;
-        }
-
-        // Drone by Harness
-        String droneBuildUrl = System.getenv("DRONE_BUILD_LINK");
-        if (!isNullOrBlank(droneBuildUrl)) {
-            return droneBuildUrl;
-        }
-        return null;
-    }
-
-    /**
-     * Get the URI of the current build from the specified pattern and environment variables and pattern. An example
-     * pattern could be "${SERVER}/jobs/${JOB_ID}". The environment variables are specified as a list of names.
-     * @param pattern the pattern to use to build the URI
-     * @return the URI of the current build or null if it cannot be determined
-     */
-    private static String getBuildUriFromPattern(String pattern) {
-        String result = pattern;
-        Pattern regex = Pattern.compile("\\$\\{([^}]+)\\}");
-        Matcher matcher = regex.matcher(pattern);
-
-        while (matcher.find()) {
-            String varName = matcher.group(1);
-            if (isNullOrBlank(varName)) {
-                return null;
-            }
-            String value = System.getenv(varName);
-            if (isNullOrBlank(value)) {
-                return null;
-            }
-            result = result.replace("${" + varName + "}", value);
-        }
-        return result;
+        return Optional.ofNullable(fromGithubActions()).orElseGet(() -> Optional.ofNullable(fromGitlabCI())
+                .orElseGet(() -> Optional.ofNullable(fromEnvironment(JENKINS_BUILD_URL))
+                        .orElseGet(() -> Optional.ofNullable(fromEnvironment(CIRCLE_BUILD_URL))
+                                .orElseGet(() -> Optional.ofNullable(fromEnvironment(TRAVIS_BUILD_WEB_URL))
+                                        .orElseGet(() -> Optional.ofNullable(fromEnvironment(DRONE_BUILD_LINK))
+                                                .orElse(null))))));
     }
 
     /**
@@ -120,10 +70,77 @@ public class EnvironmentUtils {
      * @param str the name of the environment variable or pattern to use
      * @return the URI of the current build or null if it cannot be determined
      */
-    public static String getBuildURI(String str) {
+    public static String getBuildURI(final String str) {
+        if (StringUtils.isBlank(str)) {
+            return null;
+        }
         if (str.contains("${")) {
             return getBuildUriFromPattern(str);
         }
         return System.getenv(str);
+    }
+
+    private static String fromGithubActions() {
+        final String githubServerUrl = System.getenv("GITHUB_SERVER_URL");
+        final String githubRepository = System.getenv("GITHUB_REPOSITORY");
+        final String githubRunId = System.getenv("GITHUB_RUN_ID");
+
+        if (!StringUtils.isBlank(githubServerUrl)
+                && !StringUtils.isBlank(githubRepository)
+                && !StringUtils.isBlank(githubRunId)) {
+            return String.format("%s/%s/actions/runs/%s", githubServerUrl, githubRepository, githubRunId);
+        }
+
+        return null;
+    }
+
+    private static String fromGitlabCI() {
+        final String ciProjectUrl = System.getenv("CI_PROJECT_URL");
+        final String ciJobId = System.getenv("CI_JOB_ID");
+        if (!StringUtils.isBlank(ciProjectUrl) && !StringUtils.isBlank(ciJobId)) {
+            return String.format("%s/-/jobs/%s", ciProjectUrl, ciJobId);
+        }
+        return null;
+    }
+
+    private static String fromEnvironment(String name) {
+        final String url = System.getenv(name);
+        if (!StringUtils.isBlank(url)) {
+            return url;
+        }
+        return null;
+    }
+
+    /**
+     * Get the URI of the current build from the specified pattern and environment variables and pattern. An example
+     * pattern could be "${SERVER}/jobs/${JOB_ID}". The environment variables are specified as a list of names.
+     * @param pattern the pattern to use to build the URI
+     * @return the URI of the current build or null if it cannot be determined
+     */
+    private static String getBuildUriFromPattern(final String pattern) {
+        if (pattern == null) {
+            return null;
+        }
+
+        final StringBuilder result = new StringBuilder(pattern);
+        final Matcher matcher = VARIABLE_PATTERN.matcher(pattern);
+
+        while (matcher.find()) {
+            final String varName = matcher.group(1);
+            if (StringUtils.isBlank(varName)) {
+                return null;
+            }
+
+            final String value = System.getenv(varName);
+            if (StringUtils.isBlank(value)) {
+                return null;
+            }
+
+            final int start = result.indexOf("${" + varName + "}");
+            final int end = start + varName.length() + 3;
+            result.replace(start, end, value);
+        }
+
+        return result.toString();
     }
 }
