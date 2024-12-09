@@ -71,6 +71,7 @@ public class CycloneDxUtils {
             final Version version,
             final String formats) {
 
+        sortBom(bom);
         if (formats.equals("all") || formats.equals("json")) {
             final File jsonFile = new File(destination, String.format("%s.json", outputName));
             writeJSONBom(version, bom, jsonFile);
@@ -79,6 +80,51 @@ public class CycloneDxUtils {
         if (formats.equals("all") || formats.equals("xml")) {
             final File xmlFile = new File(destination, String.format("%s.xml", outputName));
             writeXmlBom(version, bom, xmlFile);
+        }
+    }
+
+    /**
+     * Utility method to sort the components and dependencies in the BOM.
+     * @param bom the BOM to sort
+     */
+    private static void sortBom(final Bom bom) {
+        if (bom.getComponents() != null) {
+            bom.getComponents().sort((c1, c2) -> {
+                if (c1.getPurl() == null && c2.getPurl() == null) {
+                    return 0;
+                } else if (c1.getPurl() == null) {
+                    return -1;
+                } else if (c2.getPurl() == null) {
+                    return 1;
+                }
+                return c1.getPurl().compareTo(c2.getPurl());
+            });
+        }
+        if (bom.getDependencies() != null) {
+            bom.getDependencies().sort((d1, d2) -> {
+                if (d1.getRef() == null && d2.getRef() == null) {
+                    return 0;
+                } else if (d1.getRef() == null) {
+                    return -1;
+                } else if (d2.getRef() == null) {
+                    return 1;
+                }
+                return d1.getRef().compareTo(d2.getRef());
+            });
+            bom.getDependencies().forEach(dependency -> {
+                if (dependency.getDependencies() != null) {
+                    dependency.getDependencies().sort((d1, d2) -> {
+                        if (d1.getRef() == null && d2.getRef() == null) {
+                            return 0;
+                        } else if (d1.getRef() == null) {
+                            return -1;
+                        } else if (d2.getRef() == null) {
+                            return 1;
+                        }
+                        return d1.getRef().compareTo(d2.getRef());
+                    });
+                }
+            });
         }
     }
 
