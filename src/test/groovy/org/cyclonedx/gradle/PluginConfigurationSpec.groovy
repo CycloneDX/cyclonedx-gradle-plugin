@@ -764,4 +764,38 @@ class PluginConfigurationSpec extends Specification {
         assert buildSystemRef.getType() == ExternalReference.Type.BUILD_SYSTEM
         assert buildSystemRef.getUrl() == "https://ci.example.com/build/123"
     }
+
+    def "should not include external reference if specified environment variables do not exist"() {
+        given:
+        File testDir = TestUtils.createFromString('''
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                includeBuildSystem = true
+                buildSystemEnvironmentVariable = '${SERVER}/build/${BUILD_ID}'
+            }
+            dependencies {
+            }''', "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withEnvironment(["SERVER" : "https://ci.example.com"])
+            .withArguments("cyclonedxBom", "--configuration-cache", "--stacktrace")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        assert bom.getMetadata().getComponent().getExternalReferences().size() == 0
+    }
 }

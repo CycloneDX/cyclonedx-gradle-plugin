@@ -21,6 +21,7 @@ package org.cyclonedx.gradle.utils;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -53,7 +54,7 @@ public class EnvironmentUtils {
      * Get the URI of the current build from the environment variables set on common build systems like GitHub Actions, GitLab CI, etc.
      * @return the URI of the current build or null if it cannot be determined
      */
-    public static String getBuildURI() {
+    @Nullable public static String getBuildURI() {
         return Optional.ofNullable(fromGithubActions()).orElseGet(() -> Optional.ofNullable(fromGitlabCI())
                 .orElseGet(() -> Optional.ofNullable(fromEnvironment(JENKINS_BUILD_URL))
                         .orElseGet(() -> Optional.ofNullable(fromEnvironment(CIRCLE_BUILD_URL))
@@ -70,7 +71,7 @@ public class EnvironmentUtils {
      * @param str the name of the environment variable or pattern to use
      * @return the URI of the current build or null if it cannot be determined
      */
-    public static String getBuildURI(final String str) {
+    @Nullable public static String getBuildURI(final String str) {
         if (StringUtils.isBlank(str)) {
             return null;
         }
@@ -80,7 +81,7 @@ public class EnvironmentUtils {
         return System.getenv(str);
     }
 
-    private static String fromGithubActions() {
+    @Nullable private static String fromGithubActions() {
         final String githubServerUrl = System.getenv("GITHUB_SERVER_URL");
         final String githubRepository = System.getenv("GITHUB_REPOSITORY");
         final String githubRunId = System.getenv("GITHUB_RUN_ID");
@@ -94,7 +95,7 @@ public class EnvironmentUtils {
         return null;
     }
 
-    private static String fromGitlabCI() {
+    @Nullable private static String fromGitlabCI() {
         final String ciProjectUrl = System.getenv("CI_PROJECT_URL");
         final String ciJobId = System.getenv("CI_JOB_ID");
         if (!StringUtils.isBlank(ciProjectUrl) && !StringUtils.isBlank(ciJobId)) {
@@ -103,7 +104,7 @@ public class EnvironmentUtils {
         return null;
     }
 
-    private static String fromEnvironment(String name) {
+    @Nullable private static String fromEnvironment(String name) {
         final String url = System.getenv(name);
         if (!StringUtils.isBlank(url)) {
             return url;
@@ -117,7 +118,7 @@ public class EnvironmentUtils {
      * @param pattern the pattern to use to build the URI
      * @return the URI of the current build or null if it cannot be determined
      */
-    private static String getBuildUriFromPattern(final String pattern) {
+    @Nullable private static String getBuildUriFromPattern(final String pattern) {
         if (pattern == null) {
             return null;
         }
