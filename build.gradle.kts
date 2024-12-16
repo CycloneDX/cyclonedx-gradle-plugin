@@ -10,7 +10,7 @@ plugins {
 
 val organization = "CycloneDX"
 group = "org.cyclonedx"
-version = "2.0.0-alpha-0"
+version = "2.0.0-alpha-1"
 
 java.sourceCompatibility = JavaVersion.VERSION_1_8
 java.targetCompatibility = JavaVersion.VERSION_1_8
@@ -29,7 +29,7 @@ dependencies {
     implementation("org.apache.maven:maven-core:3.9.9")
 
     testImplementation(gradleTestKit())
-    testImplementation("org.spockframework:spock-core:2.2-M1-groovy-3.0") {
+    testImplementation("org.spockframework:spock-core:2.3-groovy-3.0") {
         exclude(module = "groovy-all")
     }
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
