@@ -41,6 +41,7 @@ import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.gradle.utils.DependencyUtils;
+import org.cyclonedx.gradle.utils.EnvironmentUtils;
 import org.cyclonedx.gradle.utils.ExternalReferencesUtil;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
@@ -115,6 +116,7 @@ class SbomBuilder {
             component.setProperties(null);
             component.setName(task.getComponentName().get());
             component.setVersion(task.getComponentVersion().get());
+            addBuildSystemMetaData(component);
             component.addExternalReference(task.getGitVCS());
             ExternalReferencesUtil.complementByEnvironment(component);
             metadata.setComponent(component);
@@ -149,6 +151,25 @@ class SbomBuilder {
         }
 
         return metadata;
+    }
+
+    private void addBuildSystemMetaData(final Component component) {
+        if (task.getIncludeBuildSystem().get()) {
+            String url;
+            if (task.getBuildSystemEnvironmentVariable().isPresent()
+                    && task.getBuildSystemEnvironmentVariable().get() != null) {
+                url = EnvironmentUtils.getBuildURI(
+                        task.getBuildSystemEnvironmentVariable().get());
+            } else {
+                url = EnvironmentUtils.getBuildURI();
+            }
+            if (url != null) {
+                ExternalReference buildRef = new ExternalReference();
+                buildRef.setType(ExternalReference.Type.BUILD_SYSTEM);
+                buildRef.setUrl(url);
+                component.addExternalReference(buildRef);
+            }
+        }
     }
 
     private void addDependency(final Set<Dependency> dependencies, final SbomComponent component) {
