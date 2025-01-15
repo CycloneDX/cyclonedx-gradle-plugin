@@ -7,19 +7,26 @@ assignees: ''
 
 ---
 
-**Describe the bug**
+## Describe the bug
 A clear and concise description of what the bug is.
 
-**To Reproduce**
+## To Reproduce
 Steps to reproduce the behaviour.
 
-**Expected behavior**
+## Expected behavior
 A clear and concise description of what you expected to happen.
 
-**Environment  (please complete the following information):**
- - OS: [e.g. Linux]
- - Gradle version [e.g 8.10]
- - CycloneDX Plugin version [e.g. 1.9.0]
+## Environment  (please complete the following information):
 
-**Additional context**
+- OS: [e.g. Linux]
+- Gradle version [e.g 8.10]
+- CycloneDX Plugin version [e.g. 1.9.0]
+
+## Additional context
 Add any other context about the problem here.
+
+## Contribution 
+
+<!-- please choos eone by putting an `x` in the box `[ ]` -->
+- [ ] I am willing to provide a fix
+- [ ] I will wait until somebody else fixes it
