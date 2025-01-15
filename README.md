@@ -30,7 +30,7 @@ To generate a BOM for a single project add the plugin to the `build.gradle`.
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '1.10.0'
+    id 'org.cyclonedx.bom' version '2.0.0'
 }
 ```
 
@@ -117,7 +117,7 @@ initscript {
     }
   }
   dependencies {
-    classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.10.0"
+    classpath "org.cyclonedx:cyclonedx-gradle-plugin:2.0.0"
   }
 }
 
@@ -302,6 +302,7 @@ the CycloneDX version supported by the target system.
 
 | Version | Schema Version | Format(s) |
 |---------|----------------|-----------|
+| 2.0.x   | CycloneDX v1.6 | XML/JSON  |
 | 1.10.x  | CycloneDX v1.6 | XML/JSON  |
 | 1.9.x   | CycloneDX v1.6 | XML/JSON  |
 | 1.8.x   | CycloneDX v1.5 | XML/JSON  |
