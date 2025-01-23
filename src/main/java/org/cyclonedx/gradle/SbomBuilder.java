@@ -50,6 +50,7 @@ import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.Hash;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.Metadata;
+import org.cyclonedx.model.OrganizationalEntity;
 import org.cyclonedx.model.Property;
 import org.cyclonedx.model.Tool;
 import org.cyclonedx.model.metadata.ToolInformation;
@@ -127,7 +128,10 @@ class SbomBuilder {
                     e);
         }
         metadata.setLicenseChoice(task.getLicenseChoice());
-        metadata.setManufacture(task.getOrganizationalEntity());
+
+        if (!(new OrganizationalEntity()).equals(task.getOrganizationalEntity())) {
+            metadata.setManufacturer(task.getOrganizationalEntity());
+        }
 
         final Properties pluginProperties = readPluginProperties();
         if (!pluginProperties.isEmpty()) {
