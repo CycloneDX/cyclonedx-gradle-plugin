@@ -20,6 +20,7 @@ package org.cyclonedx.gradle;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -43,6 +44,8 @@ import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 class SbomGraphProvider implements Callable<SbomGraph> {
 
     private static final String MESSAGE_RESOLVING_DEPS = "CycloneDX: Resolving Dependencies";
+    private static final Configuration[] CONFIG_TYPE = new Configuration[0];
+    private static final ResolvedArtifactResult[] ARTIFACT_TYPE = new ResolvedArtifactResult[0];
 
     private final Project project;
     private final CycloneDxTask task;
@@ -113,7 +116,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         final DependencyGraphTraverser traverser =
                 new DependencyGraphTraverser(project.getLogger(), getArtifacts(), mavenLookup, task);
 
-        return project.getConfigurations().stream()
+        return Arrays.stream(project.getConfigurations().toArray(CONFIG_TYPE))
                 .filter(configuration -> shouldIncludeConfiguration(configuration)
                         && !shouldSkipConfiguration(configuration)
                         && configuration.isCanBeResolved())
@@ -124,18 +127,17 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     private Map<ComponentIdentifier, File> getArtifacts() {
         return Stream.concat(Stream.of(project), project.getSubprojects().stream())
                 .filter(project -> !shouldSkipProject(project))
-                .flatMap(project -> project.getConfigurations().stream())
+                .flatMap(project -> Arrays.stream(project.getConfigurations().toArray(CONFIG_TYPE)))
                 .filter(configuration -> shouldIncludeConfiguration(configuration)
                         && !shouldSkipConfiguration(configuration)
                         && configuration.isCanBeResolved())
-                .flatMap(config -> config
-                        .getIncoming()
+                .flatMap(config -> Arrays.stream(config.getIncoming()
                         .artifactView(view -> {
                             view.lenient(true);
                         })
                         .getArtifacts()
                         .getArtifacts()
-                        .stream())
+                        .toArray(ARTIFACT_TYPE)))
                 .collect(Collectors.toMap(
                         artifact -> artifact.getId().getComponentIdentifier(),
                         ResolvedArtifactResult::getFile,
