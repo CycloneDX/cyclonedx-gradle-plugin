@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.cyclonedx.gradle.model.SbomComponent;
@@ -116,7 +117,15 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         final DependencyGraphTraverser traverser =
                 new DependencyGraphTraverser(project.getLogger(), getArtifacts(), mavenLookup, task);
 
-        return Arrays.stream(project.getConfigurations().toArray(CONFIG_TYPE))
+        final Configuration[] configs = project.getConfigurations().toArray(CONFIG_TYPE);
+        this.project
+                .getLogger()
+                .info(
+                        "For project {} following configurations are in scope to build the dependency graph: {}",
+                        project.getName(),
+                        summarize(configs, Configuration::getName));
+
+        return Arrays.stream(configs)
                 .filter(configuration -> shouldIncludeConfiguration(configuration)
                         && !shouldSkipConfiguration(configuration)
                         && configuration.isCanBeResolved())
@@ -127,21 +136,43 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     private Map<ComponentIdentifier, File> getArtifacts() {
         return Stream.concat(Stream.of(project), project.getSubprojects().stream())
                 .filter(project -> !shouldSkipProject(project))
-                .flatMap(project -> Arrays.stream(project.getConfigurations().toArray(CONFIG_TYPE)))
+                .flatMap(project -> {
+                    final Configuration[] configs = project.getConfigurations().toArray(CONFIG_TYPE);
+                    this.project
+                            .getLogger()
+                            .info(
+                                    "For project {} following configurations are in scope to resolve artifacts: {}",
+                                    project.getName(),
+                                    summarize(configs, Configuration::getName));
+                    return Arrays.stream(configs);
+                })
                 .filter(configuration -> shouldIncludeConfiguration(configuration)
                         && !shouldSkipConfiguration(configuration)
                         && configuration.isCanBeResolved())
-                .flatMap(config -> Arrays.stream(config.getIncoming()
-                        .artifactView(view -> {
-                            view.lenient(true);
-                        })
-                        .getArtifacts()
-                        .getArtifacts()
-                        .toArray(ARTIFACT_TYPE)))
+                .flatMap(config -> {
+                    final ResolvedArtifactResult[] resolvedArtifacts = config.getIncoming()
+                            .artifactView(view -> {
+                                view.lenient(true);
+                            })
+                            .getArtifacts()
+                            .getArtifacts()
+                            .toArray(ARTIFACT_TYPE);
+                    this.project
+                            .getLogger()
+                            .debug(
+                                    "For project {} following artifacts have been resolved: {}",
+                                    project.getName(),
+                                    summarize(resolvedArtifacts, v -> v.getId().getDisplayName()));
+                    return Arrays.stream(resolvedArtifacts);
+                })
                 .collect(Collectors.toMap(
                         artifact -> artifact.getId().getComponentIdentifier(),
                         ResolvedArtifactResult::getFile,
                         (v1, v2) -> v1));
+    }
+
+    private <T> String summarize(T[] data, final Function<T, String> extractor) {
+        return Arrays.stream(data).map(extractor).collect(Collectors.joining(","));
     }
 
     private boolean shouldSkipConfiguration(final Configuration configuration) {
