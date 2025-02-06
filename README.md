@@ -30,7 +30,7 @@ To generate a BOM for a single project add the plugin to the `build.gradle`.
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '2.0.0'
+    id 'org.cyclonedx.bom' version '2.1.0'
 }
 ```
 
@@ -117,7 +117,7 @@ initscript {
     }
   }
   dependencies {
-    classpath "org.cyclonedx:cyclonedx-gradle-plugin:2.0.0"
+    classpath "org.cyclonedx:cyclonedx-gradle-plugin:2.1.0"
   }
 }
 
