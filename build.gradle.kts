@@ -5,7 +5,7 @@ plugins {
     id("com.gradle.plugin-publish")  version "1.3.1"
     id("org.cyclonedx.bom") version "2.1.0"
     id("groovy")
-    id("com.diffplug.spotless") version "6.13.0"
+    id("com.diffplug.spotless") version "7.0.2"
 }
 
 val organization = "CycloneDX"
