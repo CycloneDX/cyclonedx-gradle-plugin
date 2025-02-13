@@ -64,13 +64,17 @@ public class DependencyUtils {
         if (project.getSubprojects().isEmpty()) {
             return;
         }
-
         final Set<SbomComponentId> dependencyComponentIds = project.getSubprojects().stream()
-                .map(subProject -> new SbomComponentId(
-                        subProject.getGroup().toString(),
-                        subProject.getName(),
-                        subProject.getVersion().toString(),
-                        ""))
+                .map(subProject -> {
+                    final TreeMap<String, String> qualifiers = new TreeMap<>();
+                    qualifiers.put("project_path", subProject.getPath());
+                    return new SbomComponentId(
+                            subProject.getGroup().toString(),
+                            subProject.getName(),
+                            subProject.getVersion().toString(),
+                            "",
+                            qualifiers);
+                })
                 .filter(graph::containsKey)
                 .collect(Collectors.toSet());
 
@@ -81,9 +85,10 @@ public class DependencyUtils {
             final Project project,
             final Map<SbomComponentId, SbomComponent> graph,
             final String configuredComponentVersion) {
-
-        final SbomComponentId rootProjectId =
-                new SbomComponentId(project.getGroup().toString(), project.getName(), configuredComponentVersion, "");
+        final TreeMap<String, String> qualifiers = new TreeMap<>();
+        qualifiers.put("project_path", project.getPath());
+        final SbomComponentId rootProjectId = new SbomComponentId(
+                project.getGroup().toString(), project.getName(), configuredComponentVersion, "", qualifiers);
 
         if (!graph.containsKey(rootProjectId)) {
             return Optional.empty();
@@ -124,14 +129,13 @@ public class DependencyUtils {
         return fileExtension;
     }
 
-    public static String generatePackageUrl(final SbomComponentId componentId, final TreeMap<String, String> qualifiers)
-            throws MalformedPackageURLException {
+    public static String generatePackageUrl(final SbomComponentId componentId) throws MalformedPackageURLException {
         return new PackageURL(
                         PackageURL.StandardTypes.MAVEN,
                         componentId.getGroup(),
                         componentId.getName(),
                         componentId.getVersion(),
-                        qualifiers,
+                        componentId.getQualifiers(),
                         null)
                 .canonicalize();
     }

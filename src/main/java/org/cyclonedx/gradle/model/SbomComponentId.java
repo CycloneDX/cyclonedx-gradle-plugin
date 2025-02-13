@@ -18,8 +18,10 @@
  */
 package org.cyclonedx.gradle.model;
 
+import com.networknt.schema.utils.StringUtils;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.TreeMap;
 
 public class SbomComponentId implements Serializable {
 
@@ -27,12 +29,23 @@ public class SbomComponentId implements Serializable {
     private final String name;
     private final String version;
     private final String type;
+    private final TreeMap<String, String> qualifiers;
 
     public SbomComponentId(final String group, final String name, final String version, final String type) {
+        this(group, name, version, type, new TreeMap<>());
+    }
+
+    public SbomComponentId(
+            final String group,
+            final String name,
+            final String version,
+            final String type,
+            final TreeMap<String, String> qualifiers) {
         this.group = group;
         this.name = name;
         this.version = version;
         this.type = type;
+        this.qualifiers = qualifiers;
     }
 
     public String getName() {
@@ -49,6 +62,17 @@ public class SbomComponentId implements Serializable {
 
     public String getType() {
         return type;
+    }
+
+    public TreeMap<String, String> getQualifiers() {
+        if (StringUtils.isBlank(type)) {
+            return qualifiers;
+        }
+
+        final TreeMap<String, String> result = new TreeMap<>();
+        result.putAll(qualifiers);
+        result.put("type", type);
+        return result;
     }
 
     @Override
