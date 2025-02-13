@@ -25,14 +25,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 
 public class DependencyUtils {
@@ -64,13 +65,13 @@ public class DependencyUtils {
         if (project.getSubprojects().isEmpty()) {
             return;
         }
-
         final Set<SbomComponentId> dependencyComponentIds = project.getSubprojects().stream()
                 .map(subProject -> new SbomComponentId(
                         subProject.getGroup().toString(),
                         subProject.getName(),
                         subProject.getVersion().toString(),
-                        ""))
+                        null,
+                        subProject.getPath()))
                 .filter(graph::containsKey)
                 .collect(Collectors.toSet());
 
@@ -81,9 +82,8 @@ public class DependencyUtils {
             final Project project,
             final Map<SbomComponentId, SbomComponent> graph,
             final String configuredComponentVersion) {
-
-        final SbomComponentId rootProjectId =
-                new SbomComponentId(project.getGroup().toString(), project.getName(), configuredComponentVersion, "");
+        final SbomComponentId rootProjectId = new SbomComponentId(
+                project.getGroup().toString(), project.getName(), configuredComponentVersion, null, project.getPath());
 
         if (!graph.containsKey(rootProjectId)) {
             return Optional.empty();
@@ -94,13 +94,17 @@ public class DependencyUtils {
 
     public static SbomComponentId toComponentId(final ResolvedComponentResult node, final File file) {
 
-        String type = "";
+        @Nullable String type = null;
+        @Nullable String projectPath = null;
         if (node.getId() instanceof ModuleComponentIdentifier) {
             if (file != null) {
                 type = getType(file);
             } else {
                 type = "pom";
             }
+        } else if (node.getId() instanceof ProjectComponentIdentifier) {
+            final ProjectComponentIdentifier id = (ProjectComponentIdentifier) node.getId();
+            projectPath = id.getProjectPath();
         }
 
         if (node.getModuleVersion() != null) {
@@ -108,9 +112,10 @@ public class DependencyUtils {
                     node.getModuleVersion().getGroup(),
                     node.getModuleVersion().getName(),
                     node.getModuleVersion().getVersion(),
-                    type);
+                    type,
+                    projectPath);
         } else {
-            return new SbomComponentId("undefined", node.getId().getDisplayName(), "undefined", type);
+            return new SbomComponentId("undefined", node.getId().getDisplayName(), "undefined", type, projectPath);
         }
     }
 
@@ -124,14 +129,13 @@ public class DependencyUtils {
         return fileExtension;
     }
 
-    public static String generatePackageUrl(final SbomComponentId componentId, final TreeMap<String, String> qualifiers)
-            throws MalformedPackageURLException {
+    public static String generatePackageUrl(final SbomComponentId componentId) throws MalformedPackageURLException {
         return new PackageURL(
                         PackageURL.StandardTypes.MAVEN,
                         componentId.getGroup(),
                         componentId.getName(),
                         componentId.getVersion(),
-                        qualifiers,
+                        componentId.getQualifiers(),
                         null)
                 .canonicalize();
     }

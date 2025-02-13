@@ -19,12 +19,7 @@
 package org.cyclonedx.gradle;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -100,7 +95,8 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                     project.getGroup().toString(),
                     project.getName(),
                     task.getComponentVersion().get(),
-                    "");
+                    null,
+                    project.getPath());
             final SbomComponent sbomComponent = new SbomComponent.Builder()
                     .withId(rootProjectId)
                     .withDependencyComponents(new HashSet<>())

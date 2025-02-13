@@ -19,7 +19,6 @@
 package org.cyclonedx.gradle;
 
 import com.github.packageurl.MalformedPackageURLException;
-import com.networknt.schema.utils.StringUtils;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import javax.annotation.Nullable;
@@ -65,8 +63,6 @@ class SbomBuilder {
 
     private static final String MESSAGE_CALCULATING_HASHES = "CycloneDX: Calculating Hashes";
     private static final String MESSAGE_CREATING_BOM = "CycloneDX: Creating BOM";
-
-    private static final TreeMap<String, String> EMPTY_TYPE = new TreeMap<>();
 
     private final Logger logger;
     private final Map<File, List<Hash>> artifactHashes;
@@ -203,7 +199,7 @@ class SbomBuilder {
 
     private Dependency toDependency(final SbomComponentId componentId) throws MalformedPackageURLException {
 
-        final String ref = DependencyUtils.generatePackageUrl(componentId, getQualifiers(componentId.getType()));
+        final String ref = DependencyUtils.generatePackageUrl(componentId);
         return new Dependency(ref);
     }
 
@@ -225,8 +221,7 @@ class SbomBuilder {
     private Component toComponent(final SbomComponent component, final File artifactFile, final Component.Type type)
             throws MalformedPackageURLException {
 
-        final String packageUrl = DependencyUtils.generatePackageUrl(
-                component.getId(), getQualifiers(component.getId().getType()));
+        final String packageUrl = DependencyUtils.generatePackageUrl(component.getId());
 
         final Component resultComponent = new Component();
         resultComponent.setGroup(component.getId().getGroup());
@@ -304,16 +299,6 @@ class SbomBuilder {
             logger.warn("  " + type.getTypeName());
         }
         return Component.Type.LIBRARY;
-    }
-
-    private TreeMap<String, String> getQualifiers(final String type) {
-        if (StringUtils.isBlank(type)) {
-            return EMPTY_TYPE;
-        }
-
-        final TreeMap<String, String> qualifiers = new TreeMap<>();
-        qualifiers.put("type", type);
-        return qualifiers;
     }
 
     private Properties readPluginProperties() {

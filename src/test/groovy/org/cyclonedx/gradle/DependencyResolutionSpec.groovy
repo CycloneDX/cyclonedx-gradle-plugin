@@ -257,13 +257,13 @@ class DependencyResolutionSpec extends Specification {
         def jsonBom = loadJsonBom(new File(reportDir, "bom.json"))
         assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
 
-        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0")
+        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
         assert appAComponent.hasComponentDefined()
-        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0")
+        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
 
-        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0")
+        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
         assert appBComponent.hasComponentDefined()
-        assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0")
+        assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
     }
 
     def "multi-module with plugin in subproject should output boms in build/reports with for sub-project app-a"() {
@@ -287,17 +287,17 @@ class DependencyResolutionSpec extends Specification {
         assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
 
         assert jsonBom.metadata.component.type == "library"
-        assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-a@1.0.0"
+        assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a"
         assert jsonBom.metadata.component.group == "com.example"
         assert jsonBom.metadata.component.name == "app-a"
         assert jsonBom.metadata.component.version == "1.0.0"
-        assert jsonBom.metadata.component.purl == "pkg:maven/com.example/app-a@1.0.0"
+        assert jsonBom.metadata.component.purl == "pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a"
 
-        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0")
+        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
         assert !appAComponent.hasComponentDefined()
-        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?type=jar")
+        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
 
-        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?type=jar")
+        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
         assert !appBComponent.hasComponentDefined()
         assert appBComponent.dependencies == null
     }
@@ -323,21 +323,21 @@ class DependencyResolutionSpec extends Specification {
         assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
 
         assert jsonBom.metadata.component.type == "library"
-        assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-b@1.0.0"
+        assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b"
         assert jsonBom.metadata.component.group == "com.example"
         assert jsonBom.metadata.component.name == "app-b"
         assert jsonBom.metadata.component.version == "1.0.0"
-        assert jsonBom.metadata.component.purl == "pkg:maven/com.example/app-b@1.0.0"
+        assert jsonBom.metadata.component.purl == "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b"
 
-        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0")
+        def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
         assert appAComponent.hasComponentDefined()
         assert appAComponent.component.hashes != null
         assert !appAComponent.component.hashes.empty
-        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0")
+        assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
 
-        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0")
+        def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
         assert !appBComponent.hasComponentDefined()
-        assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0")
+        assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
     }
 
     private static def loadJsonBom(File file) {

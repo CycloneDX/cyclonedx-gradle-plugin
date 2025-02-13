@@ -55,9 +55,10 @@ class DependencyUtilsTest {
 
     private SbomComponent buildDefaultComponent(final String componentSuffix, final String dependencySuffix) {
         return new SbomComponent.Builder()
-                .withId(new SbomComponentId("group" + componentSuffix, "component" + componentSuffix, "1.0.0", "jar"))
+                .withId(new SbomComponentId(
+                        "group" + componentSuffix, "component" + componentSuffix, "1.0.0", "jar", null))
                 .withDependencyComponents(buildDependencyComponents(new SbomComponentId(
-                        "group" + dependencySuffix, "component" + dependencySuffix, "1.0.0", "jar")))
+                        "group" + dependencySuffix, "component" + dependencySuffix, "1.0.0", "jar", null)))
                 .withInScopeConfigurations(buildInScopeConfigurations(new ConfigurationScope("projectA", "configA")))
                 .withLicenses(Collections.EMPTY_LIST)
                 .build();
