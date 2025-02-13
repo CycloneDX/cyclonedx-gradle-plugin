@@ -20,19 +20,30 @@ package org.cyclonedx.gradle.model;
 
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.TreeMap;
+import javax.annotation.Nullable;
 
 public class SbomComponentId implements Serializable {
 
     private final String group;
     private final String name;
     private final String version;
-    private final String type;
 
-    public SbomComponentId(final String group, final String name, final String version, final String type) {
+    @Nullable private final String type;
+
+    @Nullable private final String gradleProjectPath;
+
+    public SbomComponentId(
+            final String group,
+            final String name,
+            final String version,
+            @Nullable final String type,
+            @Nullable final String gradleProjectPath) {
         this.group = group;
         this.name = name;
         this.version = version;
         this.type = type;
+        this.gradleProjectPath = gradleProjectPath;
     }
 
     public String getName() {
@@ -47,8 +58,19 @@ public class SbomComponentId implements Serializable {
         return group;
     }
 
-    public String getType() {
+    @Nullable public String getType() {
         return type;
+    }
+
+    public TreeMap<String, String> getQualifiers() {
+        final TreeMap<String, String> result = new TreeMap<>();
+        if (gradleProjectPath != null) {
+            result.put("project_path", gradleProjectPath);
+        }
+        if (type != null) {
+            result.put("type", type);
+        }
+        return result;
     }
 
     @Override
