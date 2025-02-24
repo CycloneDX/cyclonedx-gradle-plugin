@@ -3,7 +3,7 @@ import java.util.HashMap
 
 plugins {
     java
-    id("org.cyclonedx.bom") version "1.7.1"
+    id("org.cyclonedx.bom")
 }
 
 repositories {

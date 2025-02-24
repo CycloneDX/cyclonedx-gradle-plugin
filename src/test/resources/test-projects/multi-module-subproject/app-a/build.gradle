@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'maven-publish'
-    id 'org.cyclonedx.bom' version '1.7.1'
+    id 'org.cyclonedx.bom'
 }
 
 repositories {
