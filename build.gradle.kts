@@ -25,7 +25,7 @@ dependencies {
     }
 
     implementation("commons-codec:commons-codec:1.18.0")
-    implementation("commons-io:commons-io:2.18.0")
+    implementation("commons-io:commons-io:2.19.0")
     implementation("org.apache.maven:maven-core:3.9.9")
 
     testImplementation(gradleTestKit())
