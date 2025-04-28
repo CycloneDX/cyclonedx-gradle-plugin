@@ -38,6 +38,8 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult;
 
 public class DependencyUtils {
 
+    private static final String UNSPECIFIED = "unspecified";
+
     public static Map<SbomComponentId, SbomComponent> mergeGraphs(
             final Map<SbomComponentId, SbomComponent> firstGraph,
             final Map<SbomComponentId, SbomComponent> secondGraph) {
@@ -115,7 +117,7 @@ public class DependencyUtils {
                     type,
                     projectPath);
         } else {
-            return new SbomComponentId("undefined", node.getId().getDisplayName(), "undefined", type, projectPath);
+            return new SbomComponentId(UNSPECIFIED, node.getId().getDisplayName(), UNSPECIFIED, type, projectPath);
         }
     }
 
@@ -132,9 +134,9 @@ public class DependencyUtils {
     public static String generatePackageUrl(final SbomComponentId componentId) throws MalformedPackageURLException {
         return new PackageURL(
                         PackageURL.StandardTypes.MAVEN,
-                        componentId.getGroup(),
+                        componentId.getGroup().isEmpty() ? UNSPECIFIED : componentId.getGroup(),
                         componentId.getName(),
-                        componentId.getVersion(),
+                        componentId.getVersion().isEmpty() ? UNSPECIFIED : componentId.getVersion(),
                         componentId.getQualifiers(),
                         null)
                 .canonicalize();
