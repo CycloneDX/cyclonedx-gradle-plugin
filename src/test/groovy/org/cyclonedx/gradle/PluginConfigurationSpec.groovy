@@ -552,11 +552,13 @@ class PluginConfigurationSpec extends Specification {
             .withProjectDir(testDir)
             .withArguments("cyclonedxBom", "--stacktrace")
             .withPluginClasspath()
-            .run()
+            .build()
 
         then:
-        result.task(":cyclonedxBom").outcome == TaskOutcome.FAILED
-        assert result.output.contains("Project group and version are required for the CycloneDx task")
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        assert jsonBom.text.contains("pkg:maven/unspecified/hello-world@unspecified?project_path=%3A")
+        assert result.output.contains("Project group or version are not set for project [hello-world]")
     }
 
     def "should include metadata by default"() {

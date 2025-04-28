@@ -65,10 +65,11 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     @Override
     public SbomGraph call() throws Exception {
 
-        if (project.getGroup().equals("")
-                || project.getName().isEmpty()
-                || project.getVersion().equals("")) {
-            throw new IllegalStateException("Project group and version are required for the CycloneDx task");
+        if (project.getGroup().equals("") || project.getVersion().equals("")) {
+            project.getLogger()
+                    .warn(
+                            "Project group or version are not set for project [{}], will use \"unspecified\"",
+                            project.getName());
         }
 
         project.getLogger().info(MESSAGE_RESOLVING_DEPS);
