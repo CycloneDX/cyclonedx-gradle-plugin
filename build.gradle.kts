@@ -3,7 +3,7 @@ import java.util.*
 plugins {
     id("java-gradle-plugin")
     id("com.gradle.plugin-publish")  version "1.3.1"
-    id("org.cyclonedx.bom") version "2.2.0"
+    id("org.cyclonedx.bom") version "2.3.0"
     id("groovy")
     id("com.diffplug.spotless") version "6.13.0"
 }
