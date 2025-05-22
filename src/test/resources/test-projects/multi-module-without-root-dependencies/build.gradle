@@ -1,6 +1,5 @@
 plugins {
     id 'org.cyclonedx.bom'
-    id 'java'
 }
 
 group = 'com.example'
@@ -13,5 +12,3 @@ repositories {
         url 'https://oss.sonatype.org/content/repositories/snapshots'
     }
 }
-
-

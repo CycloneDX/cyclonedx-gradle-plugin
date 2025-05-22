@@ -257,6 +257,10 @@ class DependencyResolutionSpec extends Specification {
         def jsonBom = loadJsonBom(new File(reportDir, "bom.json"))
         assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
 
+        def rootComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/multi-module@1.0.0?project_path=%3A")
+        assert rootComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
+        assert rootComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
+
         def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
         assert appAComponent.hasComponentDefined()
         assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
@@ -338,6 +342,30 @@ class DependencyResolutionSpec extends Specification {
         def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
         assert !appBComponent.hasComponentDefined()
         assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
+    }
+
+    def "root project must be connected to subprojects when no root configurations available"() {
+        given:
+        File testDir = TestUtils.duplicate("multi-module-without-root-dependencies")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--debug", "-S", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+        then:
+        println result.output
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
+
+        def jsonBom = loadJsonBom(new File(reportDir, "bom.json"))
+        def rootComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/multi-module@1.0.0?project_path=%3A")
+        assert rootComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
+        assert rootComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
     }
 
     private static def loadJsonBom(File file) {
