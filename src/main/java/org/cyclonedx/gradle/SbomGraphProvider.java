@@ -40,7 +40,6 @@ import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 class SbomGraphProvider implements Callable<SbomGraph> {
 
     private static final String MESSAGE_RESOLVING_DEPS = "CycloneDX: Resolving Dependencies";
-    private static final Configuration[] CONFIG_TYPE = new Configuration[0];
     private static final ResolvedArtifactResult[] ARTIFACT_TYPE = new ResolvedArtifactResult[0];
 
     private final Project project;
@@ -76,7 +75,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
 
         final Map<SbomComponentId, SbomComponent> graph = Stream.concat(
                         Stream.of(project), project.getSubprojects().stream())
-                .filter(project -> !shouldSkipProject(project))
+                .filter(this::filterProjects)
                 .flatMap(this::traverseProject)
                 .reduce(new HashMap<>(), DependencyUtils::mergeGraphs);
 
@@ -84,13 +83,9 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private SbomGraph buildSbomGraph(final Map<SbomComponentId, SbomComponent> graph) {
-        final Optional<SbomComponent> rootProject = DependencyUtils.findRootComponent(
-                project, graph, task.getComponentVersion().get());
-        if (rootProject.isPresent()) {
-            DependencyUtils.connectRootWithSubProjects(
-                    project, rootProject.get().getId(), graph);
-            return new SbomGraph(graph, rootProject.get());
-        } else {
+        final Optional<SbomComponent> rootProject =
+                findRootComponent(graph, task.getComponentVersion().get());
+        if (!rootProject.isPresent()) {
             project.getLogger().debug("CycloneDX: root project not found. Constructing it.");
             final SbomComponentId rootProjectId = new SbomComponentId(
                     project.getGroup().toString(),
@@ -104,8 +99,12 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                     .withInScopeConfigurations(new HashSet<>())
                     .withLicenses(new ArrayList<>())
                     .build();
-
+            graph.put(rootProjectId, sbomComponent);
+            connectRootWithSubProjects(rootProjectId, graph);
             return new SbomGraph(graph, sbomComponent);
+        } else {
+            connectRootWithSubProjects(rootProject.get().getId(), graph);
+            return new SbomGraph(graph, rootProject.get());
         }
     }
 
@@ -113,39 +112,15 @@ class SbomGraphProvider implements Callable<SbomGraph> {
 
         final DependencyGraphTraverser traverser =
                 new DependencyGraphTraverser(project.getLogger(), getArtifacts(), mavenLookup, task);
-
-        final Configuration[] configs = project.getConfigurations().toArray(CONFIG_TYPE);
-        this.project
-                .getLogger()
-                .info(
-                        "For project {} following configurations are in scope to build the dependency graph: {}",
-                        project.getName(),
-                        summarize(configs, Configuration::getName));
-
-        return Arrays.stream(configs)
-                .filter(configuration -> shouldIncludeConfiguration(configuration)
-                        && !shouldSkipConfiguration(configuration)
-                        && configuration.isCanBeResolved())
+        return getInScopeConfigurations(project)
                 .map(config -> traverser.traverseGraph(
                         config.getIncoming().getResolutionResult().getRoot(), project.getName(), config.getName()));
     }
 
     private Map<ComponentIdentifier, File> getArtifacts() {
         return Stream.concat(Stream.of(project), project.getSubprojects().stream())
-                .filter(project -> !shouldSkipProject(project))
-                .flatMap(project -> {
-                    final Configuration[] configs = project.getConfigurations().toArray(CONFIG_TYPE);
-                    this.project
-                            .getLogger()
-                            .info(
-                                    "For project {} following configurations are in scope to resolve artifacts: {}",
-                                    project.getName(),
-                                    summarize(configs, Configuration::getName));
-                    return Arrays.stream(configs);
-                })
-                .filter(configuration -> shouldIncludeConfiguration(configuration)
-                        && !shouldSkipConfiguration(configuration)
-                        && configuration.isCanBeResolved())
+                .filter(this::filterProjects)
+                .flatMap(this::getInScopeConfigurations)
                 .flatMap(config -> {
                     final ResolvedArtifactResult[] resolvedArtifacts = config.getIncoming()
                             .artifactView(view -> {
@@ -183,5 +158,81 @@ class SbomGraphProvider implements Callable<SbomGraph> {
 
     private boolean shouldSkipProject(final Project project) {
         return task.getSkipProjects().get().contains(project.getName());
+    }
+
+    private boolean filterConfigurations(final Project project, final Configuration configuration) {
+        final boolean include = shouldIncludeConfiguration(configuration);
+        final boolean skip = shouldSkipConfiguration(configuration);
+        final boolean resolvable = configuration.isCanBeResolved();
+        if (!include || skip || !resolvable) {
+            project.getLogger()
+                    .debug(
+                            "Skipping configuration '{}' (project: {}, include: {}, skip: {}, canBeResolved: {})",
+                            configuration.getName(),
+                            project,
+                            include,
+                            skip,
+                            resolvable);
+        }
+        return include && !skip && resolvable;
+    }
+
+    private boolean filterProjects(final Project project) {
+        final boolean skip = shouldSkipProject(project);
+        if (skip) {
+            this.project.getLogger().debug("Skipping project '{}'", project.getName());
+        }
+        return !skip;
+    }
+
+    private Stream<Configuration> getInScopeConfigurations(final Project project) {
+        final Configuration[] configs = project.getConfigurations().stream()
+                .filter(configuration -> filterConfigurations(project, configuration))
+                .toArray(Configuration[]::new);
+        this.project
+                .getLogger()
+                .info(
+                        "For project {} following configurations are in scope to build the dependency graph: {}",
+                        project.getName(),
+                        summarize(configs, Configuration::getName));
+        return Arrays.stream(configs);
+    }
+
+    private void connectRootWithSubProjects(
+            final SbomComponentId rootProjectId, final Map<SbomComponentId, SbomComponent> graph) {
+        if (project.getSubprojects().isEmpty()) {
+            return;
+        }
+        final Set<SbomComponentId> dependencyComponentIds = project.getSubprojects().stream()
+                .map(subProject -> new SbomComponentId(
+                        subProject.getGroup().toString(),
+                        subProject.getName(),
+                        subProject.getVersion().toString(),
+                        null,
+                        subProject.getPath()))
+                .filter(id -> {
+                    final boolean exists = graph.containsKey(id);
+                    if (!exists) {
+                        project.getLogger().debug("Subproject not found in graph: {}", id);
+                    }
+                    return exists;
+                })
+                .collect(Collectors.toSet());
+        project.getLogger()
+                .debug("Connecting root project {} with subprojects {}", rootProjectId, dependencyComponentIds);
+
+        graph.get(rootProjectId).getDependencyComponents().addAll(dependencyComponentIds);
+    }
+
+    private Optional<SbomComponent> findRootComponent(
+            final Map<SbomComponentId, SbomComponent> graph, final String configuredComponentVersion) {
+        final SbomComponentId rootProjectId = new SbomComponentId(
+                project.getGroup().toString(), project.getName(), configuredComponentVersion, null, project.getPath());
+
+        if (!graph.containsKey(rootProjectId)) {
+            return Optional.empty();
+        } else {
+            return Optional.of(graph.get(rootProjectId));
+        }
     }
 }

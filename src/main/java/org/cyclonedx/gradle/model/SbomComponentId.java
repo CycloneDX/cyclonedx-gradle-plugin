@@ -88,4 +88,14 @@ public class SbomComponentId implements Serializable {
     public int hashCode() {
         return Objects.hash(group, name, version, type);
     }
+
+    @Override
+    public String toString() {
+        return "SbomComponentId{" + "group='"
+                + group + '\'' + ", name='"
+                + name + '\'' + ", version='"
+                + version + '\'' + ", type='"
+                + type + '\'' + ", gradleProjectPath='"
+                + gradleProjectPath + '\'' + '}';
+    }
 }

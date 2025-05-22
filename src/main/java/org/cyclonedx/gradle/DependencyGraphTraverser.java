@@ -109,7 +109,7 @@ class DependencyGraphTraverser {
                         graph.get(graphNode).add(dependencyNode);
                         queue.add(dependencyNode);
                     } else if (dep instanceof UnresolvedDependencyResult) {
-                        UnresolvedDependencyResult unresolved = (UnresolvedDependencyResult) dep;
+                        final UnresolvedDependencyResult unresolved = (UnresolvedDependencyResult) dep;
                         logger.info(
                                 "CycloneDX: Unable to resolve artifact {} because {}",
                                 unresolved.getAttempted().getDisplayName(),
