@@ -23,15 +23,11 @@ import com.github.packageurl.PackageURL;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
-import org.gradle.api.Project;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
@@ -57,41 +53,6 @@ public class DependencyUtils {
         });
 
         return mergedGraph;
-    }
-
-    public static void connectRootWithSubProjects(
-            final Project project,
-            final SbomComponentId rootProjectId,
-            final Map<SbomComponentId, SbomComponent> graph) {
-
-        if (project.getSubprojects().isEmpty()) {
-            return;
-        }
-        final Set<SbomComponentId> dependencyComponentIds = project.getSubprojects().stream()
-                .map(subProject -> new SbomComponentId(
-                        subProject.getGroup().toString(),
-                        subProject.getName(),
-                        subProject.getVersion().toString(),
-                        null,
-                        subProject.getPath()))
-                .filter(graph::containsKey)
-                .collect(Collectors.toSet());
-
-        graph.get(rootProjectId).getDependencyComponents().addAll(dependencyComponentIds);
-    }
-
-    public static Optional<SbomComponent> findRootComponent(
-            final Project project,
-            final Map<SbomComponentId, SbomComponent> graph,
-            final String configuredComponentVersion) {
-        final SbomComponentId rootProjectId = new SbomComponentId(
-                project.getGroup().toString(), project.getName(), configuredComponentVersion, null, project.getPath());
-
-        if (!graph.containsKey(rootProjectId)) {
-            return Optional.empty();
-        } else {
-            return Optional.of(graph.get(rootProjectId));
-        }
     }
 
     public static SbomComponentId toComponentId(final ResolvedComponentResult node, final File file) {
