@@ -192,7 +192,6 @@ class DependencyResolutionSpec extends Specification {
             .build()
 
         then:
-        println(result.output)
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
         File reportDir = new File(testDir, "build/reports")
 
@@ -351,11 +350,10 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--debug", "-S", "--configuration-cache")
+            .withArguments("cyclonedxBom", "--info", "-S", "--configuration-cache")
             .withPluginClasspath()
             .build()
         then:
-        println result.output
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
         File reportDir = new File(testDir, "build/reports")
 

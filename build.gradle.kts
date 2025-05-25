@@ -12,8 +12,11 @@ val organization = "CycloneDX"
 group = "org.cyclonedx"
 version = "2.3.1"
 
-java.sourceCompatibility = JavaVersion.VERSION_1_8
-java.targetCompatibility = JavaVersion.VERSION_1_8
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
 
 repositories {
     mavenCentral()
@@ -37,14 +40,34 @@ dependencies {
     testImplementation("com.github.stefanbirkner:system-lambda:1.2.1")
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform()
-    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
-    if (JavaVersion.current().isJava11Compatible()) {
-        jvmArgs = listOf(
-            "--add-opens", "java.base/java.util=ALL-UNNAMED",
-            "--add-opens", "java.base/java.lang=ALL-UNNAMED"
+listOf(8, 11, 17, 21).forEach { version ->
+    tasks.register<Test>("testJava$version") {
+        description = "Runs tests with Java $version"
+        group = "verification"
+        javaLauncher.set(
+            javaToolchains.launcherFor {
+                languageVersion.set(JavaLanguageVersion.of(version))
+            }
         )
+        useJUnitPlatform()
+        maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+        if (version >= 11) {
+            jvmArgs = listOf(
+                "--add-opens", "java.base/java.util=ALL-UNNAMED",
+                "--add-opens", "java.base/java.lang=ALL-UNNAMED"
+            )
+        }
+    }
+}
+
+tasks.named("test") {
+    dependsOn("testJava8", "testJava11", "testJava17", "testJava21")
+    enabled = false // Prevents the default test task from running tests itself
+}
+
+tasks.withType<Test>().configureEach {
+    testLogging {
+        events("passed", "skipped", "failed")
     }
 }
 
