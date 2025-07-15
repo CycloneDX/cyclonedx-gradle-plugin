@@ -154,7 +154,8 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private boolean shouldSkipConfiguration(final Configuration configuration) {
-        return task.getSkipConfigs().get().stream().anyMatch(configuration.getName()::matches);
+        return configuration.isCanBeResolved()
+                && task.getSkipConfigs().get().stream().anyMatch(configuration.getName()::matches);
     }
 
     private boolean shouldIncludeConfiguration(final Configuration configuration) {
