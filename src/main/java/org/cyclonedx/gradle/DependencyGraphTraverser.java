@@ -21,12 +21,12 @@ package org.cyclonedx.gradle;
 import java.io.File;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -73,41 +73,49 @@ class DependencyGraphTraverser {
     /**
      * Traverses the dependency graph of a configuration belonging to the specified project
      *
-     * @param rootNode entry point into the graph which is typically represents a project
-     * @param projectName project to which the configuration belongs to
-     * @param configName name of the configuration
-     *
+     * @param rootComponent entry point into the graph which is typically represents a project
+     * @param projectName   project to which the configuration belongs to
+     * @param configName    name of the configuration
      * @return a graph represented as map which is fully serializable. The graph nodes are instances of
      * SbomComponent which contain the necessary information to generate the Bom
      */
     Map<SbomComponentId, SbomComponent> traverseGraph(
-            final ResolvedComponentResult rootNode, final String projectName, final String configName) {
-
+            final ResolvedComponentResult rootComponent, final String projectName, final String configName) {
         final Map<GraphNode, Set<GraphNode>> graph = new HashMap<>();
-        final Queue<GraphNode> queue = new ArrayDeque<>();
-
-        final GraphNode rootGraphNode = new GraphNode(rootNode);
+        final Deque<GraphNode> queue = new ArrayDeque<>();
+        final GraphNode rootGraphNode = new GraphNode(rootComponent);
         rootGraphNode.inScopeConfiguration(projectName, configName);
         queue.add(rootGraphNode);
 
         logger.debug("CycloneDX: Traversal of graph for configuration {} of project {}", configName, projectName);
         while (!queue.isEmpty()) {
-            final GraphNode graphNode = queue.poll();
+            final GraphNode graphNode = queue.removeFirst();
             if (!graph.containsKey(graphNode)) {
                 graph.put(graphNode, new HashSet<>());
-                logger.debug("CycloneDX: Traversing node with ID {}", graphNode.id);
-                for (final DependencyResult dep : graphNode.getResult().getDependencies()) {
+                logger.debug(
+                        "CycloneDX: Traversing node '{}'",
+                        graphNode.getResolvedComponentResult().getId());
+                for (final DependencyResult dep :
+                        graphNode.getResolvedComponentResult().getDependencies()) {
                     if (dep instanceof ResolvedDependencyResult) {
-                        final ResolvedComponentResult dependencyComponent =
-                                ((ResolvedDependencyResult) dep).getSelected();
+                        final ResolvedDependencyResult resolved = (ResolvedDependencyResult) dep;
+                        if (resolved.isConstraint()) {
+                            logger.debug(
+                                    "CycloneDX: Skipping constraint dependency '{}' for node '{}'",
+                                    resolved.getSelected(),
+                                    graphNode.getResolvedComponentResult().getId());
+                            continue;
+                        }
+                        final ResolvedComponentResult dependencyComponent = resolved.getSelected();
                         logger.debug(
-                                "CycloneDX: Node with ID {} has dependency with ID {}",
-                                graphNode.id,
-                                dependencyComponent);
+                                "CycloneDX: Node '{}' has dependency '{}'",
+                                graphNode.getResolvedComponentResult().getId(),
+                                dependencyComponent.getId());
                         final GraphNode dependencyNode = new GraphNode(dependencyComponent);
                         dependencyNode.inScopeConfiguration(projectName, configName);
-                        graph.get(graphNode).add(dependencyNode);
-                        queue.add(dependencyNode);
+                        if (graph.get(graphNode).add(dependencyNode)) {
+                            queue.addLast(dependencyNode);
+                        }
                     } else if (dep instanceof UnresolvedDependencyResult) {
                         final UnresolvedDependencyResult unresolved = (UnresolvedDependencyResult) dep;
                         logger.info(
@@ -131,15 +139,17 @@ class DependencyGraphTraverser {
     private SbomComponent toSbomComponent(final GraphNode node, final Set<GraphNode> dependencyNodes) {
 
         final File artifactFile = getArtifactFile(node);
-        final SbomComponentId id = DependencyUtils.toComponentId(node.getResult(), artifactFile);
+        final SbomComponentId id = DependencyUtils.toComponentId(node.getResolvedComponentResult(), artifactFile);
 
         List<License> licenses = new ArrayList<>();
         SbomMetaData metaData = null;
-        if (includeMetaData && node.id instanceof ModuleComponentIdentifier) {
-            logger.debug("CycloneDX: Including meta data for node {}", node.id);
+        if (includeMetaData && node.getResolvedComponentResult().getId() instanceof ModuleComponentIdentifier) {
+            logger.debug(
+                    "CycloneDX: Including meta data for node '{}'",
+                    node.getResolvedComponentResult().getId());
             final Component component = new Component();
-            extractMetaDataFromArtifactPom(artifactFile, component, node.getResult());
-            licenses = extractMetaDataFromRepository(component, node.getResult());
+            extractMetaDataFromArtifactPom(artifactFile, component, node.getResolvedComponentResult());
+            licenses = extractMetaDataFromRepository(component, node.getResolvedComponentResult());
             metaData = SbomMetaData.fromComponent(component);
         }
 
@@ -180,28 +190,27 @@ class DependencyGraphTraverser {
 
     private Set<SbomComponentId> getSbomDependencies(final Set<GraphNode> dependencyNodes) {
         return dependencyNodes.stream()
-                .map(dependency -> DependencyUtils.toComponentId(dependency.getResult(), getArtifactFile(dependency)))
+                .map(dependency -> DependencyUtils.toComponentId(
+                        dependency.getResolvedComponentResult(), getArtifactFile(dependency)))
                 .collect(Collectors.toSet());
     }
 
     private File getArtifactFile(final GraphNode node) {
-        return this.resolvedArtifacts.get(node.getResult().getId());
+        return this.resolvedArtifacts.get(node.getResolvedComponentResult().getId());
     }
 
     private static class GraphNode {
 
-        private final ComponentIdentifier id;
-        private final ResolvedComponentResult result;
+        private final ResolvedComponentResult resolvedComponentResult;
         private final Set<ConfigurationScope> inScopeConfigurations;
 
-        private GraphNode(final ResolvedComponentResult result) {
-            this.id = result.getId();
-            this.result = result;
+        private GraphNode(final ResolvedComponentResult resolvedComponentResult) {
+            this.resolvedComponentResult = resolvedComponentResult;
             this.inScopeConfigurations = new HashSet<>();
         }
 
-        private ResolvedComponentResult getResult() {
-            return result;
+        private ResolvedComponentResult getResolvedComponentResult() {
+            return resolvedComponentResult;
         }
 
         private void inScopeConfiguration(final String projectName, final String configName) {
@@ -217,12 +226,12 @@ class DependencyGraphTraverser {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             final GraphNode graphNode = (GraphNode) o;
-            return Objects.equals(id, graphNode.id);
+            return Objects.equals(resolvedComponentResult.getId(), graphNode.resolvedComponentResult.getId());
         }
 
         @Override
         public int hashCode() {
-            return Objects.hashCode(id);
+            return Objects.hashCode(resolvedComponentResult.getId());
         }
     }
 }
