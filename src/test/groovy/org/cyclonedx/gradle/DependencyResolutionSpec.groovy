@@ -366,6 +366,84 @@ class DependencyResolutionSpec extends Specification {
         assert rootComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
     }
 
+    def "should consider constrains"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            dependencies {
+                implementation("com.google.inject:guice:4.2.2")
+                implementation("com.google.guava:guava")
+
+                constraints {
+                    implementation("com.google.guava:guava") {
+                        version {
+                            strictly "24.0-android"
+                        }
+                    }
+                }
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component guava24 = bom.getComponents().find(c -> c.purl == 'pkg:maven/com.google.guava/guava@24.0-android?type=jar')
+        Component guava25 = bom.getComponents().find(c -> c.purl == 'pkg:maven/com.google.guava/guava@25.1-android?type=jar')
+        assert guava24 != null
+        assert guava25 == null
+    }
+
+    def "should get only resolved version"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            dependencies {
+                implementation("com.google.inject:guice:4.2.2")
+                implementation("com.google.guava:guava:24.0-android")
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component guava24 = bom.getComponents().find(c -> c.purl == 'pkg:maven/com.google.guava/guava@24.0-android?type=jar')
+        Component guava25 = bom.getComponents().find(c -> c.purl == 'pkg:maven/com.google.guava/guava@25.1-android?type=jar')
+        assert guava24 == null
+        assert guava25 != null
+    }
+
     private static def loadJsonBom(File file) {
         return new JsonSlurper().parse(file)
     }
