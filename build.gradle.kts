@@ -29,7 +29,7 @@ dependencies {
 
     implementation("commons-codec:commons-codec:1.18.0")
     implementation("commons-io:commons-io:2.19.0")
-    implementation("org.apache.maven:maven-core:3.9.10")
+    implementation("org.apache.maven:maven-core:3.9.11")
 
     testImplementation(gradleTestKit())
     testImplementation("org.spockframework:spock-core:2.3-groovy-3.0") {
