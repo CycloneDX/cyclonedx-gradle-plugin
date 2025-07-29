@@ -62,7 +62,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
      * @return the aggregated dependency graph
      */
     @Override
-    public SbomGraph call() throws Exception {
+    public SbomGraph call() {
 
         if (project.getGroup().equals("") || project.getVersion().equals("")) {
             project.getLogger()
@@ -114,7 +114,12 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                 new DependencyGraphTraverser(project.getLogger(), getArtifacts(), mavenLookup, task);
         return getInScopeConfigurations(project)
                 .map(config -> traverser.traverseGraph(
-                        config.getIncoming().getResolutionResult().getRoot(), project.getName(), config.getName()));
+                        config.getIncoming()
+                                .getResolutionResult()
+                                .getRootComponent()
+                                .get(),
+                        project.getName(),
+                        config.getName()));
     }
 
     private Map<ComponentIdentifier, File> getArtifacts() {
@@ -127,7 +132,8 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                                 view.lenient(true);
                             })
                             .getArtifacts()
-                            .getArtifacts()
+                            .getResolvedArtifacts()
+                            .get()
                             .toArray(ARTIFACT_TYPE);
                     this.project
                             .getLogger()
@@ -148,7 +154,8 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private boolean shouldSkipConfiguration(final Configuration configuration) {
-        return task.getSkipConfigs().get().stream().anyMatch(configuration.getName()::matches);
+        return configuration.isCanBeResolved()
+                && task.getSkipConfigs().get().stream().anyMatch(configuration.getName()::matches);
     }
 
     private boolean shouldIncludeConfiguration(final Configuration configuration) {
