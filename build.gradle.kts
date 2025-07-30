@@ -1,4 +1,4 @@
-import java.util.*
+import java.util.Properties
 
 plugins {
     id("java-gradle-plugin")
@@ -72,19 +72,19 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.withType<JavaCompile>().configureEach {
+    dependsOn("processResources")
     options.encoding = "UTF-8"
 }
 
-tasks.withType<ProcessResources> {
+tasks.named<ProcessResources>("processResources") {
+    val resourcesDirectory = project.layout.buildDirectory.dir("resources/main")
+    val pluginPropertiesFile = file("${resourcesDirectory.get()}/org/cyclonedx/gradle/plugin.properties")
+    outputs.file(pluginPropertiesFile)
+    val pluginProperties = Properties()
+    pluginProperties["name"] = project.name
+    pluginProperties["vendor"] = organization
+    pluginProperties["version"] = project.version
     doLast {
-        val resourcesDirectory = project.layout.buildDirectory.dir("resources/main")
-        val pluginPropertiesFile = file("${resourcesDirectory.get()}/org/cyclonedx/gradle/plugin.properties")
-
-        val pluginProperties = Properties()
-        pluginProperties["name"] = project.name
-        pluginProperties["vendor"] = organization
-        pluginProperties["version"] = project.version
-
         pluginProperties.store(pluginPropertiesFile.writer(), "Automatically populated by Gradle build.")
     }
 }
