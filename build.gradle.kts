@@ -14,7 +14,7 @@ version = "2.3.1"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(8)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -74,6 +74,7 @@ tasks.withType<Test>().configureEach {
 tasks.withType<JavaCompile>().configureEach {
     dependsOn("processResources")
     options.encoding = "UTF-8"
+    options.release = 8
 }
 
 tasks.named<ProcessResources>("processResources") {
