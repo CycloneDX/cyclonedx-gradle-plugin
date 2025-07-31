@@ -86,7 +86,9 @@ public abstract class CycloneDxTask extends DefaultTask {
         componentName.convention(getProject().getName());
 
         componentVersion = getProject().getObjects().property(String.class);
-        componentVersion.convention(getProject().getVersion().toString());
+        componentVersion.convention(getProject()
+                .getProviders()
+                .provider(() -> getProject().getVersion().toString()));
 
         outputFormat = getProject().getObjects().property(String.class);
         outputFormat.convention("all");
