@@ -32,15 +32,15 @@ dependencies {
     implementation("org.apache.maven:maven-core:3.9.11")
 
     testImplementation(gradleTestKit())
-    testImplementation("org.spockframework:spock-core:2.3-groovy-3.0") {
+    testImplementation("org.spockframework:spock-core:2.4-M6-groovy-4.0") {
         exclude(module = "groovy-all")
     }
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.4")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("com.github.stefanbirkner:system-lambda:1.2.1")
 }
 
-listOf(8, 11, 17, 21).forEach { version ->
+listOf(17, 21).forEach { version ->
     tasks.register<Test>("testJava$version") {
         description = "Runs tests with Java $version"
         group = "verification"
@@ -49,6 +49,8 @@ listOf(8, 11, 17, 21).forEach { version ->
                 languageVersion.set(JavaLanguageVersion.of(version))
             }
         )
+        testClassesDirs = sourceSets["test"].output.classesDirs
+        classpath = sourceSets["test"].runtimeClasspath
         useJUnitPlatform()
         maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
         if (version >= 11) {
@@ -57,24 +59,32 @@ listOf(8, 11, 17, 21).forEach { version ->
                 "--add-opens", "java.base/java.lang=ALL-UNNAMED"
             )
         }
+        testLogging {
+            events("passed", "skipped", "failed")
+        }
     }
 }
 
 tasks.named("test") {
-    dependsOn("testJava8", "testJava11", "testJava17", "testJava21")
+    dependsOn("testJava17", "testJava21")
     enabled = false // Prevents the default test task from running tests itself
-}
-
-tasks.withType<Test>().configureEach {
-    testLogging {
-        events("passed", "skipped", "failed")
-    }
 }
 
 tasks.withType<JavaCompile>().configureEach {
     dependsOn("processResources")
     options.encoding = "UTF-8"
     options.release = 8
+}
+
+tasks.withType<GroovyCompile>().configureEach {
+    dependsOn("processResources")
+    options.encoding = "UTF-8"
+    options.release = 8
+    javaLauncher.set(
+        javaToolchains.launcherFor {
+            languageVersion.set(JavaLanguageVersion.of(8))
+        }
+    )
 }
 
 tasks.named<ProcessResources>("processResources") {

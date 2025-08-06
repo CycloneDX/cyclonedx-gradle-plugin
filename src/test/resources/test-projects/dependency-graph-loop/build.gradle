@@ -15,8 +15,6 @@ repositories {
 group = 'com.example'
 version = '1.0.0'
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
 
 dependencies {
     implementation group: 'org.apache.xmlgraphics', name: 'batik-svg-dom', version:'1.7'
