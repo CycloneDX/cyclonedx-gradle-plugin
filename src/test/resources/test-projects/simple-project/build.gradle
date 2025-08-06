@@ -15,8 +15,6 @@ repositories {
 group = 'com.example'
 version = '1.0.0'
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
 
 dependencies {
     implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
