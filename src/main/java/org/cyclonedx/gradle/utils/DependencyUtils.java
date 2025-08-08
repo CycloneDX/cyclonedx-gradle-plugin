@@ -57,7 +57,6 @@ public class DependencyUtils {
     }
 
     public static SbomComponentId toComponentId(final ResolvedComponentResult node, final @Nullable File file) {
-
         String type = null;
         String projectPath = null;
         if (node.getId() instanceof ModuleComponentIdentifier) {

@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import org.cyclonedx.model.Component;
+import org.cyclonedx.model.ExternalReference;
 import org.jspecify.annotations.Nullable;
 
 public class SbomMetaData implements Serializable {
@@ -71,22 +72,12 @@ public class SbomMetaData implements Serializable {
         return metaData;
     }
 
-    public static class ExternalReference implements Serializable {
+    public static class ExternalReference extends org.cyclonedx.model.ExternalReference implements Serializable {
 
-        private final String type;
-        private final String url;
-
-        private ExternalReference(final String type, final String url) {
-            this.type = type;
-            this.url = url;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public String getUrl() {
-            return url;
+        public ExternalReference(final String type, final String url) {
+            super();
+            super.setType(org.cyclonedx.model.ExternalReference.Type.fromString(type));
+            super.setUrl(url);
         }
     }
 }

@@ -18,6 +18,8 @@
  */
 package org.cyclonedx.gradle;
 
+import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -287,7 +289,7 @@ class MavenHelper {
                 try {
                     return readPom(parentFile.getCanonicalFile());
                 } catch (Exception e) {
-                    LOGGER.error("An error occurred retrieving an artifacts parent pom", e);
+                    LOGGER.error("{} An error occurred retrieving an artifacts parent pom", LOG_PREFIX, e);
                 }
             }
         }
@@ -313,7 +315,7 @@ class MavenHelper {
                     }
                 }
             } catch (IOException e) {
-                LOGGER.error("An error occurred attempting to extract POM from artifact", e);
+                LOGGER.error("{} An error occurred attempting to extract POM from artifact", LOG_PREFIX, e);
             }
         }
         return null;

@@ -86,6 +86,7 @@ tasks.withType<JavaCompile>().configureEach {
         check("DefaultCharset", CheckSeverity.ERROR)
         check("MissingOverride", CheckSeverity.ERROR)
         option("NullAway:AnnotatedPackages", "org.cyclonedx.gradle")
+        disable("MissingSummary")
     }
     // Include to disable NullAway on test code
     if (name.lowercase().contains("test")) {
@@ -127,7 +128,7 @@ gradlePlugin {
             id = "org.cyclonedx.bom"
             displayName = "CycloneDX BOM Generator"
             description = "The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project and creates a valid CycloneDX Software Bill of Materials (SBOM)."
-            implementationClass = "org.cyclonedx.gradle.CycloneDxPlugin"
+            implementationClass = "org.cyclonedx.gradle.CyclonedxPlugin"
             tags.set(listOf("cyclonedx", "dependency", "dependencies", "owasp", "inventory", "bom", "sbom"))
         }
     }
@@ -135,11 +136,7 @@ gradlePlugin {
 
 spotless {
     java {
-        var palantirVersion = "1.1.0"
-        if (JavaVersion.current() == JavaVersion.VERSION_21) {
-            palantirVersion = "2.50.0"
-        }
-        palantirJavaFormat(palantirVersion)
+        palantirJavaFormat("2.50.0")
         formatAnnotations()
         licenseHeader("/*\n" +
             " * This file is part of CycloneDX Gradle Plugin.\n" +

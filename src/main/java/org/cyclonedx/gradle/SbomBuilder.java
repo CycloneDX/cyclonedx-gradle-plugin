@@ -18,6 +18,8 @@
  */
 package org.cyclonedx.gradle;
 
+import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
+
 import com.github.packageurl.MalformedPackageURLException;
 import java.io.File;
 import java.io.IOException;
@@ -36,7 +38,7 @@ import org.cyclonedx.gradle.model.ComponentComparator;
 import org.cyclonedx.gradle.model.DependencyComparator;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
-import org.cyclonedx.gradle.utils.CycloneDxUtils;
+import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.gradle.utils.EnvironmentUtils;
 import org.cyclonedx.gradle.utils.ExternalReferencesUtil;
@@ -60,19 +62,16 @@ import org.jspecify.annotations.Nullable;
  * Generates the CycloneDX Bom from the aggregated dependency graph taking into account the provided
  * user configuration (componentName, includeBomSerialNumber,...)
  */
-class SbomBuilder {
+class SbomBuilder<T extends BaseCyclonedxTask> {
 
-    private static final String MESSAGE_CALCULATING_HASHES = "CycloneDX: Calculating Hashes";
-    private static final String MESSAGE_CREATING_BOM = "CycloneDX: Creating BOM";
     private static final Logger LOGGER = Logging.getLogger(SbomBuilder.class);
-
     private final Map<File, List<Hash>> artifactHashes;
     private final MavenHelper mavenHelper;
     private final Version version;
-    private final CycloneDxTask task;
+    private final T task;
 
-    SbomBuilder(final CycloneDxTask task) {
-        this.version = CycloneDxUtils.schemaVersion(task.getSchemaVersion().get());
+    SbomBuilder(final T task) {
+        this.version = task.getSchemaVersion().get();
         this.artifactHashes = new HashMap<>();
         this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get());
         this.task = task;
@@ -81,52 +80,71 @@ class SbomBuilder {
     /**
      * Builds the CycloneDX Bom from the aggregated dependency graph
      *
-     * @param resultGraph the aggregated dependency graph across all the configurations
-     * @param rootComponent the root component of the graph which is the parent project
+     * @param graph the aggregated dependency graph
      *
      * @return the CycloneDX Bom
      */
-    Bom buildBom(final Map<SbomComponentId, SbomComponent> resultGraph, final SbomComponent rootComponent) {
-
-        LOGGER.info(MESSAGE_CREATING_BOM);
-
+    Bom buildBom(final SbomGraph graph) {
+        LOGGER.info("{} Creating BOM", LOG_PREFIX);
         final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
         final Set<Component> components = new TreeSet<>(new ComponentComparator());
 
-        resultGraph.forEach((componentId, adjacentComponentId) -> {
-            addDependency(dependencies, adjacentComponentId);
-            addComponent(components, adjacentComponentId, rootComponent);
+        graph.getGraph().forEach((componentId, adjacentComponentIds) -> {
+            addDependency(dependencies, adjacentComponentIds);
+            addComponent(components, adjacentComponentIds, graph.getRootComponent());
         });
 
         final Bom bom = new Bom();
-        if (task.getIncludeBomSerialNumber().get()) bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
-        bom.setMetadata(buildMetadata(rootComponent));
+        if (task.getIncludeBomSerialNumber().get()) {
+            bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
+        }
+        bom.setMetadata(buildMetadata(graph.getRootComponent()));
         bom.setComponents(new ArrayList<>(components));
         bom.setDependencies(new ArrayList<>(dependencies));
         return bom;
     }
 
-    private Metadata buildMetadata(final SbomComponent parentComponent) {
+    private Metadata buildMetadata(final SbomComponent rootComponent) {
         final Metadata metadata = new Metadata();
         try {
-            final Component component = toComponent(parentComponent, null, resolveProjectType());
+            final SbomComponent updatedRootComponent = new SbomComponent.Builder()
+                    .withId(new SbomComponentId(
+                            task.getComponentGroup().get(),
+                            task.getComponentName().get(),
+                            task.getComponentVersion().get(),
+                            null,
+                            rootComponent.getId().getGradleProjectPath()))
+                    .withArtifactFile(rootComponent.getArtifactFile().orElse(null))
+                    .withDependencyComponents(rootComponent.getDependencyComponents())
+                    .withInScopeConfigurations(rootComponent.getInScopeConfigurations())
+                    .withLicenses(rootComponent.getLicenses())
+                    .build();
+            final Component component = toComponent(updatedRootComponent, null, resolveProjectType());
             component.setProperties(null);
+            component.setGroup(task.getComponentGroup().get());
             component.setName(task.getComponentName().get());
             component.setVersion(task.getComponentVersion().get());
             addBuildSystemMetaData(component);
-            component.addExternalReference(task.getGitVCS());
+            if (task.getExternalReferences().isPresent()) {
+                task.getExternalReferences().get().forEach(component::addExternalReference);
+            }
             ExternalReferencesUtil.complementByEnvironment(component);
             metadata.setComponent(component);
         } catch (MalformedPackageURLException e) {
             LOGGER.warn(
-                    "Error constructing packageUrl for parent component {}. Skipping...",
-                    parentComponent.getId().getName(),
+                    "{} Error constructing packageUrl for parent component {}. Skipping...",
+                    LOG_PREFIX,
+                    rootComponent.getId().getName(),
                     e);
         }
-        metadata.setLicenseChoice(task.getLicenseChoice());
+        if (task.getLicenseChoice().isPresent()) {
+            metadata.setLicenses(task.getLicenseChoice().get());
+        }
 
-        if (!new OrganizationalEntity().equals(task.getOrganizationalEntity())) {
-            metadata.setManufacturer(task.getOrganizationalEntity());
+        if (task.getOrganizationalEntity().isPresent()
+                && !new OrganizationalEntity()
+                        .equals(task.getOrganizationalEntity().get())) {
+            metadata.setManufacturer(task.getOrganizationalEntity().get());
         }
 
         final Properties pluginProperties = readPluginProperties();
@@ -156,8 +174,7 @@ class SbomBuilder {
     private void addBuildSystemMetaData(final Component component) {
         if (task.getIncludeBuildSystem().get()) {
             String url;
-            if (task.getBuildSystemEnvironmentVariable().isPresent()
-                    && task.getBuildSystemEnvironmentVariable().get() != null) {
+            if (task.getBuildSystemEnvironmentVariable().isPresent()) {
                 url = EnvironmentUtils.getBuildURI(
                         task.getBuildSystemEnvironmentVariable().get());
             } else {
@@ -173,13 +190,13 @@ class SbomBuilder {
     }
 
     private void addDependency(final Set<Dependency> dependencies, final SbomComponent component) {
-
         final Dependency dependency;
         try {
             dependency = toDependency(component.getId());
         } catch (MalformedPackageURLException e) {
             LOGGER.warn(
-                    "Error constructing packageUrl for component {}. Skipping...",
+                    "{} Error constructing packageUrl for component {}. Skipping...",
+                    LOG_PREFIX,
                     component.getId().getName(),
                     e);
             return;
@@ -189,7 +206,8 @@ class SbomBuilder {
                 dependency.addDependency(toDependency(dependencyComponent));
             } catch (MalformedPackageURLException e) {
                 LOGGER.warn(
-                        "Error constructing packageUrl for component dependency {}. Skipping...",
+                        "{} Error constructing packageUrl for component dependency {}. Skipping...",
+                        LOG_PREFIX,
                         dependencyComponent.getName(),
                         e);
             }
@@ -204,17 +222,19 @@ class SbomBuilder {
     }
 
     private void addComponent(
-            final Set<Component> components, final SbomComponent component, final SbomComponent parentComponent) {
-        if (!component.equals(parentComponent)) {
-            final File artifactFile = component.getArtifactFile().orElse(null);
-            try {
-                components.add(toComponent(component, artifactFile, Component.Type.LIBRARY));
-            } catch (MalformedPackageURLException e) {
-                LOGGER.warn(
-                        "Error constructing packageUrl for component {}. Skipping...",
-                        component.getId().getName(),
-                        e);
-            }
+            final Set<Component> components, final SbomComponent component, final SbomComponent rootComponent) {
+        if (component.equals(rootComponent)) {
+            return;
+        }
+        final File artifactFile = component.getArtifactFile().orElse(null);
+        try {
+            components.add(toComponent(component, artifactFile, Component.Type.LIBRARY));
+        } catch (MalformedPackageURLException e) {
+            LOGGER.warn(
+                    "{} Error constructing packageUrl for component {}. Skipping...",
+                    LOG_PREFIX,
+                    component.getId().getName(),
+                    e);
         }
     }
 
@@ -237,12 +257,7 @@ class SbomBuilder {
         component.getSbomMetaData().ifPresent(metaData -> {
             resultComponent.setDescription(metaData.getDescription());
             resultComponent.setPublisher(metaData.getPublisher());
-            metaData.getExternalReferences().forEach(reference -> {
-                final ExternalReference ref = new ExternalReference();
-                ref.setType(ExternalReference.Type.valueOf(reference.getType()));
-                ref.setUrl(reference.getUrl());
-                resultComponent.addExternalReference(ref);
-            });
+            metaData.getExternalReferences().forEach(resultComponent::addExternalReference);
         });
 
         if (!component.getLicenses().isEmpty()) {
@@ -250,7 +265,7 @@ class SbomBuilder {
             resultComponent.setLicenses(licenseChoice);
         }
 
-        LOGGER.debug(MESSAGE_CALCULATING_HASHES);
+        LOGGER.debug("{} Calculating hashes", LOG_PREFIX);
         if (artifactFile != null) {
             resultComponent.setHashes(calculateHashes(artifactFile));
         }
@@ -282,22 +297,22 @@ class SbomBuilder {
             try {
                 return BomUtils.calculateHashes(f, version);
             } catch (IOException e) {
-                LOGGER.error("Error encountered calculating hashes", e);
+                LOGGER.error("{} Error encountered calculating hashes", LOG_PREFIX, e);
             }
             return Collections.emptyList();
         });
     }
 
     private Component.Type resolveProjectType() {
-        for (Component.Type type : Component.Type.values()) {
-            if (type.getTypeName().equalsIgnoreCase(task.getProjectType().get())) {
+        for (final Component.Type type : Component.Type.values()) {
+            if (type.equals(task.getProjectType().get())) {
                 return type;
             }
         }
-        LOGGER.warn("Invalid project type. Defaulting to 'library'");
-        LOGGER.warn("Valid types are:");
-        for (Component.Type type : Component.Type.values()) {
-            LOGGER.warn("  " + type.getTypeName());
+        LOGGER.warn("{} Invalid project type. Defaulting to 'library'", LOG_PREFIX);
+        LOGGER.warn("{} Valid types are:", LOG_PREFIX);
+        for (final Component.Type type : Component.Type.values()) {
+            LOGGER.warn("{} {}", LOG_PREFIX, type.getTypeName());
         }
         return Component.Type.LIBRARY;
     }
@@ -307,12 +322,12 @@ class SbomBuilder {
         final Properties props = new Properties();
         try (final InputStream inputStream = this.getClass().getResourceAsStream("plugin.properties")) {
             if (inputStream == null) {
-                LOGGER.info("plugin.properties is not found on the classpath");
+                LOGGER.info("{} plugin.properties is not found on the classpath", LOG_PREFIX);
             } else {
                 props.load(inputStream);
             }
         } catch (Exception e) {
-            LOGGER.warn("Error whilst loading plugin.properties", e);
+            LOGGER.warn("{} Error whilst loading plugin.properties", LOG_PREFIX, e);
         }
         return props;
     }

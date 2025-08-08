@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'org.cyclonedx.bom'
 }
 
 repositories {

@@ -79,13 +79,36 @@ public final class SbomComponent implements Serializable {
         return licenses;
     }
 
+    @Override
+    public boolean equals(final Object o) {
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final SbomComponent that = (SbomComponent) o;
+        return Objects.equals(id, that.id)
+                && Objects.equals(inScopeConfigurations, that.inScopeConfigurations)
+                && Objects.equals(dependencyComponents, that.dependencyComponents)
+                && Objects.equals(artifactFile, that.artifactFile)
+                && Objects.equals(metaData, that.metaData)
+                && Objects.equals(licenses, that.licenses);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, inScopeConfigurations, dependencyComponents, artifactFile, metaData, licenses);
+    }
+
     public static class Builder {
 
-        private @Nullable SbomComponentId id;
+        @Nullable private SbomComponentId id;
+
         private Set<ConfigurationScope> inScopeConfigurations = Collections.emptySet();
         private Set<SbomComponentId> dependencyComponents = Collections.emptySet();
-        private @Nullable File artifactFile;
-        private @Nullable SbomMetaData metaData;
+
+        @Nullable private File artifactFile;
+
+        @Nullable private SbomMetaData metaData;
+
         private List<License> licenses = Collections.emptyList();
 
         public Builder() {}

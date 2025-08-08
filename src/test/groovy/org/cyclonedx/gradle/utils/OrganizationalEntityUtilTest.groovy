@@ -37,13 +37,13 @@ class OrganizationalEntityUtilTest extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments( TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
         assert bom.getMetadata().getManufacturer() == null
@@ -63,10 +63,9 @@ class OrganizationalEntityUtilTest extends Specification {
             group = 'com.example'
             version = '1.0.0'
 
+            def oe = new org.cyclonedx.model.OrganizationalEntity()
             cyclonedxBom {
-                setOrganizationalEntity { oe ->
-                    oe.name = null
-                }
+                organizationalEntity = oe
             }
 
             dependencies {
@@ -80,13 +79,13 @@ class OrganizationalEntityUtilTest extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
         assert bom.getMetadata().getManufacturer() == null
@@ -106,10 +105,10 @@ class OrganizationalEntityUtilTest extends Specification {
             group = 'com.example'
             version = '1.0.0'
 
+            def oe = new org.cyclonedx.model.OrganizationalEntity()
+            oe.name = "name"
             cyclonedxBom {
-                setOrganizationalEntity { oe ->
-                    oe.name = "name"
-                }
+                organizationalEntity = oe
             }
 
             dependencies {
@@ -123,13 +122,13 @@ class OrganizationalEntityUtilTest extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
         assert bom.getMetadata().getManufacturer().getName() == "name"

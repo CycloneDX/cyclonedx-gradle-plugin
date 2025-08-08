@@ -62,6 +62,10 @@ public class SbomComponentId implements Serializable {
         return type;
     }
 
+    @Nullable public String getGradleProjectPath() {
+        return gradleProjectPath;
+    }
+
     public TreeMap<String, String> getQualifiers() {
         final TreeMap<String, String> result = new TreeMap<>();
         if (gradleProjectPath != null) {

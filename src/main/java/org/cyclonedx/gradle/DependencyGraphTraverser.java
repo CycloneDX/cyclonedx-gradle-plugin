@@ -18,6 +18,8 @@
  */
 package org.cyclonedx.gradle;
 
+import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
+
 import java.io.File;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -62,7 +64,7 @@ class DependencyGraphTraverser {
     DependencyGraphTraverser(
             final Map<ComponentIdentifier, File> resolvedArtifacts,
             final MavenProjectLookup mavenLookup,
-            final CycloneDxTask task) {
+            final CyclonedxDirectTask task) {
         this.resolvedArtifacts = resolvedArtifacts;
         this.mavenLookup = mavenLookup;
         this.includeMetaData = task.getIncludeMetadataResolution().get();
@@ -84,23 +86,27 @@ class DependencyGraphTraverser {
 
         final Map<GraphNode, Set<GraphNode>> graph = new HashMap<>();
         final Queue<GraphNode> queue = new ArrayDeque<>();
-
         final GraphNode rootGraphNode = new GraphNode(rootNode);
         rootGraphNode.inScopeConfiguration(projectName, configName);
         queue.add(rootGraphNode);
 
-        LOGGER.debug("CycloneDX: Traversal of graph for configuration {} of project {}", configName, projectName);
+        LOGGER.debug(
+                "{} CycloneDX: Traversal of graph for configuration {} of project {}",
+                LOG_PREFIX,
+                configName,
+                projectName);
         while (!queue.isEmpty()) {
             final GraphNode graphNode = queue.poll();
             if (!graph.containsKey(graphNode)) {
                 graph.put(graphNode, new HashSet<>());
-                LOGGER.debug("CycloneDX: Traversing node with ID {}", graphNode.id);
+                LOGGER.debug("{} Traversing node with ID {}", LOG_PREFIX, graphNode.id);
                 for (final DependencyResult dep : graphNode.getResult().getDependencies()) {
                     if (dep instanceof ResolvedDependencyResult) {
                         final ResolvedComponentResult dependencyComponent =
                                 ((ResolvedDependencyResult) dep).getSelected();
                         LOGGER.debug(
-                                "CycloneDX: Node with ID {} has dependency with ID {}",
+                                "{} Node with ID {} has dependency with ID {}",
+                                LOG_PREFIX,
                                 graphNode.id,
                                 dependencyComponent);
                         final GraphNode dependencyNode = new GraphNode(dependencyComponent);
@@ -110,7 +116,8 @@ class DependencyGraphTraverser {
                     } else if (dep instanceof UnresolvedDependencyResult) {
                         final UnresolvedDependencyResult unresolved = (UnresolvedDependencyResult) dep;
                         LOGGER.info(
-                                "CycloneDX: Unable to resolve artifact {} because {}",
+                                "{} Unable to resolve artifact {} because {}",
+                                LOG_PREFIX,
                                 unresolved.getAttempted().getDisplayName(),
                                 unresolved.getFailure().toString());
                     }
@@ -124,18 +131,17 @@ class DependencyGraphTraverser {
     private Map<SbomComponentId, SbomComponent> toSbomComponents(final Map<GraphNode, Set<GraphNode>> graph) {
         return graph.entrySet().stream()
                 .map(entry -> toSbomComponent(entry.getKey(), entry.getValue()))
-                .collect(Collectors.toMap(v -> v.getId(), v -> v));
+                .collect(Collectors.toMap(SbomComponent::getId, v -> v));
     }
 
     private SbomComponent toSbomComponent(final GraphNode node, final Set<GraphNode> dependencyNodes) {
-
         final File artifactFile = getArtifactFile(node);
         final SbomComponentId id = DependencyUtils.toComponentId(node.getResult(), artifactFile);
 
         List<License> licenses = new ArrayList<>();
         SbomMetaData metaData = null;
         if (includeMetaData && node.id instanceof ModuleComponentIdentifier) {
-            LOGGER.debug("CycloneDX: Including meta data for node {}", node.id);
+            LOGGER.debug("{}: Including meta data for node {}", LOG_PREFIX, node.id);
             final Component component = new Component();
             extractMetaDataFromArtifactPom(artifactFile, component, node.getResult());
             licenses = extractMetaDataFromRepository(component, node.getResult());
@@ -159,9 +165,9 @@ class DependencyGraphTraverser {
             return;
         }
 
-        final MavenProject mavenProject = mavenHelper.extractPom(artifactFile, result.getModuleVersion());
+        @Nullable final MavenProject mavenProject = mavenHelper.extractPom(artifactFile, result.getModuleVersion());
         if (mavenProject != null) {
-            LOGGER.debug("CycloneDX: parse artifact pom file of component {}", result.getId());
+            LOGGER.debug("{} Parse artifact pom file of component {}", LOG_PREFIX, result.getId());
             mavenHelper.getClosestMetadata(artifactFile, mavenProject, component, result.getModuleVersion());
         }
     }
