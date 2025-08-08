@@ -20,29 +20,27 @@ dependencies {
     implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
 }
 
+//declaration of Manufacture-Data
+OrganizationalContact organizationalContact = new OrganizationalContact();
+organizationalContact.setName("Max_Mustermann");
+organizationalContact.setEmail("max.mustermann@test.org");
+organizationalContact.setPhone("0000 99999999");
+OrganizationalEntity oe = new OrganizationalEntity();
+oe.name = 'Test'
+oe.urls = ['www.test1.com', 'www.test2.com']
+oe.addContact(organizationalContact)
+
+//declaration of Licenses-Data
+AttachmentText attachmentText = new AttachmentText();
+attachmentText.setText("This is a Licenses-Test");
+License license = new License();
+license.setName("XXXX XXXX Software");
+license.setLicenseText(attachmentText);
+license.setUrl("https://www.test-Url.org/")
+LicenseChoice lc = new LicenseChoice();
+lc.addLicense(license)
+
 cyclonedxBom {
-    //declaration of Manufacture-Data
-    OrganizationalContact organizationalContact = new OrganizationalContact();
-    organizationalContact.setName("Max_Mustermann");
-    organizationalContact.setEmail("max.mustermann@test.org");
-    organizationalContact.setPhone("0000 99999999");
-
-    organizationalEntity {oe->
-        oe.name = 'Test'
-        oe.url = ['www.test1.com', 'www.test2.com']
-        oe.addContact(organizationalContact)
-    }
-
-    //declaration of Licenses-Data
-    AttachmentText attachmentText = new AttachmentText();
-    attachmentText.setText("This is a Licenses-Test");
-
-    License license = new License();
-    license.setName("XXXX XXXX Software");
-    license.setLicenseText(attachmentText);
-    license.setUrl("https://www.test-Url.org/")
-
-    licenseChoice {lc->
-        lc.addLicense(license)
-    }
+    organizationalEntity = oe
+    licenseChoice = lc
 }

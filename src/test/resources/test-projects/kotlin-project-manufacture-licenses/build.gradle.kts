@@ -20,29 +20,22 @@ dependencies {
 }
 
 
-tasks.cyclonedxBom {
-    //declaration of Manufacture-Data
-    var organizationalContact1 = OrganizationalContact()
-    organizationalContact1.setName("Max_Mustermann")
-    organizationalContact1.setEmail("max.mustermann@test.org")
-    organizationalContact1.setPhone("0000 99999999")
-
-    setOrganizationalEntity{oe->
-        oe.name = "Test";
-        oe.urls = listOf("www.test.com");
-        oe.addContact(organizationalContact1);
-    }
-
-    //declaration of Licenses-Data
-    var attachmentText = AttachmentText();
-    attachmentText.setText("This is a Licenses-Test");
-
-    var license = License()
-    license.setName("XXXX XXXX Software")
-    license.setLicenseText(attachmentText);
-    license.setUrl("https://www.test-Url.org/")
-
-    setLicenseChoice{lc->
-        lc.addLicense(license);
-    }
+cyclonedxBom {
+    organizationalEntity.set(OrganizationalEntity().apply {
+        name = "Test"
+        urls = listOf("www.test.com")
+        contacts = listOf(OrganizationalContact().apply {
+            name = "Max_Mustermann"
+            email = "max.mustermann@test.org"
+            phone = "0000 99999999"
+        })
+    })
+    licenseChoice.set(LicenseChoice().apply {
+            addLicense(License().apply {
+                name = "XXXX XXXX Software"
+                url = "https://www.test-Url.org/"
+                setLicenseText(AttachmentText().apply { text = "This is a Licenses-Test" })
+            })
+        }
+    )
 }

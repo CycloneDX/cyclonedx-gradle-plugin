@@ -18,6 +18,8 @@
  */
 package org.cyclonedx.gradle.utils;
 
+import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
+
 import java.net.URISyntaxException;
 import java.util.Objects;
 import org.cyclonedx.model.Component;
@@ -58,7 +60,7 @@ public class ExternalReferencesUtil {
         try {
             gitUrl = GitUtils.sanitizeGitUrl(gitUrl);
         } catch (URISyntaxException e) {
-            LOGGER.warn("Invalid Git URL identified from environment, ignoring it");
+            LOGGER.warn("{} Invalid Git URL identified from environment, ignoring it", LOG_PREFIX);
             return;
         }
 

@@ -18,6 +18,8 @@
  */
 package org.cyclonedx.gradle.utils;
 
+import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
+
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -32,9 +34,12 @@ import org.cyclonedx.parsers.JsonParser;
 import org.cyclonedx.parsers.Parser;
 import org.cyclonedx.parsers.XmlParser;
 import org.gradle.api.GradleException;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 
-public class CycloneDxUtils {
+public class CyclonedxUtils {
 
+    private static final Logger LOGGER = Logging.getLogger(CyclonedxUtils.class);
     public static final Version DEFAULT_SCHEMA_VERSION = Version.VERSION_16;
 
     /**
@@ -64,29 +69,12 @@ public class CycloneDxUtils {
         }
     }
 
-    public static void writeBom(
-            final Bom bom,
-            final File destination,
-            final String outputName,
-            final Version version,
-            final String formats) {
-
-        if (formats.equals("all") || formats.equals("json")) {
-            final File jsonFile = new File(destination, String.format("%s.json", outputName));
-            writeJSONBom(version, bom, jsonFile);
-        }
-
-        if (formats.equals("all") || formats.equals("xml")) {
-            final File xmlFile = new File(destination, String.format("%s.xml", outputName));
-            writeXmlBom(version, bom, xmlFile);
-        }
-    }
-
-    private static void writeJSONBom(final Version schemaVersion, final Bom bom, final File destination) {
+    public static void writeJsonBom(final Version schemaVersion, final Bom bom, final File destination) {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
         try {
             final String bomString = bomGenerator.toJsonString();
             FileUtils.write(destination, bomString, StandardCharsets.UTF_8, false);
+            LOGGER.info("{} Json BOM saved at {}", LOG_PREFIX, destination);
         } catch (Exception e) {
             throw new GradleException("Error writing json bom file", e);
         }
@@ -94,12 +82,12 @@ public class CycloneDxUtils {
         validateBom(new JsonParser(), schemaVersion, destination);
     }
 
-    private static void writeXmlBom(final Version schemaVersion, final Bom bom, final File destination) {
-
+    public static void writeXmlBom(final Version schemaVersion, final Bom bom, final File destination) {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         try {
             final String bomString = bomGenerator.toXmlString();
             FileUtils.write(destination, bomString, StandardCharsets.UTF_8, false);
+            LOGGER.info("{} XML BOM saved at {}", LOG_PREFIX, destination);
         } catch (Exception e) {
             throw new GradleException("Error writing xml bom file", e);
         }

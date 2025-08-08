@@ -18,9 +18,7 @@
  */
 package org.cyclonedx.gradle
 
-import org.cyclonedx.model.Metadata
 import org.gradle.testfixtures.ProjectBuilder
-import spock.lang.Ignore
 import spock.lang.Specification
 
 class CycloneDxSpec extends Specification {
@@ -29,16 +27,11 @@ class CycloneDxSpec extends Specification {
     def rootProject = ProjectBuilder.builder().withName("root").build()
     def parentProject = ProjectBuilder.builder().withName("parent").withParent(rootProject).build()
     def childProject = ProjectBuilder.builder().withName("child").withParent(parentProject).build()
-    def childProject2 = ProjectBuilder.builder().withName("child2").withParent(parentProject).build()
     def leafProject = ProjectBuilder.builder().withName("leaf").withParent(childProject).build()
 
     def setup() {
 
         rootProject.apply plugin: PLUGIN_ID
-        parentProject.apply plugin: PLUGIN_ID
-        childProject.apply plugin: PLUGIN_ID
-        childProject2.apply plugin: PLUGIN_ID
-        leafProject.apply plugin: PLUGIN_ID
 
         rootProject.allprojects {
             group = "group"
@@ -51,6 +44,6 @@ class CycloneDxSpec extends Specification {
 
     def "cyclonedxBom task exists"() {
         expect:
-        leafProject.tasks.findByName('cyclonedxBom')
+        leafProject.tasks.findByName('cyclonedxDirectBom')
     }
 }

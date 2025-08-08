@@ -104,7 +104,7 @@ public class EnvironmentUtils {
         return null;
     }
 
-    @Nullable private static String fromEnvironment(String name) {
+    @Nullable private static String fromEnvironment(final String name) {
         final String url = System.getenv(name);
         if (!StringUtils.isBlank(url)) {
             return url;

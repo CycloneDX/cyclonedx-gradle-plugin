@@ -2,7 +2,7 @@ package org.cyclonedx.gradle
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.json.JsonSlurper
-import org.cyclonedx.gradle.utils.CycloneDxUtils
+import org.cyclonedx.gradle.utils.CyclonedxUtils
 import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
 import org.cyclonedx.model.Dependency
@@ -34,13 +34,13 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
             .withPluginClasspath()
             .build()
 
         then:
-        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/cyclonedx-direct/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         Component quarkusJackson = bom.getComponents().find(c -> c.name == 'quarkus-jackson')
 
@@ -67,19 +67,23 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
             .withPluginClasspath()
             .build()
 
         then:
-        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/cyclonedx-direct/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         Dependency root = bom.getDependencies().find(dependency -> dependency.getRef().contains("example"))
 
         assert bom.getDependencies().find(dependency -> dependency.getRef().contains("pkg:maven/javax.persistence/javax.persistence-api@2.2?type=jar"))
-        assert root.getDependencies().size() == 1
-        assert root.getDependencies().get(0).getRef() == "pkg:maven/org.hibernate/hibernate-core@5.6.15.Final?type=jar"
+        assert root.getDependencies().size() == 2
+        assert root.getDependencies().stream()
+            .allMatch { dep ->
+                dep.getRef() == "pkg:maven/org.hibernate/hibernate-core@5.6.15.Final?type=jar"
+                    || dep.getRef() == "pkg:maven/com.example/hello-world@1.0.0?project_path=%3A"
+            }
     }
 
     def "should contain correct hashes"() {
@@ -107,13 +111,13 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         Component componenta = bom.getComponents().find(c -> c.name == 'componenta')
         Hash hasha =
@@ -149,13 +153,13 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         Component componentc = bom.getComponents().find(c -> c.bomRef == 'pkg:maven/com.test/componentc@1.0.0?type=tgz')
         assert componentc != null
@@ -168,16 +172,16 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File reportDir = new File(testDir, "build/reports")
+        File reportDir = new File(testDir, "build/reports/cyclonedx")
 
         assert reportDir.exists()
-        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
+        reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
     }
 
     def "loops between jar dependencies in the dependency graph should be processed"() {
@@ -187,13 +191,13 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--configuration-cache", "--info", "--stacktrace")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File reportDir = new File(testDir, "build/reports")
+        File reportDir = new File(testDir, "build/reports/cyclonedx")
 
         assert reportDir.exists()
     }
@@ -222,13 +226,13 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         Component componentc = bom.getComponents().find(c -> c.bomRef == 'pkg:maven/com.test/componentc@1.0.1?type=tgz')
         assert componentc != null
@@ -243,18 +247,19 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--info", "-S", "--configuration-cache")
+            .withArguments(TestUtils.arguments("cyclonedxBom")
+            )
             .withPluginClasspath()
             .build()
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File reportDir = new File(testDir, "build/reports")
+        File reportDir = new File(testDir, "build/reports/cyclonedx")
 
         assert reportDir.exists()
-        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
+        reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
 
         def jsonBom = loadJsonBom(new File(reportDir, "bom.json"))
-        assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
+        assert jsonBom.specVersion == CyclonedxUtils.DEFAULT_SCHEMA_VERSION.versionString
 
         def rootComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/multi-module@1.0.0?project_path=%3A")
         assert rootComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
@@ -267,6 +272,9 @@ class DependencyResolutionSpec extends Specification {
         def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
         assert appBComponent.hasComponentDefined()
         assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
+
+        def testComponent = JsonBomComponent.of(jsonBom, "pkg:maven/org.junit.jupiter/junit-jupiter-api@5.13.4?type=jar")
+        assert testComponent.hasComponentDefined()
     }
 
     def "multi-module with plugin in subproject should output boms in build/reports with for sub-project app-a"() {
@@ -276,18 +284,18 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments(":app-a:cyclonedxBom", "--info", "-S", "--configuration-cache")
+            .withArguments(TestUtils.arguments(":app-a:cyclonedxDirectBom"))
             .withPluginClasspath()
             .build()
         then:
-        result.task(":app-a:cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File reportDir = new File(testDir, "app-a/build/reports")
+        result.task(":app-a:cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "app-a/build/reports/cyclonedx-direct")
 
         assert reportDir.exists()
-        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
+        reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
 
         def jsonBom = loadJsonBom(new File(reportDir, "bom.json"))
-        assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
+        assert jsonBom.specVersion == CyclonedxUtils.DEFAULT_SCHEMA_VERSION.versionString
 
         assert jsonBom.metadata.component.type == "library"
         assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a"
@@ -312,18 +320,18 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments(":app-a:assemble", ":app-b:cyclonedxBom", "--info", "-S")
+            .withArguments(TestUtils.arguments(":app-a:assemble", ":app-b:cyclonedxDirectBom"))
             .withPluginClasspath()
             .build()
         then:
-        result.task(":app-b:cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File reportDir = new File(testDir, "app-b/build/reports")
+        result.task(":app-b:cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "app-b/build/reports/cyclonedx-direct")
 
         assert reportDir.exists()
-        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
+        reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
 
         def jsonBom = loadJsonBom(new File(reportDir, "bom.json"))
-        assert jsonBom.specVersion == CycloneDxUtils.DEFAULT_SCHEMA_VERSION.versionString
+        assert jsonBom.specVersion == CyclonedxUtils.DEFAULT_SCHEMA_VERSION.versionString
 
         assert jsonBom.metadata.component.type == "library"
         assert jsonBom.metadata.component."bom-ref" == "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b"
@@ -350,15 +358,15 @@ class DependencyResolutionSpec extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom", "--info", "-S", "--configuration-cache")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File reportDir = new File(testDir, "build/reports")
+        File reportDir = new File(testDir, "build/reports/cyclonedx")
 
         assert reportDir.exists()
-        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
+        reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
 
         def jsonBom = loadJsonBom(new File(reportDir, "bom.json"))
         def rootComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/multi-module@1.0.0?project_path=%3A")

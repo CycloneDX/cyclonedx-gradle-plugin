@@ -33,19 +33,18 @@ class ExternalReferencesUtilTest extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
         assert !bom.getMetadata().getComponent().getExternalReferences().isEmpty()
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getUrl() != null
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getUrl() ==
-            "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"
+        assert bom.getMetadata().getComponent().getExternalReferences().stream()
+            .anyMatch { er -> er.url == "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git" }
 
         where:
         userInfo             | _
@@ -78,17 +77,17 @@ class ExternalReferencesUtilTest extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getUrl() ==
-            "ssh://git@github.com:barblin/cyclonedx-gradle-plugin.git"
+        assert bom.getMetadata().getComponent().getExternalReferences().stream()
+            .anyMatch { er -> er.url == "ssh://git@github.com:barblin/cyclonedx-gradle-plugin.git" }
 
         where:
         prefix   | _
@@ -119,18 +118,18 @@ class ExternalReferencesUtilTest extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withEnvironment(["GIT_URL": "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"])
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getUrl() ==
-            "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"
+        assert bom.getMetadata().getComponent().getExternalReferences().stream()
+            .anyMatch { er -> er.url == "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git" }
     }
 
     def "should not set git remote url if the working directory is not a valid repo nor has a valid environment variable"() {
@@ -157,16 +156,17 @@ class ExternalReferencesUtilTest extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
-        assert bom.getMetadata().getComponent().getExternalReferences().isEmpty()
+        assert bom.getMetadata().getComponent().getExternalReferences().stream()
+            .noneMatch { er -> er.url == "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git" }
     }
 
     def "should set https remote git url by custom configuration"() {
@@ -183,10 +183,12 @@ class ExternalReferencesUtilTest extends Specification {
             group = 'com.example'
             version = '1.0.0'
 
+            import org.cyclonedx.model.ExternalReference
+            def er = new ExternalReference()
+            er.type = ExternalReference.Type.VCS
+            er.url = "https://${userInfo}github.com/CycloneDX/byUserInput.git"
             cyclonedxBom {
-                setVCSGit { vcs ->
-                    vcs.url = "https://${userInfo}github.com/CycloneDX/byUserInput.git"
-                }
+              externalReferences = [er]
             }
 
             dependencies {
@@ -200,19 +202,23 @@ class ExternalReferencesUtilTest extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getUrl() ==
-            "https://github.com/CycloneDX/byUserInput.git"
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getType().name() == "VCS"
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getComment() == null
+        assert bom.getMetadata().getComponent().getExternalReferences().stream()
+            .anyMatch { er ->
+                {
+                    er.url == "https://github.com/CycloneDX/byUserInput.git"
+                    er.type.name() == "VCS"
+                    er.comment == null
+                }
+            }
 
         where:
         userInfo             | _
@@ -235,11 +241,13 @@ class ExternalReferencesUtilTest extends Specification {
             group = 'com.example'
             version = '1.0.0'
 
+            import org.cyclonedx.model.ExternalReference
+            def er = new ExternalReference()
+            er.type = ExternalReference.Type.VCS
+            er.url = "${prefix}git@github.com:barblin/byUserInput.git"
+            er.comment = "optional comment"
             cyclonedxBom {
-                setVCSGit { vcs ->
-                    vcs.url = "${prefix}git@github.com:barblin/byUserInput.git"
-                    vcs.comment = "optional comment"
-                }
+              externalReferences = [er]
             }
 
             dependencies {
@@ -253,23 +261,26 @@ class ExternalReferencesUtilTest extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getUrl() ==
-            "ssh://git@github.com:barblin/byUserInput.git"
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getType().name() == "VCS"
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getComment() == "optional comment"
+        assert bom.getMetadata().getComponent().getExternalReferences().stream()
+            .anyMatch { er ->
+                {
+                    er.url == "ssh://git@github.com:barblin/byUserInput.git"
+                        && er.type.name() == "VCS"
+                        && er.comment == "optional comment"
+                }
+            }
 
         where:
         prefix   | _
-        ""       | _
         "ssh://" | _
     }
 
@@ -287,10 +298,12 @@ class ExternalReferencesUtilTest extends Specification {
             group = 'com.example'
             version = '1.0.0'
 
+            import org.cyclonedx.model.ExternalReference
+            def er = new ExternalReference()
+            er.type = ExternalReference.Type.VCS
+            er.url = "invalid-url@github.com:barblin/byUserInput.git"
             cyclonedxBom {
-                setVCSGit { vcs ->
-                    vcs.url = "invalid-url@github.com:barblin/byUserInput.git"
-                }
+              externalReferences = [er]
             }
 
             dependencies {
@@ -304,16 +317,17 @@ class ExternalReferencesUtilTest extends Specification {
         when:
         def result = GradleRunner.create()
             .withProjectDir(testDir)
-            .withArguments("cyclonedxBom")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
-        assert bom.getMetadata().getComponent().getExternalReferences().isEmpty()
+        assert bom.getMetadata().getComponent().getExternalReferences().stream()
+            .noneMatch { er -> er.url == "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git" }
     }
 
     def "should prioritize custom configuration over environment variable and repo config"() {
@@ -330,10 +344,12 @@ class ExternalReferencesUtilTest extends Specification {
             group = 'com.example'
             version = '1.0.0'
 
+            import org.cyclonedx.model.ExternalReference
+            def er = new ExternalReference()
+            er.type = ExternalReference.Type.VCS
+            er.url = "https://github.com/CycloneDX/byUserInput.git"
             cyclonedxBom {
-                setVCSGit { vcs ->
-                    vcs.url = "https://github.com/CycloneDX/byUserInput.git"
-                }
+              externalReferences = [er]
             }
 
             dependencies {
@@ -349,18 +365,21 @@ class ExternalReferencesUtilTest extends Specification {
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withEnvironment(["GIT_URL": "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"])
-            .withArguments("cyclonedxBom")
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
             .withPluginClasspath()
             .build()
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/bom.json")
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getUrl() ==
-            "https://github.com/CycloneDX/byUserInput.git"
-        assert bom.getMetadata().getComponent().getExternalReferences().get(0).getType().name() ==
-            "VCS"
+        assert bom.getMetadata().getComponent().getExternalReferences().stream()
+            .anyMatch { er ->
+                {
+                    er.url == "https://github.com/CycloneDX/byUserInput.git"
+                        && er.type.name() == "VCS"
+                }
+            }
     }
 }

@@ -86,4 +86,14 @@ class TestUtils {
         buildFile << buildContent
         return tmpDir
     }
+
+    static String[] arguments(final String... args) {
+        def arguments = new ArrayList<String>()
+        arguments.addAll(Arrays.asList(args))
+        arguments.add("--stacktrace")
+        arguments.add("--info")
+        arguments.add("--configuration-cache")
+        arguments.add("--parallel")
+        return arguments.toArray(new String[0])
+    }
 }
