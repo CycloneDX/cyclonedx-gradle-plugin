@@ -278,9 +278,7 @@ __Example (groovy) and (Kotlin):__
 cyclonedxBom {
     //passing Data to the plugin
     setVCSGit { vcs ->
-        // set either the ssh or https URL[String] of the remote repository
-        // make sure that the ssh URL starts with the protocol (e.g. 'ssh://'), otherwise it will not be accepted
-        // e.g. vcs.url = "ssh://git@github.com:CycloneDX/cyclonedx-gradle-plugin.git"
+        // set the URL[String] of the remote repository
         vcs.url = "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"
 
         // (optional) you can add a comment to describe your repository

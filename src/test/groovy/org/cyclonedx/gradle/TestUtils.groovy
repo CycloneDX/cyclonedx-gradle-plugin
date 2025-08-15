@@ -42,6 +42,17 @@ class TestUtils {
     }
 
     static File createFromString(String buildContent, String settingsContent, VCS withVCS) {
+        final String gitUrl;
+        if (VCS.GIT_HTTPS == withVCS) {
+            gitUrl = "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"
+        } else {
+            gitUrl = "git@github.com:barblin/cyclonedx-gradle-plugin.git"
+        }
+
+        return createFromString(buildContent, settingsContent, gitUrl)
+    }
+
+    static File createFromString(String buildContent, String settingsContent, String gitUrl) {
         File dir = createFromString(buildContent, settingsContent)
 
         def gitDir = Files.createDirectory(dir.toPath().resolve(".git"))
@@ -53,11 +64,7 @@ class TestUtils {
         gitConfig << "  logallrefupdates = true\n"
         gitConfig << "[remote \"origin\"]\n"
 
-        if (VCS.GIT_HTTPS == withVCS) {
-            gitConfig << "  url = https://github.com/CycloneDX/cyclonedx-gradle-plugin.git\n"
-        } else if (VCS.GIT_SSH) {
-            gitConfig << "  url = git@github.com:barblin/cyclonedx-gradle-plugin.git\n"
-        }
+        gitConfig << "  url = ${gitUrl}\n"
 
         def gitHead = Files.createFile(gitDir.resolve("HEAD")).toFile()
         gitHead << "ref: refs/heads/master"

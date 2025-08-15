@@ -18,24 +18,23 @@
  */
 package org.cyclonedx.gradle.utils;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.net.URISyntaxException;
 import java.util.Objects;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
+import org.gradle.api.logging.Logger;
 
 public class ExternalReferencesUtil {
 
     private ExternalReferencesUtil() {}
 
-    public static void complementByEnvironment(@Nonnull final Component component) {
+    public static void complementByEnvironment(@Nonnull final Component component, @Nonnull final Logger logger) {
         // ignore all other VCSs for the time being
-        addGitReference(component);
+        addGitReference(component, logger);
     }
 
-    private static void addGitReference(@Nonnull final Component component) {
+    private static void addGitReference(@Nonnull final Component component, @Nonnull final Logger logger) {
         // abort early if a VCS external reference has already been provided
         if (component.getExternalReferences() != null
                 && component.getExternalReferences().stream()
@@ -44,42 +43,29 @@ public class ExternalReferencesUtil {
             return;
         }
 
-        String gitUrl = fromEnvironment();
+        String gitUrl = GitUtils.getGitUrlFromEnvironmentVariable();
 
         if (gitUrl == null || gitUrl.isEmpty()) {
-            gitUrl = fromGitRepo();
+            gitUrl = GitUtils.getGitUrlFromGitRepo();
         }
 
-        if (gitUrl != null) {
-            if (gitUrl.startsWith("git@")) {
-                gitUrl = "ssh://" + gitUrl;
-            }
-
-            final ExternalReference externalReference = new ExternalReference();
-            externalReference.setType(ExternalReference.Type.VCS);
-            externalReference.setUrl(gitUrl);
-
-            // addExternalReferences only accepts 'https://' and 'ssh://' remote urls.
-            // invalid urls will be ignored and the reference will not be added
-            component.addExternalReference(externalReference);
+        if (gitUrl == null) {
+            return;
         }
-    }
 
-    private static @Nullable String fromEnvironment() {
-        return System.getenv("GIT_URL");
-    }
-
-    private static @Nullable String fromGitRepo() {
         try {
-            final Process process = Runtime.getRuntime().exec(new String[] {"git", "remote", "get-url", "origin"});
-
-            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                return reader.readLine();
-            }
-        } catch (Exception ignore) {
-            // throw it away if this is not a git repository or if git is not installed
+            gitUrl = GitUtils.sanitizeGitUrl(gitUrl);
+        } catch (URISyntaxException e) {
+            logger.warn("Invalid Git URL identified from environment, ignoring it");
+            return;
         }
 
-        return null;
+        final ExternalReference externalReference = new ExternalReference();
+        externalReference.setType(ExternalReference.Type.VCS);
+        externalReference.setUrl(gitUrl);
+
+        // addExternalReferences only accepts 'https://' and 'ssh://' remote urls.
+        // invalid urls will be ignored and the reference will not be added
+        component.addExternalReference(externalReference);
     }
 }

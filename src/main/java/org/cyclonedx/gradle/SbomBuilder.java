@@ -115,7 +115,7 @@ class SbomBuilder {
             component.setVersion(task.getComponentVersion().get());
             addBuildSystemMetaData(component);
             component.addExternalReference(task.getGitVCS());
-            ExternalReferencesUtil.complementByEnvironment(component);
+            ExternalReferencesUtil.complementByEnvironment(component, logger);
             metadata.setComponent(component);
         } catch (MalformedPackageURLException e) {
             logger.warn(
