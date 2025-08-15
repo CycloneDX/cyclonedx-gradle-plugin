@@ -19,6 +19,7 @@
 package org.cyclonedx.gradle;
 
 import java.io.File;
+import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +27,7 @@ import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
+import org.cyclonedx.gradle.utils.GitUtils;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
@@ -385,6 +387,14 @@ public abstract class CycloneDxTask extends DefaultTask {
     public void setVCSGit(final Consumer<ExternalReference> customizer) {
         final ExternalReference origin = new ExternalReference();
         customizer.accept(origin);
+
+        try {
+            origin.setUrl(GitUtils.sanitizeGitUrl(origin.getUrl()));
+        } catch (URISyntaxException e) {
+            getLogger().warn("CycloneDX: Invalid Git URL provided, ignoring it");
+            return;
+        }
+
         this.gitVCS = origin;
         this.gitVCS.setType(ExternalReference.Type.VCS);
 

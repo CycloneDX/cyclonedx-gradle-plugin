@@ -26,7 +26,7 @@ class ExternalReferencesUtilTest extends Specification {
             dependencies {
                 implementation("org.hibernate:hibernate-core:5.6.15.Final")
             }""", "rootProject.name = 'hello-world'",
-            TestUtils.VCS.GIT_HTTPS
+            "https://${userInfo}github.com/CycloneDX/cyclonedx-gradle-plugin.git"
         )
         System.setProperty("user.dir", testDir.toPath().toString())
 
@@ -46,6 +46,12 @@ class ExternalReferencesUtilTest extends Specification {
         assert bom.getMetadata().getComponent().getExternalReferences().get(0).getUrl() != null
         assert bom.getMetadata().getComponent().getExternalReferences().get(0).getUrl() ==
             "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"
+
+        where:
+        userInfo             | _
+        ""                   | _
+        "username@"          | _
+        "username:password@" | _
     }
 
     def "should add git ssh remote url to metadata from .git directory"() {
@@ -65,7 +71,7 @@ class ExternalReferencesUtilTest extends Specification {
             dependencies {
                 implementation("org.hibernate:hibernate-core:5.6.15.Final")
             }""", "rootProject.name = 'hello-world'",
-            TestUtils.VCS.GIT_SSH
+            "${prefix}git@github.com:barblin/cyclonedx-gradle-plugin.git"
         )
         System.setProperty("user.dir", testDir.toPath().toString())
 
@@ -83,6 +89,11 @@ class ExternalReferencesUtilTest extends Specification {
 
         assert bom.getMetadata().getComponent().getExternalReferences().get(0).getUrl() ==
             "ssh://git@github.com:barblin/cyclonedx-gradle-plugin.git"
+
+        where:
+        prefix   | _
+        ""       | _
+        "ssh://" | _
     }
 
     def "should add git reference to metadata from environment (Jenkins e.g.)"() {
@@ -174,7 +185,7 @@ class ExternalReferencesUtilTest extends Specification {
 
             cyclonedxBom {
                 setVCSGit { vcs ->
-                    vcs.url = "https://github.com/CycloneDX/byUserInput.git"
+                    vcs.url = "https://${userInfo}github.com/CycloneDX/byUserInput.git"
                 }
             }
 
@@ -202,6 +213,12 @@ class ExternalReferencesUtilTest extends Specification {
             "https://github.com/CycloneDX/byUserInput.git"
         assert bom.getMetadata().getComponent().getExternalReferences().get(0).getType().name() == "VCS"
         assert bom.getMetadata().getComponent().getExternalReferences().get(0).getComment() == null
+
+        where:
+        userInfo             | _
+        ""                   | _
+        "username@"          | _
+        "username:password@" | _
     }
 
     def "should set ssh remote git url by custom configuration"() {
@@ -220,7 +237,7 @@ class ExternalReferencesUtilTest extends Specification {
 
             cyclonedxBom {
                 setVCSGit { vcs ->
-                    vcs.url = "ssh://git@github.com:barblin/byUserInput.git"
+                    vcs.url = "${prefix}git@github.com:barblin/byUserInput.git"
                     vcs.comment = "optional comment"
                 }
             }
@@ -249,9 +266,14 @@ class ExternalReferencesUtilTest extends Specification {
             "ssh://git@github.com:barblin/byUserInput.git"
         assert bom.getMetadata().getComponent().getExternalReferences().get(0).getType().name() == "VCS"
         assert bom.getMetadata().getComponent().getExternalReferences().get(0).getComment() == "optional comment"
+
+        where:
+        prefix   | _
+        ""       | _
+        "ssh://" | _
     }
 
-    def "should ignore invalid ssh url"() {
+    def "should ignore invalid url"() {
         given: "A mocked project directory with no git repo configuration"
         File testDir = TestUtils.createFromString(
             """
@@ -267,7 +289,7 @@ class ExternalReferencesUtilTest extends Specification {
 
             cyclonedxBom {
                 setVCSGit { vcs ->
-                    vcs.url = "git@github.com:barblin/byUserInput.git"
+                    vcs.url = "invalid-url@github.com:barblin/byUserInput.git"
                 }
             }
 
