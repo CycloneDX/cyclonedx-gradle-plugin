@@ -27,13 +27,16 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.MailingList;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
-import org.apache.maven.model.building.*;
+import org.apache.maven.model.building.DefaultModelBuilder;
+import org.apache.maven.model.building.DefaultModelBuilderFactory;
+import org.apache.maven.model.building.DefaultModelBuildingRequest;
+import org.apache.maven.model.building.ModelBuildingException;
+import org.apache.maven.model.building.ModelBuildingRequest;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.resolution.ModelResolver;
 import org.apache.maven.project.MavenProject;
@@ -48,6 +51,7 @@ import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Ported from CycloneDX Maven plugin.
@@ -83,7 +87,7 @@ class MavenHelper {
         if (project.getParent() != null) {
             getClosestMetadata(artifact, project.getParent(), component, mid);
         } else if (project.getModel().getParent() != null) {
-            @Nullable final MavenProject parentProject = retrieveParentProject(artifact, project, mid);
+            final MavenProject parentProject = retrieveParentProject(artifact, project, mid);
             if (parentProject != null) {
                 getClosestMetadata(artifact, parentProject, component, mid);
             }
@@ -260,7 +264,7 @@ class MavenHelper {
      *            the maven project the artifact is part of
      */
     @Nullable private MavenProject retrieveParentProject(
-            final File artifact, MavenProject project, final ModuleVersionIdentifier mid) {
+            final @Nullable File artifact, MavenProject project, final ModuleVersionIdentifier mid) {
         if (artifact == null || artifact.getParentFile() == null) {
             return null;
         }
@@ -297,7 +301,7 @@ class MavenHelper {
      *            the artifact to extract the pom from
      * @return a Maven project
      */
-    @Nullable MavenProject extractPom(final File artifact, final ModuleVersionIdentifier mid) {
+    @Nullable MavenProject extractPom(final @Nullable File artifact, final ModuleVersionIdentifier mid) {
         if (artifact != null && artifact.exists()) {
             try {
                 final JarFile jarFile = new JarFile(artifact);
@@ -321,10 +325,9 @@ class MavenHelper {
      * @param file
      *            the file object of the POM to read
      * @return a MavenProject
-     * @throws IOException
      *             oops
      */
-    @Nullable static MavenProject readPom(final File file) {
+    @Nullable static MavenProject readPom(final @Nullable File file) {
 
         if (file == null) {
             return null;
@@ -371,7 +374,7 @@ class MavenHelper {
      *            the current gradle project which gets used as the base resolver
      * @return model for effective pom
      */
-    static Model resolveEffectivePom(final File pomFile, final Project gradleProject) {
+    static @Nullable Model resolveEffectivePom(final @Nullable File pomFile, final Project gradleProject) {
         // force the parent POMs and BOMs to be resolved
         final ModelResolver modelResolver = new GradleAssistedMavenModelResolverImpl(gradleProject);
         final ModelBuildingRequest req = new DefaultModelBuildingRequest();
@@ -416,7 +419,7 @@ class MavenHelper {
         return artifact.getType().equalsIgnoreCase("jar");
     }
 
-    boolean isModified(final ResolvedArtifact artifact) {
+    boolean isModified(final @Nullable ResolvedArtifact artifact) {
         // todo: compare hashes + GAV with what the artifact says against Maven Central
         // to determine if component has been modified.
         return false;

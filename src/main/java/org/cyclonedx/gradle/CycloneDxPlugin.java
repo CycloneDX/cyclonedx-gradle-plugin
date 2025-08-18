@@ -26,6 +26,7 @@ import org.gradle.api.Project;
  */
 public class CycloneDxPlugin implements Plugin<Project> {
 
+    @Override
     public void apply(final Project project) {
 
         project.getTasks().register("cyclonedxBom", CycloneDxTask.class, (task) -> {

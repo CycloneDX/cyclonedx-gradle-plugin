@@ -21,7 +21,7 @@ package org.cyclonedx.gradle.model;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.TreeMap;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public class SbomComponentId implements Serializable {
 

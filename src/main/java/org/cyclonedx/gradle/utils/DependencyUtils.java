@@ -23,7 +23,7 @@ import com.github.packageurl.PackageURL;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-import javax.annotation.Nullable;
+import java.util.Objects;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.gradle.model.SbomComponent;
@@ -31,6 +31,7 @@ import org.cyclonedx.gradle.model.SbomComponentId;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
+import org.jspecify.annotations.Nullable;
 
 public class DependencyUtils {
 
@@ -41,10 +42,10 @@ public class DependencyUtils {
             final Map<SbomComponentId, SbomComponent> secondGraph) {
 
         final Map<SbomComponentId, SbomComponent> mergedGraph = new HashMap<>(firstGraph);
-        secondGraph.keySet().stream().forEach(id -> {
+        secondGraph.keySet().forEach(id -> {
             if (firstGraph.containsKey(id)) {
-                SbomComponent resultComponent = mergedGraph.get(id);
-                SbomComponent targetComponent = secondGraph.get(id);
+                SbomComponent resultComponent = Objects.requireNonNull(mergedGraph.get(id));
+                SbomComponent targetComponent = Objects.requireNonNull(secondGraph.get(id));
                 resultComponent.getDependencyComponents().addAll(targetComponent.getDependencyComponents());
                 resultComponent.getInScopeConfigurations().addAll(targetComponent.getInScopeConfigurations());
             } else {
@@ -55,10 +56,10 @@ public class DependencyUtils {
         return mergedGraph;
     }
 
-    public static SbomComponentId toComponentId(final ResolvedComponentResult node, final File file) {
+    public static SbomComponentId toComponentId(final ResolvedComponentResult node, final @Nullable File file) {
 
-        @Nullable String type = null;
-        @Nullable String projectPath = null;
+        String type = null;
+        String projectPath = null;
         if (node.getId() instanceof ModuleComponentIdentifier) {
             if (file != null) {
                 type = getType(file);

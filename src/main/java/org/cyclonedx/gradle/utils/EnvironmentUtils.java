@@ -21,8 +21,8 @@ package org.cyclonedx.gradle.utils;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Utility class for working with environment variables in common CI environments.
@@ -118,7 +118,7 @@ public class EnvironmentUtils {
      * @param pattern the pattern to use to build the URI
      * @return the URI of the current build or null if it cannot be determined
      */
-    @Nullable private static String getBuildUriFromPattern(final String pattern) {
+    @Nullable private static String getBuildUriFromPattern(final @Nullable String pattern) {
         if (pattern == null) {
             return null;
         }

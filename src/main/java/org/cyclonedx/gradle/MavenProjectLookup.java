@@ -22,7 +22,6 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import javax.annotation.Nullable;
 import org.apache.maven.model.Model;
 import org.apache.maven.project.MavenProject;
 import org.gradle.api.Project;
@@ -36,6 +35,7 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.maven.MavenModule;
 import org.gradle.maven.MavenPomArtifact;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Finds the pom.xml of a maven project in the gradle repositories and, if exists, instantiates a MavenProject object

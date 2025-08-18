@@ -20,7 +20,6 @@ package org.cyclonedx.gradle.utils;
 
 import java.net.URISyntaxException;
 import java.util.Objects;
-import javax.annotation.Nonnull;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.gradle.api.logging.Logger;
@@ -32,12 +31,12 @@ public class ExternalReferencesUtil {
 
     private ExternalReferencesUtil() {}
 
-    public static void complementByEnvironment(@Nonnull final Component component) {
+    public static void complementByEnvironment(final Component component) {
         // ignore all other VCSs for the time being
         addGitReference(component);
     }
 
-    private static void addGitReference(@Nonnull final Component component) {
+    private static void addGitReference(final Component component) {
         // abort early if a VCS external reference has already been provided
         if (component.getExternalReferences() != null
                 && component.getExternalReferences().stream()

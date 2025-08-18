@@ -19,7 +19,14 @@
 package org.cyclonedx.gradle;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -218,7 +225,9 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                 .collect(Collectors.toSet());
         LOGGER.debug("Connecting root project {} with subprojects {}", rootProjectId, dependencyComponentIds);
 
-        graph.get(rootProjectId).getDependencyComponents().addAll(dependencyComponentIds);
+        Objects.requireNonNull(graph.get(rootProjectId))
+                .getDependencyComponents()
+                .addAll(dependencyComponentIds);
     }
 
     private Optional<SbomComponent> findRootComponent(
