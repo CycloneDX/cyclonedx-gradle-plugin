@@ -1,4 +1,6 @@
 import java.util.Properties
+import net.ltgt.gradle.errorprone.CheckSeverity
+import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
     id("java-gradle-plugin")
@@ -6,6 +8,7 @@ plugins {
     id("org.cyclonedx.bom") version "2.3.1"
     id("groovy")
     id("com.diffplug.spotless") version "7.2.1"
+    id("net.ltgt.errorprone") version "4.3.0"
 }
 
 val organization = "CycloneDX"
@@ -26,6 +29,7 @@ dependencies {
     api("org.cyclonedx:cyclonedx-core-java:10.2.1") {
         exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j-impl")
     }
+    api("org.jspecify:jspecify:1.0.0")
 
     implementation("commons-codec:commons-codec:1.19.0")
     implementation("commons-io:commons-io:2.20.0")
@@ -38,6 +42,9 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("com.github.stefanbirkner:system-lambda:1.2.1")
+
+    errorprone("com.uber.nullaway:nullaway:0.12.8")
+    errorprone("com.google.errorprone:error_prone_core:2.41.0")
 }
 
 listOf(17, 21).forEach { version ->
@@ -74,6 +81,18 @@ tasks.withType<JavaCompile>().configureEach {
     dependsOn("processResources")
     options.encoding = "UTF-8"
     options.release = 8
+    options.errorprone {
+        check("NullAway", CheckSeverity.ERROR)
+        check("DefaultCharset", CheckSeverity.ERROR)
+        check("MissingOverride", CheckSeverity.ERROR)
+        option("NullAway:AnnotatedPackages", "org.cyclonedx.gradle")
+    }
+    // Include to disable NullAway on test code
+    if (name.lowercase().contains("test")) {
+        options.errorprone {
+            disable("NullAway")
+        }
+    }
 }
 
 tasks.withType<GroovyCompile>().configureEach {
