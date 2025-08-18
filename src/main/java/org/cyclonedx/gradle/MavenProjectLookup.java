@@ -32,6 +32,8 @@ import org.gradle.api.artifacts.result.ArtifactResult;
 import org.gradle.api.artifacts.result.ComponentArtifactsResult;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.gradle.maven.MavenModule;
 import org.gradle.maven.MavenPomArtifact;
 
@@ -40,6 +42,7 @@ import org.gradle.maven.MavenPomArtifact;
  */
 class MavenProjectLookup {
 
+    private static final Logger LOGGER = Logging.getLogger(MavenProjectLookup.class);
     private final Project project;
     private final Map<ComponentIdentifier, MavenProject> cache;
 
@@ -70,7 +73,7 @@ class MavenProjectLookup {
             final File pomFile = buildMavenProject(result.getId());
             final MavenProject mavenProject = MavenHelper.readPom(pomFile);
             if (mavenProject != null) {
-                project.getLogger().debug("CycloneDX: parse queried pom file for component {}", result.getId());
+                LOGGER.debug("CycloneDX: parse queried pom file for component {}", result.getId());
                 final Model model = MavenHelper.resolveEffectivePom(pomFile, project);
                 if (model != null) {
                     mavenProject.setLicenses(model.getLicenses());
@@ -80,7 +83,7 @@ class MavenProjectLookup {
                 return mavenProject;
             }
         } catch (Exception err) {
-            project.getLogger().error("Unable to resolve POM for {}", result.getId(), err);
+            LOGGER.error("Unable to resolve POM for {}", result.getId(), err);
         }
         return null;
     }
@@ -107,7 +110,7 @@ class MavenProjectLookup {
 
         final ArtifactResult artifact = artifactIt.next();
         if (artifact instanceof ResolvedArtifactResult) {
-            project.getLogger().debug("CycloneDX: found pom file for component {}", id);
+            LOGGER.debug("CycloneDX: found pom file for component {}", id);
             final ResolvedArtifactResult resolvedArtifact = (ResolvedArtifactResult) artifact;
             return resolvedArtifact.getFile();
         }

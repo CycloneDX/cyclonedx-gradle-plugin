@@ -54,6 +54,7 @@ import org.cyclonedx.model.Tool;
 import org.cyclonedx.model.metadata.ToolInformation;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 
 /**
  * Generates the CycloneDX Bom from the aggregated dependency graph taking into account the provided
@@ -63,18 +64,17 @@ class SbomBuilder {
 
     private static final String MESSAGE_CALCULATING_HASHES = "CycloneDX: Calculating Hashes";
     private static final String MESSAGE_CREATING_BOM = "CycloneDX: Creating BOM";
+    private static final Logger LOGGER = Logging.getLogger(SbomBuilder.class);
 
-    private final Logger logger;
     private final Map<File, List<Hash>> artifactHashes;
     private final MavenHelper mavenHelper;
     private final Version version;
     private final CycloneDxTask task;
 
-    SbomBuilder(final Logger logger, final CycloneDxTask task) {
-        this.logger = logger;
+    SbomBuilder(final CycloneDxTask task) {
         this.version = CycloneDxUtils.schemaVersion(task.getSchemaVersion().get());
         this.artifactHashes = new HashMap<>();
-        this.mavenHelper = new MavenHelper(logger, task.getIncludeLicenseText().get());
+        this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get());
         this.task = task;
     }
 
@@ -88,7 +88,7 @@ class SbomBuilder {
      */
     Bom buildBom(final Map<SbomComponentId, SbomComponent> resultGraph, final SbomComponent rootComponent) {
 
-        task.getLogger().info(MESSAGE_CREATING_BOM);
+        LOGGER.info(MESSAGE_CREATING_BOM);
 
         final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
         final Set<Component> components = new TreeSet<>(new ComponentComparator());
@@ -115,10 +115,10 @@ class SbomBuilder {
             component.setVersion(task.getComponentVersion().get());
             addBuildSystemMetaData(component);
             component.addExternalReference(task.getGitVCS());
-            ExternalReferencesUtil.complementByEnvironment(component, logger);
+            ExternalReferencesUtil.complementByEnvironment(component);
             metadata.setComponent(component);
         } catch (MalformedPackageURLException e) {
-            logger.warn(
+            LOGGER.warn(
                     "Error constructing packageUrl for parent component {}. Skipping...",
                     parentComponent.getId().getName(),
                     e);
@@ -178,7 +178,7 @@ class SbomBuilder {
         try {
             dependency = toDependency(component.getId());
         } catch (MalformedPackageURLException e) {
-            logger.warn(
+            LOGGER.warn(
                     "Error constructing packageUrl for component {}. Skipping...",
                     component.getId().getName(),
                     e);
@@ -188,7 +188,7 @@ class SbomBuilder {
             try {
                 dependency.addDependency(toDependency(dependencyComponent));
             } catch (MalformedPackageURLException e) {
-                logger.warn(
+                LOGGER.warn(
                         "Error constructing packageUrl for component dependency {}. Skipping...",
                         dependencyComponent.getName(),
                         e);
@@ -210,7 +210,7 @@ class SbomBuilder {
             try {
                 components.add(toComponent(component, artifactFile, Component.Type.LIBRARY));
             } catch (MalformedPackageURLException e) {
-                logger.warn(
+                LOGGER.warn(
                         "Error constructing packageUrl for component {}. Skipping...",
                         component.getId().getName(),
                         e);
@@ -249,7 +249,7 @@ class SbomBuilder {
             resultComponent.setLicenses(licenseChoice);
         }
 
-        logger.debug(MESSAGE_CALCULATING_HASHES);
+        LOGGER.debug(MESSAGE_CALCULATING_HASHES);
         if (artifactFile != null) {
             resultComponent.setHashes(calculateHashes(artifactFile));
         }
@@ -281,7 +281,7 @@ class SbomBuilder {
             try {
                 return BomUtils.calculateHashes(f, version);
             } catch (IOException e) {
-                logger.error("Error encountered calculating hashes", e);
+                LOGGER.error("Error encountered calculating hashes", e);
             }
             return Collections.emptyList();
         });
@@ -293,10 +293,10 @@ class SbomBuilder {
                 return type;
             }
         }
-        logger.warn("Invalid project type. Defaulting to 'library'");
-        logger.warn("Valid types are:");
+        LOGGER.warn("Invalid project type. Defaulting to 'library'");
+        LOGGER.warn("Valid types are:");
         for (Component.Type type : Component.Type.values()) {
-            logger.warn("  " + type.getTypeName());
+            LOGGER.warn("  " + type.getTypeName());
         }
         return Component.Type.LIBRARY;
     }
@@ -306,12 +306,12 @@ class SbomBuilder {
         final Properties props = new Properties();
         try (final InputStream inputStream = this.getClass().getResourceAsStream("plugin.properties")) {
             if (inputStream == null) {
-                logger.info("plugin.properties is not found on the classpath");
+                LOGGER.info("plugin.properties is not found on the classpath");
             } else {
                 props.load(inputStream);
             }
         } catch (Exception e) {
-            logger.warn("Error whilst loading plugin.properties", e);
+            LOGGER.warn("Error whilst loading plugin.properties", e);
         }
         return props;
     }

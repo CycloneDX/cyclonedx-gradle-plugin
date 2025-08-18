@@ -32,6 +32,8 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 
 /**
  * Provider that lazily calculates the aggregated dependency graph. The usage of a provider is essential to support
@@ -41,6 +43,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
 
     private static final String MESSAGE_RESOLVING_DEPS = "CycloneDX: Resolving Dependencies";
     private static final ResolvedArtifactResult[] ARTIFACT_TYPE = new ResolvedArtifactResult[0];
+    private static final Logger LOGGER = Logging.getLogger(SbomGraphProvider.class);
 
     private final Project project;
     private final CycloneDxTask task;
@@ -65,13 +68,12 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     public SbomGraph call() throws Exception {
 
         if (project.getGroup().equals("") || project.getVersion().equals("")) {
-            project.getLogger()
-                    .warn(
-                            "Project group or version are not set for project [{}], will use \"unspecified\"",
-                            project.getName());
+            LOGGER.warn(
+                    "Project group or version are not set for project [{}], will use \"unspecified\"",
+                    project.getName());
         }
 
-        project.getLogger().info(MESSAGE_RESOLVING_DEPS);
+        LOGGER.info(MESSAGE_RESOLVING_DEPS);
 
         final Map<SbomComponentId, SbomComponent> graph = Stream.concat(
                         Stream.of(project), project.getSubprojects().stream())
@@ -86,7 +88,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         final Optional<SbomComponent> rootProject =
                 findRootComponent(graph, task.getComponentVersion().get());
         if (!rootProject.isPresent()) {
-            project.getLogger().debug("CycloneDX: root project not found. Constructing it.");
+            LOGGER.debug("CycloneDX: root project not found. Constructing it.");
             final SbomComponentId rootProjectId = new SbomComponentId(
                     project.getGroup().toString(),
                     project.getName(),
@@ -110,8 +112,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
 
     private Stream<Map<SbomComponentId, SbomComponent>> traverseProject(final Project project) {
 
-        final DependencyGraphTraverser traverser =
-                new DependencyGraphTraverser(project.getLogger(), getArtifacts(), mavenLookup, task);
+        final DependencyGraphTraverser traverser = new DependencyGraphTraverser(getArtifacts(), mavenLookup, task);
         return getInScopeConfigurations(project)
                 .map(config -> traverser.traverseGraph(
                         config.getIncoming().getResolutionResult().getRoot(), project.getName(), config.getName()));
@@ -165,14 +166,13 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         final boolean skip = shouldSkipConfiguration(configuration);
         final boolean resolvable = configuration.isCanBeResolved();
         if (!include || skip || !resolvable) {
-            project.getLogger()
-                    .debug(
-                            "Skipping configuration '{}' (project: {}, include: {}, skip: {}, canBeResolved: {})",
-                            configuration.getName(),
-                            project,
-                            include,
-                            skip,
-                            resolvable);
+            LOGGER.debug(
+                    "Skipping configuration '{}' (project: {}, include: {}, skip: {}, canBeResolved: {})",
+                    configuration.getName(),
+                    project,
+                    include,
+                    skip,
+                    resolvable);
         }
         return include && !skip && resolvable;
     }
@@ -180,7 +180,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     private boolean filterProjects(final Project project) {
         final boolean skip = shouldSkipProject(project);
         if (skip) {
-            this.project.getLogger().debug("Skipping project '{}'", project.getName());
+            LOGGER.debug("Skipping project '{}'", project.getName());
         }
         return !skip;
     }
@@ -189,12 +189,10 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         final Configuration[] configs = project.getConfigurations().stream()
                 .filter(configuration -> filterConfigurations(project, configuration))
                 .toArray(Configuration[]::new);
-        this.project
-                .getLogger()
-                .info(
-                        "For project {} following configurations are in scope to build the dependency graph: {}",
-                        project.getName(),
-                        summarize(configs, Configuration::getName));
+        LOGGER.info(
+                "For project {} following configurations are in scope to build the dependency graph: {}",
+                project.getName(),
+                summarize(configs, Configuration::getName));
         return Arrays.stream(configs);
     }
 
@@ -213,13 +211,12 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                 .filter(id -> {
                     final boolean exists = graph.containsKey(id);
                     if (!exists) {
-                        project.getLogger().debug("Subproject not found in graph: {}", id);
+                        LOGGER.debug("Subproject not found in graph: {}", id);
                     }
                     return exists;
                 })
                 .collect(Collectors.toSet());
-        project.getLogger()
-                .debug("Connecting root project {} with subprojects {}", rootProjectId, dependencyComponentIds);
+        LOGGER.debug("Connecting root project {} with subprojects {}", rootProjectId, dependencyComponentIds);
 
         graph.get(rootProjectId).getDependencyComponents().addAll(dependencyComponentIds);
     }

@@ -47,17 +47,17 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 
 /**
  * Ported from CycloneDX Maven plugin.
  */
 class MavenHelper {
 
-    private final Logger logger;
+    private static final Logger LOGGER = Logging.getLogger(MavenHelper.class);
     private final Boolean includeLicenseText;
 
-    public MavenHelper(final Logger logger, final Boolean includeLicenseText) {
-        this.logger = logger;
+    public MavenHelper(final Boolean includeLicenseText) {
         this.includeLicenseText = includeLicenseText;
     }
 
@@ -283,7 +283,7 @@ class MavenHelper {
                 try {
                     return readPom(parentFile.getCanonicalFile());
                 } catch (Exception e) {
-                    logger.error("An error occurred retrieving an artifacts parent pom", e);
+                    LOGGER.error("An error occurred retrieving an artifacts parent pom", e);
                 }
             }
         }
@@ -309,7 +309,7 @@ class MavenHelper {
                     }
                 }
             } catch (IOException e) {
-                logger.error("An error occurred attempting to extract POM from artifact", e);
+                LOGGER.error("An error occurred attempting to extract POM from artifact", e);
             }
         }
         return null;
