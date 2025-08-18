@@ -45,6 +45,7 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 
 /**
  * Traverses the dependency graph of a configuration which returns a data model that 1) contains all the information
@@ -52,22 +53,20 @@ import org.gradle.api.logging.Logger;
  */
 class DependencyGraphTraverser {
 
-    private final Logger logger;
+    private static final Logger LOGGER = Logging.getLogger(DependencyGraphTraverser.class);
     private final Map<ComponentIdentifier, File> resolvedArtifacts;
     private final MavenProjectLookup mavenLookup;
     private final boolean includeMetaData;
     private final MavenHelper mavenHelper;
 
     DependencyGraphTraverser(
-            final Logger logger,
             final Map<ComponentIdentifier, File> resolvedArtifacts,
             final MavenProjectLookup mavenLookup,
             final CycloneDxTask task) {
-        this.logger = logger;
         this.resolvedArtifacts = resolvedArtifacts;
         this.mavenLookup = mavenLookup;
         this.includeMetaData = task.getIncludeMetadataResolution().get();
-        this.mavenHelper = new MavenHelper(logger, task.getIncludeLicenseText().get());
+        this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get());
     }
 
     /**
@@ -90,17 +89,17 @@ class DependencyGraphTraverser {
         rootGraphNode.inScopeConfiguration(projectName, configName);
         queue.add(rootGraphNode);
 
-        logger.debug("CycloneDX: Traversal of graph for configuration {} of project {}", configName, projectName);
+        LOGGER.debug("CycloneDX: Traversal of graph for configuration {} of project {}", configName, projectName);
         while (!queue.isEmpty()) {
             final GraphNode graphNode = queue.poll();
             if (!graph.containsKey(graphNode)) {
                 graph.put(graphNode, new HashSet<>());
-                logger.debug("CycloneDX: Traversing node with ID {}", graphNode.id);
+                LOGGER.debug("CycloneDX: Traversing node with ID {}", graphNode.id);
                 for (final DependencyResult dep : graphNode.getResult().getDependencies()) {
                     if (dep instanceof ResolvedDependencyResult) {
                         final ResolvedComponentResult dependencyComponent =
                                 ((ResolvedDependencyResult) dep).getSelected();
-                        logger.debug(
+                        LOGGER.debug(
                                 "CycloneDX: Node with ID {} has dependency with ID {}",
                                 graphNode.id,
                                 dependencyComponent);
@@ -110,7 +109,7 @@ class DependencyGraphTraverser {
                         queue.add(dependencyNode);
                     } else if (dep instanceof UnresolvedDependencyResult) {
                         final UnresolvedDependencyResult unresolved = (UnresolvedDependencyResult) dep;
-                        logger.info(
+                        LOGGER.info(
                                 "CycloneDX: Unable to resolve artifact {} because {}",
                                 unresolved.getAttempted().getDisplayName(),
                                 unresolved.getFailure().toString());
@@ -136,7 +135,7 @@ class DependencyGraphTraverser {
         List<License> licenses = new ArrayList<>();
         SbomMetaData metaData = null;
         if (includeMetaData && node.id instanceof ModuleComponentIdentifier) {
-            logger.debug("CycloneDX: Including meta data for node {}", node.id);
+            LOGGER.debug("CycloneDX: Including meta data for node {}", node.id);
             final Component component = new Component();
             extractMetaDataFromArtifactPom(artifactFile, component, node.getResult());
             licenses = extractMetaDataFromRepository(component, node.getResult());
@@ -162,7 +161,7 @@ class DependencyGraphTraverser {
 
         @Nullable final MavenProject mavenProject = mavenHelper.extractPom(artifactFile, result.getModuleVersion());
         if (mavenProject != null) {
-            logger.debug("CycloneDX: parse artifact pom file of component {}", result.getId());
+            LOGGER.debug("CycloneDX: parse artifact pom file of component {}", result.getId());
             mavenHelper.getClosestMetadata(artifactFile, mavenProject, component, result.getModuleVersion());
         }
     }

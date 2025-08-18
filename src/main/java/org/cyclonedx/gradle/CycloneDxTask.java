@@ -33,6 +33,8 @@ import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.OrganizationalEntity;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
@@ -48,6 +50,7 @@ import org.gradle.api.tasks.TaskAction;
  */
 public abstract class CycloneDxTask extends DefaultTask {
 
+    private static final Logger LOGGER = Logging.getLogger(CycloneDxTask.class);
     private static final String MESSAGE_WRITING_BOM_OUTPUT = "CycloneDX: Writing BOM output";
     private static final String DEFAULT_PROJECT_TYPE = "library";
 
@@ -298,11 +301,11 @@ public abstract class CycloneDxTask extends DefaultTask {
 
         logParameters();
 
-        final SbomBuilder builder = new SbomBuilder(getLogger(), this);
+        final SbomBuilder builder = new SbomBuilder(this);
         final SbomGraph components = componentsProvider.get();
         final Bom bom = builder.buildBom(components.getGraph(), components.getRootComponent());
 
-        getLogger().info(MESSAGE_WRITING_BOM_OUTPUT);
+        LOGGER.info(MESSAGE_WRITING_BOM_OUTPUT);
         CycloneDxUtils.writeBom(
                 bom,
                 getDestination().get(),
@@ -391,7 +394,7 @@ public abstract class CycloneDxTask extends DefaultTask {
         try {
             origin.setUrl(GitUtils.sanitizeGitUrl(origin.getUrl()));
         } catch (URISyntaxException e) {
-            getLogger().warn("CycloneDX: Invalid Git URL provided, ignoring it");
+            LOGGER.warn("CycloneDX: Invalid Git URL provided, ignoring it");
             return;
         }
 
@@ -410,23 +413,23 @@ public abstract class CycloneDxTask extends DefaultTask {
     }
 
     private void logParameters() {
-        if (getLogger().isInfoEnabled()) {
-            getLogger().info("CycloneDX: Parameters");
-            getLogger().info("------------------------------------------------------------------------");
-            getLogger().info("schemaVersion             : " + schemaVersion.get());
-            getLogger().info("includeLicenseText        : " + includeLicenseText.get());
-            getLogger().info("includeBomSerialNumber    : " + includeBomSerialNumber.get());
-            getLogger().info("includeConfigs            : " + includeConfigs.get());
-            getLogger().info("skipConfigs               : " + skipConfigs.get());
-            getLogger().info("skipProjects              : " + skipProjects.get());
-            getLogger().info("includeMetadataResolution : " + includeMetadataResolution.get());
-            getLogger().info("destination               : " + destination.get());
-            getLogger().info("outputName                : " + outputName.get());
-            getLogger().info("componentName             : " + componentName.get());
-            getLogger().info("componentVersion          : " + componentVersion.get());
-            getLogger().info("outputFormat              : " + outputFormat.get());
-            getLogger().info("projectType               : " + projectType.get());
-            getLogger().info("------------------------------------------------------------------------");
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("CycloneDX: Parameters");
+            LOGGER.info("------------------------------------------------------------------------");
+            LOGGER.info("schemaVersion             : " + schemaVersion.get());
+            LOGGER.info("includeLicenseText        : " + includeLicenseText.get());
+            LOGGER.info("includeBomSerialNumber    : " + includeBomSerialNumber.get());
+            LOGGER.info("includeConfigs            : " + includeConfigs.get());
+            LOGGER.info("skipConfigs               : " + skipConfigs.get());
+            LOGGER.info("skipProjects              : " + skipProjects.get());
+            LOGGER.info("includeMetadataResolution : " + includeMetadataResolution.get());
+            LOGGER.info("destination               : " + destination.get());
+            LOGGER.info("outputName                : " + outputName.get());
+            LOGGER.info("componentName             : " + componentName.get());
+            LOGGER.info("componentVersion          : " + componentVersion.get());
+            LOGGER.info("outputFormat              : " + outputFormat.get());
+            LOGGER.info("projectType               : " + projectType.get());
+            LOGGER.info("------------------------------------------------------------------------");
         }
     }
 }
