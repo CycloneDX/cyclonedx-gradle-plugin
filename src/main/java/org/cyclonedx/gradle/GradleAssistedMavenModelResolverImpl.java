@@ -30,6 +30,7 @@ import org.apache.maven.model.building.ModelSource2;
 import org.apache.maven.model.resolution.ModelResolver;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.jspecify.annotations.Nullable;
 
 public class GradleAssistedMavenModelResolverImpl implements ModelResolver {
     private final Project project;
@@ -59,12 +60,12 @@ public class GradleAssistedMavenModelResolverImpl implements ModelResolver {
             }
 
             @Override
-            public ModelSource2 getRelatedSource(String relPath) {
+            public @Nullable ModelSource2 getRelatedSource(String relPath) {
                 return null;
             }
 
             @Override
-            public URI getLocationURI() {
+            public @Nullable URI getLocationURI() {
                 return null;
             }
         };

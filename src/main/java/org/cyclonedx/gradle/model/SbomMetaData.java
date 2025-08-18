@@ -21,8 +21,8 @@ package org.cyclonedx.gradle.model;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.Nullable;
 import org.cyclonedx.model.Component;
+import org.jspecify.annotations.Nullable;
 
 public class SbomMetaData implements Serializable {
 

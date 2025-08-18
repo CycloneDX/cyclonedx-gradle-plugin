@@ -22,7 +22,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
-import javax.annotation.Nullable;
+import java.nio.charset.Charset;
+import org.jspecify.annotations.Nullable;
 
 public final class GitUtils {
 
@@ -36,7 +37,8 @@ public final class GitUtils {
         try {
             final Process process = Runtime.getRuntime().exec(new String[] {"git", "remote", "get-url", "origin"});
 
-            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            try (final BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(process.getInputStream(), Charset.defaultCharset()))) {
                 return reader.readLine();
             }
         } catch (Exception ignore) {

@@ -29,7 +29,6 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.annotation.Nullable;
 import org.apache.maven.model.License;
 import org.apache.maven.project.MavenProject;
 import org.cyclonedx.gradle.model.ConfigurationScope;
@@ -46,6 +45,7 @@ import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Traverses the dependency graph of a configuration which returns a data model that 1) contains all the information
@@ -159,7 +159,7 @@ class DependencyGraphTraverser {
             return;
         }
 
-        @Nullable final MavenProject mavenProject = mavenHelper.extractPom(artifactFile, result.getModuleVersion());
+        final MavenProject mavenProject = mavenHelper.extractPom(artifactFile, result.getModuleVersion());
         if (mavenProject != null) {
             LOGGER.debug("CycloneDX: parse artifact pom file of component {}", result.getId());
             mavenHelper.getClosestMetadata(artifactFile, mavenProject, component, result.getModuleVersion());
@@ -183,7 +183,7 @@ class DependencyGraphTraverser {
                 .collect(Collectors.toSet());
     }
 
-    private File getArtifactFile(final GraphNode node) {
+    private @Nullable File getArtifactFile(final GraphNode node) {
         return this.resolvedArtifacts.get(node.getResult().getId());
     }
 

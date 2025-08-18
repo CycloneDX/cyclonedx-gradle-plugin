@@ -20,11 +20,13 @@ package org.cyclonedx.gradle.model;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import javax.annotation.Nullable;
 import org.apache.maven.model.License;
+import org.jspecify.annotations.Nullable;
 
 public final class SbomComponent implements Serializable {
 
@@ -79,12 +81,12 @@ public final class SbomComponent implements Serializable {
 
     public static class Builder {
 
-        private SbomComponentId id;
-        private Set<ConfigurationScope> inScopeConfigurations;
-        private Set<SbomComponentId> dependencyComponents;
-        private File artifactFile;
-        private SbomMetaData metaData;
-        private List<License> licenses;
+        private @Nullable SbomComponentId id;
+        private Set<ConfigurationScope> inScopeConfigurations = Collections.emptySet();
+        private Set<SbomComponentId> dependencyComponents = Collections.emptySet();
+        private @Nullable File artifactFile;
+        private @Nullable SbomMetaData metaData;
+        private List<License> licenses = Collections.emptyList();
 
         public Builder() {}
 
@@ -119,7 +121,13 @@ public final class SbomComponent implements Serializable {
         }
 
         public SbomComponent build() {
-            return new SbomComponent(id, inScopeConfigurations, dependencyComponents, artifactFile, metaData, licenses);
+            return new SbomComponent(
+                    Objects.requireNonNull(id),
+                    inScopeConfigurations,
+                    dependencyComponents,
+                    artifactFile,
+                    metaData,
+                    licenses);
         }
     }
 }

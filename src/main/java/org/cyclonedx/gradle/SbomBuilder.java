@@ -31,7 +31,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import javax.annotation.Nullable;
 import org.cyclonedx.Version;
 import org.cyclonedx.gradle.model.ComponentComparator;
 import org.cyclonedx.gradle.model.DependencyComparator;
@@ -55,6 +54,7 @@ import org.cyclonedx.model.metadata.ToolInformation;
 import org.cyclonedx.util.BomUtils;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Generates the CycloneDX Bom from the aggregated dependency graph taking into account the provided
@@ -93,9 +93,9 @@ class SbomBuilder {
         final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
         final Set<Component> components = new TreeSet<>(new ComponentComparator());
 
-        resultGraph.keySet().forEach(componentId -> {
-            addDependency(dependencies, resultGraph.get(componentId));
-            addComponent(components, resultGraph.get(componentId), rootComponent);
+        resultGraph.forEach((componentId, adjacentComponentId) -> {
+            addDependency(dependencies, adjacentComponentId);
+            addComponent(components, adjacentComponentId, rootComponent);
         });
 
         final Bom bom = new Bom();
@@ -125,7 +125,7 @@ class SbomBuilder {
         }
         metadata.setLicenseChoice(task.getLicenseChoice());
 
-        if (!(new OrganizationalEntity()).equals(task.getOrganizationalEntity())) {
+        if (!new OrganizationalEntity().equals(task.getOrganizationalEntity())) {
             metadata.setManufacturer(task.getOrganizationalEntity());
         }
 
@@ -206,7 +206,7 @@ class SbomBuilder {
     private void addComponent(
             final Set<Component> components, final SbomComponent component, final SbomComponent parentComponent) {
         if (!component.equals(parentComponent)) {
-            @Nullable final File artifactFile = component.getArtifactFile().orElse(null);
+            final File artifactFile = component.getArtifactFile().orElse(null);
             try {
                 components.add(toComponent(component, artifactFile, Component.Type.LIBRARY));
             } catch (MalformedPackageURLException e) {
@@ -218,7 +218,8 @@ class SbomBuilder {
         }
     }
 
-    private Component toComponent(final SbomComponent component, final File artifactFile, final Component.Type type)
+    private Component toComponent(
+            final SbomComponent component, final @Nullable File artifactFile, final Component.Type type)
             throws MalformedPackageURLException {
 
         final String packageUrl = DependencyUtils.generatePackageUrl(component.getId());
