@@ -104,9 +104,12 @@ class DependencyGraphTraverser {
                     if (dep.isConstraint()) {
                         continue; // Skip constraints as they do not represent a dependency in the graph
                     }
-                    if (dep instanceof ResolvedDependencyResult) {   
+                    if (dep instanceof ResolvedDependencyResult) {
                         final ResolvedComponentResult dependencyComponent =
                                 ((ResolvedDependencyResult) dep).getSelected();
+                        if (graphNode.id.equals(dependencyComponent.getId())) {
+                            continue; // Skip self-references
+                        }
                         LOGGER.debug(
                                 "{} Node with ID {} has dependency with ID {}",
                                 LOG_PREFIX,
