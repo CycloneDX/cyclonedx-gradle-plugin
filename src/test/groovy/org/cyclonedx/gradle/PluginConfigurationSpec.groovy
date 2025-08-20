@@ -961,7 +961,7 @@ class PluginConfigurationSpec extends Specification {
         where:
         taskName             | reportLocation
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        // "cyclonedxDirectBom" | "build/reports/cyclonedx-direct" // TODO: enable once direct does not reference itself
+        "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
     }
 
 }
