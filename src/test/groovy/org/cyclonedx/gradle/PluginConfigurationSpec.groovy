@@ -951,4 +951,70 @@ class PluginConfigurationSpec extends Specification {
         "cyclonedxBom"       | "build/reports/cyclonedx"
         javaVersion = JavaVersion.current()
     }
+
+    def "should not include dependency constraints in bom"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'java'
+                id 'org.cyclonedx.bom'
+            }
+
+            group = 'com.example'
+            version = '0.0.1-SNAPSHOT'
+
+            repositories {
+                mavenCentral()
+            }
+
+            dependencies {
+                constraints {
+                    implementation 'org.jspecify:jspecify:1.0.0'
+                }
+                implementation 'com.google.guava:guava:33.4.8-jre'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":" + taskName).outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, reportLocation + "/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+
+        // Verify that constraints are not included in dependencies
+        def rootDependency = bom.getDependencies().find { dep ->
+            dep.getRef().contains("hello-world@0.0.1-SNAPSHOT")
+        }
+        assert rootDependency != null
+        assert rootDependency.getDependencies().size() == 1
+        assert rootDependency.getDependencies().get(0).getRef().contains("guava@33.4.8-jre")
+
+        // Verify jspecify is still an entry in bom overall
+        def jspecifyDependency = bom.getDependencies().find { dep ->
+            dep.getRef().contains("jspecify@1.0.0")
+        }
+        assert jspecifyDependency != null
+
+        // Verify guava dependency exists and has its transitive dependencies
+        def guavaDependency = bom.getDependencies().find { dep ->
+            dep.getRef().contains("guava@33.4.8-jre")
+        }
+        assert guavaDependency != null
+        assert guavaDependency.getDependencies().size() > 1
+        assert guavaDependency.getDependencies().any { dep ->
+            dep.getRef().contains("jspecify@1.0.0")
+        }
+
+        where:
+        taskName             | reportLocation
+        "cyclonedxBom"       | "build/reports/cyclonedx"
+        // "cyclonedxDirectBom" | "build/reports/cyclonedx-direct" // TODO: enable once direct does not reference itself
+        javaVersion = JavaVersion.current()
+    }
+
 }
