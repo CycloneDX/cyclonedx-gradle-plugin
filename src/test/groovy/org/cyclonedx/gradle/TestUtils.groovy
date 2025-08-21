@@ -96,4 +96,6 @@ class TestUtils {
         arguments.add("--parallel")
         return arguments.toArray(new String[0])
     }
+
+    static int javaVersion = Integer.parseInt(System.getProperty("java.version").split("\\.")[0])
 }

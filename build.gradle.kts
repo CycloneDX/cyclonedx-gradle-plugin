@@ -47,7 +47,7 @@ dependencies {
     errorprone("com.google.errorprone:error_prone_core:2.41.0")
 }
 
-listOf(17, 21).forEach { version ->
+listOf(8, 11, 17, 21).forEach { version ->
     tasks.register<Test>("testJava$version") {
         description = "Runs tests with Java $version"
         group = "verification"
@@ -73,7 +73,7 @@ listOf(17, 21).forEach { version ->
 }
 
 tasks.named("test") {
-    dependsOn("testJava17", "testJava21")
+    dependsOn("testJava8", "testJava11", "testJava17", "testJava21")
     enabled = false // Prevents the default test task from running tests itself
 }
 

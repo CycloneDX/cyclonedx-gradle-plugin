@@ -19,20 +19,22 @@
 package org.cyclonedx.gradle
 
 import org.gradle.testfixtures.ProjectBuilder
+import org.junit.jupiter.api.Assumptions
 import spock.lang.Specification
+import spock.lang.Unroll
 
+@Unroll("java version: #javaVersion")
 class CycloneDxSpec extends Specification {
     static final String PLUGIN_ID = 'org.cyclonedx.bom'
 
-    def rootProject = ProjectBuilder.builder().withName("root").build()
-    def parentProject = ProjectBuilder.builder().withName("parent").withParent(rootProject).build()
-    def childProject = ProjectBuilder.builder().withName("child").withParent(parentProject).build()
-    def leafProject = ProjectBuilder.builder().withName("leaf").withParent(childProject).build()
-
-    def setup() {
-
+    def "cyclonedxBom task exists"() {
+        when:
+        Assumptions.assumeTrue(javaVersion >= 17)
+        def rootProject = ProjectBuilder.builder().withName("root").build()
+        def parentProject = ProjectBuilder.builder().withName("parent").withParent(rootProject).build()
+        def childProject = ProjectBuilder.builder().withName("child").withParent(parentProject).build()
+        def leafProject = ProjectBuilder.builder().withName("leaf").withParent(childProject).build()
         rootProject.apply plugin: PLUGIN_ID
-
         rootProject.allprojects {
             group = "group"
             version = "1.3"
@@ -40,10 +42,11 @@ class CycloneDxSpec extends Specification {
             buildDir = "buildDir"
         }
         leafProject.version = "1.3.1"
-    }
 
-    def "cyclonedxBom task exists"() {
-        expect:
-        leafProject.tasks.findByName('cyclonedxDirectBom')
+        then:
+        leafProject.tasks.named('cyclonedxDirectBom')
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 }

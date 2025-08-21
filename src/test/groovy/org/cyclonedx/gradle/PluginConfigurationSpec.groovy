@@ -8,9 +8,11 @@ import org.cyclonedx.model.ExternalReference
 import org.cyclonedx.model.Tool
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.Assumptions
 import spock.lang.Specification
+import spock.lang.Unroll
 
-
+@Unroll("java version: #javaVersion, task name: #taskName")
 class PluginConfigurationSpec extends Specification {
 
     def "simple-project should output boms in build/reports with default schema version"() {
@@ -18,6 +20,7 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("simple-project")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -36,6 +39,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
 
     }
 
@@ -66,6 +70,7 @@ class PluginConfigurationSpec extends Specification {
 
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -80,6 +85,10 @@ class PluginConfigurationSpec extends Specification {
         File aggregateBomReportDir = new File(testDir, "output-dir-aggregate-bom")
         assert aggregateBomReportDir.exists()
         aggregateBomReportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
+
+        where:
+        taskName = 'cyclonedxBom'
+        javaVersion = TestUtils.javaVersion
     }
 
     def "pom-xml-encoding project should not output errors to console"() {
@@ -87,6 +96,7 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("pom-xml-encoding")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -100,6 +110,10 @@ class PluginConfigurationSpec extends Specification {
         reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
 
         assert !result.output.contains("An error occurred attempting to read POM")
+
+        where:
+        taskName = 'cyclonedxBom'
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should use configured schemaVersion"() {
@@ -123,6 +137,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -142,6 +157,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should use project name as componentName"() {
@@ -167,6 +183,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -186,6 +203,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should use configured componentGroup"() {
@@ -209,6 +227,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -228,6 +247,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should use configured componentName"() {
@@ -251,6 +271,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -270,6 +291,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should use configured componentVersion"() {
@@ -293,6 +315,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -313,6 +336,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should use configured projectType"() {
@@ -335,6 +359,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -354,6 +379,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should use configured outputFormat to limit generated file"() {
@@ -382,6 +408,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -403,6 +430,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx-aggregate"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "kotlin-dsl-project should allow configuring all properties"() {
@@ -410,6 +438,7 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("kotlin-project")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -429,6 +458,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "kotlin-dsl-project-manufacture-licenses should allow definition of manufacture-data and licenses-data"() {
@@ -436,6 +466,7 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("kotlin-project-manufacture-licenses")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -465,6 +496,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "groovy-project-manufacture-licenses should allow definition of manufacture-data and licenses-data"() {
@@ -472,6 +504,7 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("groovy-project-manufacture-licenses")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -500,6 +533,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should skip configurations with regex"() {
@@ -523,6 +557,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -541,6 +576,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should include configurations with regex"() {
@@ -564,6 +600,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -582,6 +619,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should use 1.6 is default schema version"() {
@@ -599,6 +637,7 @@ class PluginConfigurationSpec extends Specification {
             """, "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -618,6 +657,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should print error if project group, name, or version unset"() {
@@ -635,6 +675,7 @@ class PluginConfigurationSpec extends Specification {
             """, "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -646,6 +687,10 @@ class PluginConfigurationSpec extends Specification {
         File jsonBom = new File(testDir, "build/reports/cyclonedx-direct/bom.json")
         assert jsonBom.text.contains("pkg:maven/unspecified/hello-world@unspecified?project_path=%3A")
         assert result.output.contains("Project group or version are not set for project [hello-world]")
+
+        where:
+        taskName = 'cyclonedxDirectBom'
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should include metadata by default"() {
@@ -665,6 +710,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -675,6 +721,10 @@ class PluginConfigurationSpec extends Specification {
         result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
         File jsonBom = new File(testDir, "build/reports/cyclonedx-direct/bom.json")
         assert jsonBom.text.contains("\"id\" : \"Apache-2.0\"")
+
+        where:
+        taskName = 'cyclonedxDirectBom'
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should not include metadata when includeMetadataResolution is false"() {
@@ -697,6 +747,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -707,6 +758,10 @@ class PluginConfigurationSpec extends Specification {
         result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
         File jsonBom = new File(testDir, "build/reports/cyclonedx-direct/bom.json")
         assert !jsonBom.text.contains("\"id\" : \"Apache-2.0\"")
+
+        where:
+        taskName = 'cyclonedxDirectBom'
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should not use deprecated tool section if schema is 1.5 or higher"() {
@@ -729,6 +784,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -743,6 +799,10 @@ class PluginConfigurationSpec extends Specification {
         Component cycloneDxTool = bom.getMetadata().getToolChoice().getComponents().get(0)
         assert cycloneDxTool.getName() == "cyclonedx-gradle-plugin"
         assert cycloneDxTool.getAuthor() == "CycloneDX"
+
+        where:
+        taskName = 'cyclonedxDirectBom'
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should use legacy tools section if schema is below 1.5"() {
@@ -765,6 +825,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -779,6 +840,10 @@ class PluginConfigurationSpec extends Specification {
         Tool tool = bom.getMetadata().getTools().get(0);
         assert tool.getName() == "cyclonedx-gradle-plugin"
         assert tool.getVendor() == "CycloneDX"
+
+        where:
+        taskName = 'cyclonedxDirectBom'
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should include external reference - build-system"() {
@@ -800,6 +865,7 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withEnvironment(["BUILD_URL": "https://jenkins.example.com/job/123"])
@@ -820,6 +886,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should include external reference - build-system using configured environment variables"() {
@@ -842,6 +909,7 @@ class PluginConfigurationSpec extends Specification {
             }''', "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withEnvironment(["SERVER": "https://ci.example.com", "BUILD_ID": "123"])
@@ -862,6 +930,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should not include external reference if specified environment variables do not exist"() {
@@ -884,6 +953,7 @@ class PluginConfigurationSpec extends Specification {
             }''', "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withEnvironment(["SERVER": "https://ci.example.com"])
@@ -901,5 +971,6 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = TestUtils.javaVersion
     }
 }
