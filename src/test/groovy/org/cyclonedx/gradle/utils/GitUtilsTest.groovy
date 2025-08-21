@@ -1,9 +1,13 @@
 package org.cyclonedx.gradle.utils
 
-import spock.lang.Specification;
+import org.cyclonedx.gradle.TestUtils
+import spock.lang.Specification
+import spock.lang.Unroll;
 
+@Unroll("java version: #javaVersion")
 class GitUtilsTest extends Specification {
 
+    @Unroll("java version: #javaVersion, protocol: #protocol")
     def "should sanitize valid non-ssh git remote url without user info"() {
         given: "A valid non-ssh git remote url without user info"
 
@@ -19,8 +23,10 @@ class GitUtilsTest extends Specification {
         protocol | _
         "https"  | _
         "http"   | _
+        javaVersion = TestUtils.javaVersion
     }
 
+    @Unroll("java version: #javaVersion, protocol: #protocol")
     def "should sanitize valid non-ssh git remote url with user info"() {
         given: "A valid non-ssh git remote url with user info"
 
@@ -36,8 +42,10 @@ class GitUtilsTest extends Specification {
         protocol | _
         "https"  | _
         "http"   | _
+        javaVersion = TestUtils.javaVersion
     }
 
+    @Unroll("java version: #javaVersion, prefix: #prefix")
     def "should sanitize valid ssh git remote url"() {
         given: "A valid ssh git remote url"
 
@@ -53,8 +61,10 @@ class GitUtilsTest extends Specification {
         prefix   | _
         "ssh://" | _
         ""       | _
+        javaVersion = TestUtils.javaVersion
     }
 
+    @Unroll("java version: #javaVersion, protocol: #protocol")
     def "should fail to sanitize invalid git remote url"() {
         given: "An invalid git remote url"
 
@@ -70,5 +80,6 @@ class GitUtilsTest extends Specification {
         "http"   | "username:password@"
         "git"    | ""
         "git"    | "username:password@"
+        javaVersion = TestUtils.javaVersion
     }
 }

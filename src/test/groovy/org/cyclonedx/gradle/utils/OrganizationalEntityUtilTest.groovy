@@ -5,8 +5,11 @@ import org.cyclonedx.gradle.TestUtils
 import org.cyclonedx.model.Bom
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.Assumptions
 import spock.lang.Specification
+import spock.lang.Unroll
 
+@Unroll("java version: #javaVersion")
 class OrganizationalEntityUtilTest extends Specification {
 
     def "manufacturer should be empty if no organizational entity is provided"() {
@@ -35,6 +38,7 @@ class OrganizationalEntityUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments( TestUtils.arguments("cyclonedxBom"))
@@ -47,6 +51,9 @@ class OrganizationalEntityUtilTest extends Specification {
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
         assert bom.getMetadata().getManufacturer() == null
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "manufacturer should be empty if empty organizational entity is provided"() {
@@ -77,6 +84,7 @@ class OrganizationalEntityUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -89,6 +97,9 @@ class OrganizationalEntityUtilTest extends Specification {
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
         assert bom.getMetadata().getManufacturer() == null
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "manufacturer should not be empty if organizational entity is provided"() {
@@ -120,6 +131,7 @@ class OrganizationalEntityUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -132,5 +144,8 @@ class OrganizationalEntityUtilTest extends Specification {
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
         assert bom.getMetadata().getManufacturer().getName() == "name"
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 }

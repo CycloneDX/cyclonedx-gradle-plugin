@@ -5,10 +5,14 @@ import org.cyclonedx.gradle.TestUtils
 import org.cyclonedx.model.Bom
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.Assumptions
 import spock.lang.Specification
+import spock.lang.Unroll
 
+@Unroll("java version: #javaVersion")
 class ExternalReferencesUtilTest extends Specification {
 
+    @Unroll("java version: #javaVersion, user info: #userInfo")
     def "should add git https remote url to metadata from .git directory"() {
         given: "A mocked project directory with .git config and https url"
         File testDir = TestUtils.createFromString(
@@ -31,6 +35,7 @@ class ExternalReferencesUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -51,8 +56,10 @@ class ExternalReferencesUtilTest extends Specification {
         ""                   | _
         "username@"          | _
         "username:password@" | _
+        javaVersion = TestUtils.javaVersion
     }
 
+    @Unroll("java version: #javaVersion, prefix: #prefix")
     def "should add git ssh remote url to metadata from .git directory"() {
         given: "A mocked project directory with .git config and ssh url"
         File testDir = TestUtils.createFromString(
@@ -75,6 +82,7 @@ class ExternalReferencesUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -93,6 +101,7 @@ class ExternalReferencesUtilTest extends Specification {
         prefix   | _
         ""       | _
         "ssh://" | _
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should add git reference to metadata from environment (Jenkins e.g.)"() {
@@ -116,6 +125,7 @@ class ExternalReferencesUtilTest extends Specification {
         )
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -130,6 +140,9 @@ class ExternalReferencesUtilTest extends Specification {
 
         assert bom.getMetadata().getComponent().getExternalReferences().stream()
             .anyMatch { er -> er.url == "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git" }
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should not set git remote url if the working directory is not a valid repo nor has a valid environment variable"() {
@@ -154,6 +167,7 @@ class ExternalReferencesUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -167,8 +181,12 @@ class ExternalReferencesUtilTest extends Specification {
 
         assert bom.getMetadata().getComponent().getExternalReferences().stream()
             .noneMatch { er -> er.url == "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git" }
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
+    @Unroll("java version: #javaVersion, user info: #userInfo")
     def "should set https remote git url by custom configuration"() {
         given: "A mocked project directory with no git repo configuration"
         File testDir = TestUtils.createFromString(
@@ -200,6 +218,7 @@ class ExternalReferencesUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -225,8 +244,10 @@ class ExternalReferencesUtilTest extends Specification {
         ""                   | _
         "username@"          | _
         "username:password@" | _
+        javaVersion = TestUtils.javaVersion
     }
 
+    @Unroll("java version: #javaVersion, prefix: #prefix")
     def "should set ssh remote git url by custom configuration"() {
         given: "A mocked project directory with no git repo configuration"
         File testDir = TestUtils.createFromString(
@@ -259,6 +280,7 @@ class ExternalReferencesUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -282,6 +304,7 @@ class ExternalReferencesUtilTest extends Specification {
         where:
         prefix   | _
         "ssh://" | _
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should ignore invalid url"() {
@@ -315,6 +338,7 @@ class ExternalReferencesUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -328,6 +352,9 @@ class ExternalReferencesUtilTest extends Specification {
 
         assert bom.getMetadata().getComponent().getExternalReferences().stream()
             .noneMatch { er -> er.url == "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git" }
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should prioritize custom configuration over environment variable and repo config"() {
@@ -362,6 +389,7 @@ class ExternalReferencesUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withEnvironment(["GIT_URL": "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"])
@@ -381,5 +409,8 @@ class ExternalReferencesUtilTest extends Specification {
                         && er.type.name() == "VCS"
                 }
             }
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 }

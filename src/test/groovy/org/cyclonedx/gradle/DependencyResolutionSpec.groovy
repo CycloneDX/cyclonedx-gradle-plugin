@@ -9,8 +9,11 @@ import org.cyclonedx.model.Dependency
 import org.cyclonedx.model.Hash
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.Assumptions
 import spock.lang.Specification
+import spock.lang.Unroll
 
+@Unroll("java version: #javaVersion")
 class DependencyResolutionSpec extends Specification {
 
     def "only add component with valid purl"() {
@@ -32,6 +35,7 @@ class DependencyResolutionSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -45,6 +49,9 @@ class DependencyResolutionSpec extends Specification {
         Component quarkusJackson = bom.getComponents().find(c -> c.name == 'quarkus-jackson')
 
         assert quarkusJackson.getBomRef() != null
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "flatten non-jar dependencies"() {
@@ -65,6 +72,7 @@ class DependencyResolutionSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -84,6 +92,9 @@ class DependencyResolutionSpec extends Specification {
                 dep.getRef() == "pkg:maven/org.hibernate/hibernate-core@5.6.15.Final?type=jar"
                     || dep.getRef() == "pkg:maven/com.example/hello-world@1.0.0?project_path=%3A"
             }
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should contain correct hashes"() {
@@ -109,6 +120,7 @@ class DependencyResolutionSpec extends Specification {
             }""", "rootProject.name = 'simple-project'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -127,6 +139,9 @@ class DependencyResolutionSpec extends Specification {
         Hash hashb =
             componentb.hashes.find(c -> c.algorithm == "SHA-256" && c.value == "5a5407bd92e71336b546642b8b62b6a9544bca5c4ab2fbb8864d9faa5400ba48")
         assert hashb != null
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should generate bom for non-jar artrifacts"() {
@@ -151,6 +166,7 @@ class DependencyResolutionSpec extends Specification {
             }""", "rootProject.name = 'simple-project'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -163,6 +179,9 @@ class DependencyResolutionSpec extends Specification {
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         Component componentc = bom.getComponents().find(c -> c.bomRef == 'pkg:maven/com.test/componentc@1.0.0?type=tgz')
         assert componentc != null
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "should build bom successfully for native kotlin project"() {
@@ -170,6 +189,7 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("native-kotlin-project")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -182,6 +202,9 @@ class DependencyResolutionSpec extends Specification {
 
         assert reportDir.exists()
         reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "loops between jar dependencies in the dependency graph should be processed"() {
@@ -189,6 +212,7 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("dependency-graph-loop")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -200,6 +224,9 @@ class DependencyResolutionSpec extends Specification {
         File reportDir = new File(testDir, "build/reports/cyclonedx")
 
         assert reportDir.exists()
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "loops between non-jar dependencies in the dependency graph should be processed"() {
@@ -224,6 +251,7 @@ class DependencyResolutionSpec extends Specification {
             }""", "rootProject.name = 'simple-project'")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -238,6 +266,9 @@ class DependencyResolutionSpec extends Specification {
         assert componentc != null
         Component componentd = bom.getComponents().find(c -> c.bomRef == 'pkg:maven/com.test/componentd@1.0.0?type=tgz')
         assert componentd != null
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "multi-module with plugin at root should output boms in build/reports with default version including sub-projects as components"() {
@@ -245,6 +276,7 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("multi-module")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom")
@@ -275,6 +307,9 @@ class DependencyResolutionSpec extends Specification {
 
         def testComponent = JsonBomComponent.of(jsonBom, "pkg:maven/org.junit.jupiter/junit-jupiter-api@5.13.4?type=jar")
         assert testComponent.hasComponentDefined()
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "multi-module with plugin in subproject should output boms in build/reports with for sub-project app-a"() {
@@ -282,6 +317,7 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("multi-module-subproject")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(":app-a:cyclonedxDirectBom"))
@@ -311,6 +347,9 @@ class DependencyResolutionSpec extends Specification {
         def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
         assert !appBComponent.hasComponentDefined()
         assert appBComponent.dependencies == null
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "multi-module with plugin in subproject should output boms in build/reports with for sub-project app-b"() {
@@ -318,6 +357,7 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("multi-module-subproject")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(":app-a:assemble", ":app-b:cyclonedxDirectBom"))
@@ -349,6 +389,9 @@ class DependencyResolutionSpec extends Specification {
         def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
         assert !appBComponent.hasComponentDefined()
         assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     def "root project must be connected to subprojects when no root configurations available"() {
@@ -356,6 +399,7 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("multi-module-without-root-dependencies")
 
         when:
+        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -372,6 +416,9 @@ class DependencyResolutionSpec extends Specification {
         def rootComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/multi-module@1.0.0?project_path=%3A")
         assert rootComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
         assert rootComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
+
+        where:
+        javaVersion = TestUtils.javaVersion
     }
 
     private static def loadJsonBom(File file) {
