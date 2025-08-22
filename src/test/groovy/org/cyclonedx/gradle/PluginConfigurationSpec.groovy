@@ -8,10 +8,11 @@ import org.cyclonedx.model.ExternalReference
 import org.cyclonedx.model.Tool
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
-import org.junit.jupiter.api.Assumptions
+import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Unroll
 
+@IgnoreIf({ TestUtils.javaVersion < 17 })
 @Unroll("java version: #javaVersion, task name: #taskName")
 class PluginConfigurationSpec extends Specification {
 
@@ -20,7 +21,6 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("simple-project")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -70,7 +70,6 @@ class PluginConfigurationSpec extends Specification {
 
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -96,7 +95,6 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("pom-xml-encoding")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -137,7 +135,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -183,7 +180,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -227,7 +223,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -271,7 +266,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -315,7 +309,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -359,7 +352,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -408,7 +400,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -438,7 +429,6 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("kotlin-project")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -466,7 +456,6 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("kotlin-project-manufacture-licenses")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -504,7 +493,6 @@ class PluginConfigurationSpec extends Specification {
         File testDir = TestUtils.duplicate("groovy-project-manufacture-licenses")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -557,7 +545,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -600,7 +587,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -637,7 +623,6 @@ class PluginConfigurationSpec extends Specification {
             """, "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
@@ -675,7 +660,6 @@ class PluginConfigurationSpec extends Specification {
             """, "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -710,7 +694,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -747,7 +730,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -784,7 +766,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -825,7 +806,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -865,7 +845,6 @@ class PluginConfigurationSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withEnvironment(["BUILD_URL": "https://jenkins.example.com/job/123"])
@@ -909,7 +888,6 @@ class PluginConfigurationSpec extends Specification {
             }''', "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withEnvironment(["SERVER": "https://ci.example.com", "BUILD_ID": "123"])
@@ -953,7 +931,6 @@ class PluginConfigurationSpec extends Specification {
             }''', "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withEnvironment(["SERVER": "https://ci.example.com"])

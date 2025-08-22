@@ -28,9 +28,8 @@ class GradleVersionsSpec extends Specification {
 
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def gradleVersionMajor = Integer.parseInt(gradleVersion.split("\\.")[0])
-        Assumptions.assumeFalse(javaVersion < 17 && gradleVersionMajor >= 9)
+        Assumptions.assumeFalse(javaVersion < 17 && gradleVersionMajor >= 9, "Gradle 9 requires Java 17 or higher")
         def result = GradleRunner.create()
         .withGradleVersion(gradleVersion)
             .withProjectDir(testDir)
@@ -43,6 +42,6 @@ class GradleVersionsSpec extends Specification {
         where:
         taskName = 'cyclonedxBom'
         javaVersion = TestUtils.javaVersion
-        gradleVersion << ['9.0.0', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7']
+        gradleVersion << ['9.0.0', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
     }
 }

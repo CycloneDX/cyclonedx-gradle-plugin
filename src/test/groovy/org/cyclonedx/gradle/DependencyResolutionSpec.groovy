@@ -9,10 +9,11 @@ import org.cyclonedx.model.Dependency
 import org.cyclonedx.model.Hash
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
-import org.junit.jupiter.api.Assumptions
+import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Unroll
 
+@IgnoreIf({ TestUtils.javaVersion < 17 })
 @Unroll("java version: #javaVersion")
 class DependencyResolutionSpec extends Specification {
 
@@ -35,7 +36,6 @@ class DependencyResolutionSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -72,7 +72,6 @@ class DependencyResolutionSpec extends Specification {
             }""", "rootProject.name = 'hello-world'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
@@ -120,7 +119,6 @@ class DependencyResolutionSpec extends Specification {
             }""", "rootProject.name = 'simple-project'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -166,7 +164,6 @@ class DependencyResolutionSpec extends Specification {
             }""", "rootProject.name = 'simple-project'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -189,7 +186,6 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("native-kotlin-project")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -212,7 +208,6 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("dependency-graph-loop")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -251,7 +246,6 @@ class DependencyResolutionSpec extends Specification {
             }""", "rootProject.name = 'simple-project'")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -276,7 +270,6 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("multi-module")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom")
@@ -317,7 +310,6 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("multi-module-subproject")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(":app-a:cyclonedxDirectBom"))
@@ -357,7 +349,6 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("multi-module-subproject")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(":app-a:assemble", ":app-b:cyclonedxDirectBom"))
@@ -399,7 +390,6 @@ class DependencyResolutionSpec extends Specification {
         File testDir = TestUtils.duplicate("multi-module-without-root-dependencies")
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))

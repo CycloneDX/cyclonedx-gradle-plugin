@@ -6,9 +6,11 @@ import org.cyclonedx.model.Bom
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Assumptions
+import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Unroll
 
+@IgnoreIf({ TestUtils.javaVersion < 17 })
 @Unroll("java version: #javaVersion")
 class OrganizationalEntityUtilTest extends Specification {
 
@@ -38,7 +40,6 @@ class OrganizationalEntityUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments( TestUtils.arguments("cyclonedxBom"))
@@ -84,7 +85,6 @@ class OrganizationalEntityUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))
@@ -131,7 +131,6 @@ class OrganizationalEntityUtilTest extends Specification {
         System.setProperty("user.dir", testDir.toPath().toString())
 
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def result = GradleRunner.create()
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments("cyclonedxBom"))

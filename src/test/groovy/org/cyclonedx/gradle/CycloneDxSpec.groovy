@@ -19,17 +19,17 @@
 package org.cyclonedx.gradle
 
 import org.gradle.testfixtures.ProjectBuilder
-import org.junit.jupiter.api.Assumptions
+import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Unroll
 
+@IgnoreIf({ TestUtils.javaVersion < 17 })
 @Unroll("java version: #javaVersion")
 class CycloneDxSpec extends Specification {
     static final String PLUGIN_ID = 'org.cyclonedx.bom'
 
     def "cyclonedxBom task exists"() {
         when:
-        Assumptions.assumeTrue(javaVersion >= 17)
         def rootProject = ProjectBuilder.builder().withName("root").build()
         def parentProject = ProjectBuilder.builder().withName("parent").withParent(rootProject).build()
         def childProject = ProjectBuilder.builder().withName("child").withParent(parentProject).build()
