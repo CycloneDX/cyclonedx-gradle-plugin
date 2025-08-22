@@ -78,6 +78,11 @@ public class CyclonedxPlugin implements Plugin<Project> {
 
     @Override
     public void apply(final Project project) {
+        if (Integer.parseInt(System.getProperty("java.version").split("\\.")[0]) < 17) {
+            LOGGER.warn(
+                    "warning: {} Support of Java versions prior to 17 is deprecated and will be removed in a future release.",
+                    LOG_PREFIX);
+        }
         final CyclonedxBomExtension ext = project.getExtensions()
                 .create(cyclonedxBomExtensionName, CyclonedxBomExtension.class, project.getObjects());
 
