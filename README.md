@@ -12,15 +12,6 @@ The CycloneDX Gradle plugin creates an aggregate of all direct and transitive de
 and creates a valid CycloneDX SBOM. CycloneDX is a lightweight software bill of materials
 (SBOM) specification designed for use in application security contexts and supply chain component analysis.
 
-> [!WARNING]
-> **Java 17 or newer**
-> The plugin is tested only with Java 17 and newer versions. Compatibility with older Java versions is deprecated.
-
-> [!WARNING]
-> **Gradle 9 or newer**
-> Only Gradle 9 is officially supported. Users on older Gradle versions are advised to upgrade or use older versions of
-> this plugin.
-
 ## Table of Contents
 
 - [Features](#features)
@@ -72,6 +63,10 @@ plugins {
 > [!IMPORTANT]
 > Plugin will register aggregate task `cyclonedxBom` only in the project where it is applied. This task
 > aggregates SBOMs from the project and all subprojects in multi-project builds.
+
+> [!IMPORTANT]
+> Although the plugin is compatible with Java versions starting from 8, support of all versions prior to 17 is
+> deprecated it will be removed in future releases.
 
 ## Quick Start
 
@@ -423,7 +418,7 @@ The following table provides information on the version of this Gradle plugin, t
 
 | Version | Gradle Version |
 |---------|----------------|
-| 3.x.x   | Gradle 9.0+    |
+| 3.0.x   | Gradle 8.4+    |
 | 2.x.x   | Gradle 8.0+    |
 | 1.x.x   | Gradle <8.0    |
 
