@@ -411,6 +411,27 @@ class DependencyResolutionSpec extends Specification {
         javaVersion = TestUtils.javaVersion
     }
 
+    def "no url in distributionManagement repository"() {
+        given:
+        File testDir = TestUtils.duplicate("bad-distributionManagement")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports/cyclonedx")
+
+        assert reportDir.exists()
+
+        where:
+        javaVersion = TestUtils.javaVersion
+    }
+
     private static def loadJsonBom(File file) {
         return new JsonSlurper().parse(file)
     }

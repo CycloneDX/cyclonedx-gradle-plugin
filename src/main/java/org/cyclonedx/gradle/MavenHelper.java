@@ -141,7 +141,8 @@ class MavenHelper {
             }
         }
         if (project.getDistributionManagement() != null
-                && project.getDistributionManagement().getRepository() != null) {
+                && project.getDistributionManagement().getRepository() != null
+                && project.getDistributionManagement().getRepository().getUrl() != null) {
             if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
                 addExternalReference(
                         ExternalReference.Type.DISTRIBUTION,
