@@ -413,7 +413,25 @@ class DependencyResolutionSpec extends Specification {
 
     def "no url in distributionManagement repository"() {
         given:
-        File testDir = TestUtils.duplicate("bad-distributionManagement")
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+                id 'maven-publish'
+            }
+
+            repositories {
+                mavenCentral()
+                mavenLocal()
+            }
+
+            group = 'com.example'
+            version = '1.0.0'
+
+            dependencies {
+                // dependency with incorrect distributionManagement section (absent repository url)
+                implementation group: 'io.dropwizard.logback', name: 'logback-throttling-appender', version:'1.5.1'
+            }""", "rootProject.name = 'hello-world'")
 
         when:
         def result = GradleRunner.create()
