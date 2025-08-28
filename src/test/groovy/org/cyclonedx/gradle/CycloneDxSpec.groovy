@@ -18,12 +18,13 @@
  */
 package org.cyclonedx.gradle
 
+import org.gradle.api.JavaVersion
 import org.gradle.testfixtures.ProjectBuilder
 import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Unroll
 
-@IgnoreIf({ TestUtils.javaVersion < 17 })
+@IgnoreIf({ !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) })
 @Unroll("java version: #javaVersion")
 class CycloneDxSpec extends Specification {
     static final String PLUGIN_ID = 'org.cyclonedx.bom'
@@ -47,6 +48,6 @@ class CycloneDxSpec extends Specification {
         leafProject.tasks.named('cyclonedxDirectBom')
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 }

@@ -6,13 +6,14 @@ import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
 import org.cyclonedx.model.ExternalReference
 import org.cyclonedx.model.Tool
+import org.gradle.api.JavaVersion
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Unroll
 
-@IgnoreIf({ TestUtils.javaVersion < 17 })
+@IgnoreIf({ !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) })
 @Unroll("java version: #javaVersion, task name: #taskName")
 class PluginConfigurationSpec extends Specification {
 
@@ -39,7 +40,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
 
     }
 
@@ -87,7 +88,7 @@ class PluginConfigurationSpec extends Specification {
 
         where:
         taskName = 'cyclonedxBom'
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "pom-xml-encoding project should not output errors to console"() {
@@ -111,7 +112,7 @@ class PluginConfigurationSpec extends Specification {
 
         where:
         taskName = 'cyclonedxBom'
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should use configured schemaVersion"() {
@@ -154,7 +155,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should use project name as componentName"() {
@@ -199,7 +200,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should use configured componentGroup"() {
@@ -242,7 +243,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should use configured componentName"() {
@@ -285,7 +286,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should use configured componentVersion"() {
@@ -329,7 +330,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should use configured projectType"() {
@@ -371,7 +372,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should use configured outputFormat to limit generated file"() {
@@ -421,7 +422,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx-aggregate"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "kotlin-dsl-project should allow configuring all properties"() {
@@ -448,7 +449,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "kotlin-dsl-project-manufacture-licenses should allow definition of manufacture-data and licenses-data"() {
@@ -485,7 +486,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "groovy-project-manufacture-licenses should allow definition of manufacture-data and licenses-data"() {
@@ -521,7 +522,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should skip configurations with regex"() {
@@ -563,7 +564,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should include configurations with regex"() {
@@ -605,7 +606,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should use 1.6 is default schema version"() {
@@ -642,7 +643,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should print error if project group, name, or version unset"() {
@@ -674,7 +675,7 @@ class PluginConfigurationSpec extends Specification {
 
         where:
         taskName = 'cyclonedxDirectBom'
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should include metadata by default"() {
@@ -707,7 +708,7 @@ class PluginConfigurationSpec extends Specification {
 
         where:
         taskName = 'cyclonedxDirectBom'
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should not include metadata when includeMetadataResolution is false"() {
@@ -743,7 +744,7 @@ class PluginConfigurationSpec extends Specification {
 
         where:
         taskName = 'cyclonedxDirectBom'
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should not use deprecated tool section if schema is 1.5 or higher"() {
@@ -783,7 +784,7 @@ class PluginConfigurationSpec extends Specification {
 
         where:
         taskName = 'cyclonedxDirectBom'
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should use legacy tools section if schema is below 1.5"() {
@@ -823,7 +824,7 @@ class PluginConfigurationSpec extends Specification {
 
         where:
         taskName = 'cyclonedxDirectBom'
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should include external reference - build-system"() {
@@ -865,7 +866,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should include external reference - build-system using configured environment variables"() {
@@ -908,7 +909,7 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should not include external reference if specified environment variables do not exist"() {
@@ -948,6 +949,6 @@ class PluginConfigurationSpec extends Specification {
         taskName             | reportLocation
         "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
         "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 }

@@ -1,6 +1,6 @@
 package org.cyclonedx.gradle.utils
 
-import org.cyclonedx.gradle.TestUtils
+import org.gradle.api.JavaVersion
 import spock.lang.Specification
 import spock.lang.Unroll;
 
@@ -23,7 +23,7 @@ class GitUtilsTest extends Specification {
         protocol | _
         "https"  | _
         "http"   | _
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     @Unroll("java version: #javaVersion, protocol: #protocol")
@@ -42,7 +42,7 @@ class GitUtilsTest extends Specification {
         protocol | _
         "https"  | _
         "http"   | _
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     @Unroll("java version: #javaVersion, prefix: #prefix")
@@ -61,7 +61,7 @@ class GitUtilsTest extends Specification {
         prefix   | _
         "ssh://" | _
         ""       | _
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     @Unroll("java version: #javaVersion, protocol: #protocol")
@@ -80,6 +80,6 @@ class GitUtilsTest extends Specification {
         "http"   | "username:password@"
         "git"    | ""
         "git"    | "username:password@"
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 }
