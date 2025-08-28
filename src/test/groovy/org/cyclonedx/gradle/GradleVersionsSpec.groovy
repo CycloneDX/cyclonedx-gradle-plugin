@@ -1,5 +1,6 @@
 package org.cyclonedx.gradle
 
+import org.gradle.api.JavaVersion
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Assumptions
@@ -29,7 +30,9 @@ class GradleVersionsSpec extends Specification {
 
         when:
         def gradleVersionMajor = Integer.parseInt(gradleVersion.split("\\.")[0])
-        Assumptions.assumeFalse(javaVersion < 17 && gradleVersionMajor >= 9, "Gradle 9 requires Java 17 or higher")
+        Assumptions.assumeFalse(
+            !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) && gradleVersionMajor >= 9,
+            "Gradle 9 requires Java 17 or higher")
         def result = GradleRunner.create()
         .withGradleVersion(gradleVersion)
             .withProjectDir(testDir)
@@ -41,7 +44,7 @@ class GradleVersionsSpec extends Specification {
 
         where:
         taskName = 'cyclonedxBom'
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
         gradleVersion << ['9.0.0', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
     }
 }

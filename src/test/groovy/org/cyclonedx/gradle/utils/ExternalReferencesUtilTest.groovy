@@ -3,13 +3,14 @@ package org.cyclonedx.gradle.utils
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.cyclonedx.gradle.TestUtils
 import org.cyclonedx.model.Bom
+import org.gradle.api.JavaVersion
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Unroll
 
-@IgnoreIf({ TestUtils.javaVersion < 17 })
+@IgnoreIf({ !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) })
 @Unroll("java version: #javaVersion")
 class ExternalReferencesUtilTest extends Specification {
 
@@ -56,7 +57,7 @@ class ExternalReferencesUtilTest extends Specification {
         ""                   | _
         "username@"          | _
         "username:password@" | _
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     @Unroll("java version: #javaVersion, prefix: #prefix")
@@ -100,7 +101,7 @@ class ExternalReferencesUtilTest extends Specification {
         prefix   | _
         ""       | _
         "ssh://" | _
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should add git reference to metadata from environment (Jenkins e.g.)"() {
@@ -140,7 +141,7 @@ class ExternalReferencesUtilTest extends Specification {
             .anyMatch { er -> er.url == "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git" }
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should not set git remote url if the working directory is not a valid repo nor has a valid environment variable"() {
@@ -180,7 +181,7 @@ class ExternalReferencesUtilTest extends Specification {
             .noneMatch { er -> er.url == "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git" }
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     @Unroll("java version: #javaVersion, user info: #userInfo")
@@ -240,7 +241,7 @@ class ExternalReferencesUtilTest extends Specification {
         ""                   | _
         "username@"          | _
         "username:password@" | _
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     @Unroll("java version: #javaVersion, prefix: #prefix")
@@ -299,7 +300,7 @@ class ExternalReferencesUtilTest extends Specification {
         where:
         prefix   | _
         "ssh://" | _
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should ignore invalid url"() {
@@ -348,7 +349,7 @@ class ExternalReferencesUtilTest extends Specification {
             .noneMatch { er -> er.url == "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git" }
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should prioritize custom configuration over environment variable and repo config"() {
@@ -404,6 +405,6 @@ class ExternalReferencesUtilTest extends Specification {
             }
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 }

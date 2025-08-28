@@ -7,13 +7,14 @@ import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
 import org.cyclonedx.model.Dependency
 import org.cyclonedx.model.Hash
+import org.gradle.api.JavaVersion
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Unroll
 
-@IgnoreIf({ TestUtils.javaVersion < 17 })
+@IgnoreIf({ !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) })
 @Unroll("java version: #javaVersion")
 class DependencyResolutionSpec extends Specification {
 
@@ -51,7 +52,7 @@ class DependencyResolutionSpec extends Specification {
         assert quarkusJackson.getBomRef() != null
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "flatten non-jar dependencies"() {
@@ -93,7 +94,7 @@ class DependencyResolutionSpec extends Specification {
             }
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should contain correct hashes"() {
@@ -139,7 +140,7 @@ class DependencyResolutionSpec extends Specification {
         assert hashb != null
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should generate bom for non-jar artrifacts"() {
@@ -178,7 +179,7 @@ class DependencyResolutionSpec extends Specification {
         assert componentc != null
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "should build bom successfully for native kotlin project"() {
@@ -200,7 +201,7 @@ class DependencyResolutionSpec extends Specification {
         reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "loops between jar dependencies in the dependency graph should be processed"() {
@@ -221,7 +222,7 @@ class DependencyResolutionSpec extends Specification {
         assert reportDir.exists()
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "loops between non-jar dependencies in the dependency graph should be processed"() {
@@ -262,7 +263,7 @@ class DependencyResolutionSpec extends Specification {
         assert componentd != null
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "multi-module with plugin at root should output boms in build/reports with default version including sub-projects as components"() {
@@ -302,7 +303,7 @@ class DependencyResolutionSpec extends Specification {
         assert testComponent.hasComponentDefined()
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "multi-module with plugin in subproject should output boms in build/reports with for sub-project app-a"() {
@@ -341,7 +342,7 @@ class DependencyResolutionSpec extends Specification {
         assert appBComponent.dependencies == null
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "multi-module with plugin in subproject should output boms in build/reports with for sub-project app-b"() {
@@ -382,7 +383,7 @@ class DependencyResolutionSpec extends Specification {
         assert appBComponent.dependsOn("pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "root project must be connected to subprojects when no root configurations available"() {
@@ -408,7 +409,7 @@ class DependencyResolutionSpec extends Specification {
         assert rootComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "no url in distributionManagement repository"() {
@@ -447,7 +448,7 @@ class DependencyResolutionSpec extends Specification {
         assert reportDir.exists()
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     private static def loadJsonBom(File file) {

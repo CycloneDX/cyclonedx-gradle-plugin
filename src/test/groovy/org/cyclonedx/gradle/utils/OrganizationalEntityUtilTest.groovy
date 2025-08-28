@@ -3,14 +3,14 @@ package org.cyclonedx.gradle.utils
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.cyclonedx.gradle.TestUtils
 import org.cyclonedx.model.Bom
+import org.gradle.api.JavaVersion
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
-import org.junit.jupiter.api.Assumptions
 import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Unroll
 
-@IgnoreIf({ TestUtils.javaVersion < 17 })
+@IgnoreIf({ !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) })
 @Unroll("java version: #javaVersion")
 class OrganizationalEntityUtilTest extends Specification {
 
@@ -54,7 +54,7 @@ class OrganizationalEntityUtilTest extends Specification {
         assert bom.getMetadata().getManufacturer() == null
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "manufacturer should be empty if empty organizational entity is provided"() {
@@ -99,7 +99,7 @@ class OrganizationalEntityUtilTest extends Specification {
         assert bom.getMetadata().getManufacturer() == null
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 
     def "manufacturer should not be empty if organizational entity is provided"() {
@@ -145,6 +145,6 @@ class OrganizationalEntityUtilTest extends Specification {
         assert bom.getMetadata().getManufacturer().getName() == "name"
 
         where:
-        javaVersion = TestUtils.javaVersion
+        javaVersion = JavaVersion.current()
     }
 }

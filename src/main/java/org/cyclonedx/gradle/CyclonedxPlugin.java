@@ -21,6 +21,7 @@ package org.cyclonedx.gradle;
 import com.google.common.collect.ImmutableMap;
 import java.util.stream.Stream;
 import javax.inject.Inject;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -78,7 +79,7 @@ public class CyclonedxPlugin implements Plugin<Project> {
 
     @Override
     public void apply(final Project project) {
-        if (Integer.parseInt(System.getProperty("java.version").split("\\.")[0]) < 17) {
+        if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
             LOGGER.warn(
                     "warning: {} Support of Java versions prior to 17 is deprecated and will be removed in a future release.",
                     LOG_PREFIX);
