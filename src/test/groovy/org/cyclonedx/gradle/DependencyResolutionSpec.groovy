@@ -86,11 +86,11 @@ class DependencyResolutionSpec extends Specification {
         Dependency root = bom.getDependencies().find(dependency -> dependency.getRef().contains("example"))
 
         assert bom.getDependencies().find(dependency -> dependency.getRef().contains("pkg:maven/javax.persistence/javax.persistence-api@2.2?type=jar"))
-        assert root.getDependencies().size() == 2
+        assert bom.getDependencies().find(dependency -> dependency.getRef().contains("hello-world@1.0.0"))
+        assert root.getDependencies().size() == 1
         assert root.getDependencies().stream()
             .allMatch { dep ->
                 dep.getRef() == "pkg:maven/org.hibernate/hibernate-core@5.6.15.Final?type=jar"
-                    || dep.getRef() == "pkg:maven/com.example/hello-world@1.0.0?project_path=%3A"
             }
 
         where:

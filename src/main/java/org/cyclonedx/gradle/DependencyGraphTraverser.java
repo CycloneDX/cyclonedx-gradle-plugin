@@ -101,9 +101,15 @@ class DependencyGraphTraverser {
                 graph.put(graphNode, new HashSet<>());
                 LOGGER.debug("{} Traversing node with ID {}", LOG_PREFIX, graphNode.id);
                 for (final DependencyResult dep : graphNode.getResult().getDependencies()) {
+                    if (dep.isConstraint()) {
+                        continue; // Skip constraints as they do not represent a dependency in the graph
+                    }
                     if (dep instanceof ResolvedDependencyResult) {
                         final ResolvedComponentResult dependencyComponent =
                                 ((ResolvedDependencyResult) dep).getSelected();
+                        if (graphNode.id.equals(dependencyComponent.getId())) {
+                            continue; // Skip self-references
+                        }
                         LOGGER.debug(
                                 "{} Node with ID {} has dependency with ID {}",
                                 LOG_PREFIX,
