@@ -951,4 +951,44 @@ class PluginConfigurationSpec extends Specification {
         "cyclonedxBom"       | "build/reports/cyclonedx"
         javaVersion = JavaVersion.current()
     }
+
+    def "should attach bom to maven-publish"() {
+        given:
+        File testDir = TestUtils.createFromString('''
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java-library'
+                id 'maven-publish'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            publishing {
+                publications {
+                    mavenJava(MavenPublication) {
+                        from components.java
+                    }
+                }
+            }
+            ''', "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        println result.output
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        result.task(":" + taskName).outcome != TaskOutcome.FAILED
+
+        where:
+        taskName = "publishToMavenLocal"
+        javaVersion = JavaVersion.current()
+    }
 }

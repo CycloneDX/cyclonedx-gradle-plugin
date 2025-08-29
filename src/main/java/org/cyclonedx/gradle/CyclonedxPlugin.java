@@ -30,7 +30,9 @@ import org.gradle.api.file.Directory;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.tasks.TaskProvider;
+import org.gradle.api.publish.PublishingExtension;
+import org.gradle.api.publish.maven.MavenPublication;
+import org.gradle.api.publish.maven.tasks.AbstractPublishToMaven;
 
 /**
  * Entrypoint of the plugin which simply configures one task
@@ -123,6 +125,29 @@ public class CyclonedxPlugin implements Plugin<Project> {
                                                     "configuration",
                                                     cyclonedxDirectConfigurationName)));
                 }));
+
+        project.getPluginManager().withPlugin("maven-publish", publish -> {
+            project.getExtensions()
+                    .getByType(PublishingExtension.class)
+                    .getPublications()
+                    .forEach(publication -> {
+                        if (publication instanceof MavenPublication) {
+                            final MavenPublication mavenPublication = (MavenPublication) publication;
+                            // Attach to every publication
+                            mavenPublication.artifact(
+                                    project.getTasks()
+                                            .withType(CyclonedxAggregateTask.class)
+                                            .getByName(cyclonedxAggregateTaskName)
+                                            .getJsonOutput()
+                                            .getAsFile()
+                                            .get()
+                                            .getPath(),
+                                    config -> {
+                                        config.setClassifier("bom");
+                                    });
+                        }
+                    });
+        });
     }
 
     private void configureProject(final Project project, final CyclonedxBomExtension ext) {
@@ -139,6 +164,7 @@ public class CyclonedxPlugin implements Plugin<Project> {
         cyclonedxBomConfiguration.setCanBeConsumed(true);
         cyclonedxBomConfiguration.setCanBeResolved(false);
         registerCyclonedxBomTask(project, ext);
+        configureBomPublication(project);
     }
 
     private void registerCyclonedxAggregateBomTask(
@@ -180,9 +206,8 @@ public class CyclonedxPlugin implements Plugin<Project> {
         });
     }
 
-    private TaskProvider<CyclonedxDirectTask> registerCyclonedxBomTask(
-            final Project project, final CyclonedxBomExtension ext) {
-        return project.getTasks().register(cyclonedxDirectTaskName, CyclonedxDirectTask.class, task -> {
+    private void registerCyclonedxBomTask(final Project project, final CyclonedxBomExtension ext) {
+        project.getTasks().register(cyclonedxDirectTaskName, CyclonedxDirectTask.class, task -> {
             task.getComponentGroup()
                     .set(ext.getComponentGroup().orElse(project.getProviders().provider(() -> project.getGroup()
                             .toString())));
@@ -206,6 +231,65 @@ public class CyclonedxPlugin implements Plugin<Project> {
             task.getLicenseChoice().convention(ext.getLicenseChoice());
             task.getIncludeBomSerialNumber().set(ext.getIncludeBomSerialNumber());
             task.getIncludeBuildSystem().set(ext.getIncludeBuildSystem());
+        });
+    }
+
+    private void configureBomPublication(final Project project) {
+        project.getPluginManager().withPlugin("maven-publish", publish -> {
+            project.getTasks()
+                    .withType(AbstractPublishToMaven.class)
+                    .configureEach(publishTask -> publishTask.dependsOn(cyclonedxDirectTaskName));
+            project.afterEvaluate(evaluatedProject -> evaluatedProject
+                    .getExtensions()
+                    .getByType(PublishingExtension.class)
+                    .getPublications()
+                    .forEach(publication -> {
+                        if (publication instanceof MavenPublication) {
+                            final MavenPublication mavenPublication = (MavenPublication) publication;
+                            if (evaluatedProject
+                                    .getTasks()
+                                    .withType(CyclonedxDirectTask.class)
+                                    .getByName(cyclonedxDirectTaskName)
+                                    .getJsonOutput()
+                                    .isPresent()) {
+                                final String jsonBomPath = evaluatedProject
+                                        .getTasks()
+                                        .withType(CyclonedxDirectTask.class)
+                                        .getByName(cyclonedxDirectTaskName)
+                                        .getJsonOutput()
+                                        .getAsFile()
+                                        .get()
+                                        .getPath();
+                                mavenPublication.artifact(jsonBomPath, config -> config.setClassifier("bom"));
+                                LOGGER.info(
+                                        "{} Attached JSON SBOM [{}] to publication [{}]",
+                                        LOG_PREFIX,
+                                        jsonBomPath,
+                                        mavenPublication.getName());
+                            }
+                            if (evaluatedProject
+                                    .getTasks()
+                                    .withType(CyclonedxDirectTask.class)
+                                    .getByName(cyclonedxDirectTaskName)
+                                    .getXmlOutput()
+                                    .isPresent()) {
+                                final String jsonBomPath = evaluatedProject
+                                        .getTasks()
+                                        .withType(CyclonedxDirectTask.class)
+                                        .getByName(cyclonedxDirectTaskName)
+                                        .getXmlOutput()
+                                        .getAsFile()
+                                        .get()
+                                        .getPath();
+                                mavenPublication.artifact(jsonBomPath, config -> config.setClassifier("bom"));
+                                LOGGER.info(
+                                        "{} Attached XML SBOM [{}] to publication [{}]",
+                                        LOG_PREFIX,
+                                        jsonBomPath,
+                                        mavenPublication.getName());
+                            }
+                        }
+                    }));
         });
     }
 
