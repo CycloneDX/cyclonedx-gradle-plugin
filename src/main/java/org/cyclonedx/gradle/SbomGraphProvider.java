@@ -26,7 +26,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -81,42 +80,70 @@ class SbomGraphProvider implements Callable<SbomGraph> {
 
         LOGGER.info("{} Resolving dependencies for project [{}]", LOG_PREFIX, project.getDisplayName());
         final Map<SbomComponentId, SbomComponent> graph =
-                traverseProject(project).reduce(new HashMap<>(), DependencyUtils::mergeGraphs);
+                traverseProject().reduce(new HashMap<>(), DependencyUtils::mergeGraphs);
         return buildSbomGraph(graph);
     }
 
     private SbomGraph buildSbomGraph(final Map<SbomComponentId, SbomComponent> graph) {
-        final SbomComponentId rootProjectId = new SbomComponentId(
+        final SbomComponentId projectBasedRootComponentId = new SbomComponentId(
                 project.getGroup().toString(),
                 project.getName(),
                 project.getVersion().toString(),
                 null,
                 project.getPath());
-        final Optional<SbomComponent> rootComponent = Optional.ofNullable(graph.get(rootProjectId));
-        if (!rootComponent.isPresent()) {
-            LOGGER.info("{} Root component not found. Constructing it.", LOG_PREFIX);
-            final SbomComponent sbomComponent = new SbomComponent.Builder()
-                    .withId(rootProjectId)
+        final SbomComponentId configurationBasedRootComponentId = new SbomComponentId(
+                task.getComponentGroup().get(),
+                task.getComponentName().get(),
+                task.getComponentVersion().get(),
+                null,
+                project.getPath());
+        final SbomComponent sbomComponentFromGraph = graph.get(projectBasedRootComponentId);
+        if (sbomComponentFromGraph == null) {
+            LOGGER.warn(
+                    "{} Root component [{}] not found in the graph, constructing it, but dependency graph will be disconnected",
+                    LOG_PREFIX,
+                    projectBasedRootComponentId);
+            final SbomComponent configurationBasedSbomComponent = new SbomComponent.Builder()
+                    .withId(configurationBasedRootComponentId)
                     .withDependencyComponents(new HashSet<>())
                     .withInScopeConfigurations(new HashSet<>())
                     .withLicenses(new ArrayList<>())
                     .build();
-            graph.put(rootProjectId, sbomComponent);
-            return new SbomGraph(graph, sbomComponent);
+            return new SbomGraph(graph, configurationBasedSbomComponent);
         } else {
-            return new SbomGraph(graph, rootComponent.get());
+            if (projectBasedRootComponentId.equals(configurationBasedRootComponentId)) {
+                return new SbomGraph(graph, sbomComponentFromGraph);
+            } else {
+                final SbomComponent configurationBasedSbomComponent = new SbomComponent.Builder()
+                        .withId(configurationBasedRootComponentId)
+                        .withArtifactFile(
+                                sbomComponentFromGraph.getArtifactFile().orElse(null))
+                        .withDependencyComponents(sbomComponentFromGraph.getDependencyComponents())
+                        .withInScopeConfigurations(sbomComponentFromGraph.getInScopeConfigurations())
+                        .withLicenses(sbomComponentFromGraph.getLicenses())
+                        .withMetaData(sbomComponentFromGraph.getSbomMetaData().orElse(null))
+                        .build();
+                LOGGER.info(
+                        "{} Replacing project based root component [{}] with configuration based [{}]",
+                        LOG_PREFIX,
+                        projectBasedRootComponentId,
+                        configurationBasedRootComponentId);
+                graph.remove(projectBasedRootComponentId);
+                graph.put(configurationBasedRootComponentId, configurationBasedSbomComponent);
+                return new SbomGraph(graph, configurationBasedSbomComponent);
+            }
         }
     }
 
-    private Stream<Map<SbomComponentId, SbomComponent>> traverseProject(final Project project) {
+    private Stream<Map<SbomComponentId, SbomComponent>> traverseProject() {
         final DependencyGraphTraverser traverser = new DependencyGraphTraverser(getArtifacts(), mavenLookup, task);
-        return getInScopeConfigurations(project)
+        return getInScopeConfigurations()
                 .map(config -> traverser.traverseGraph(
                         config.getIncoming().getResolutionResult().getRoot(), project.getName(), config.getName()));
     }
 
     private Map<ComponentIdentifier, File> getArtifacts() {
-        return getInScopeConfigurations(project)
+        return getInScopeConfigurations()
                 .flatMap(config -> {
                     final ResolvedArtifactResult[] resolvedArtifacts = config.getIncoming()
                             .artifactView(view -> {
@@ -168,7 +195,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         return include && !skip && resolvable;
     }
 
-    private Stream<Configuration> getInScopeConfigurations(final Project project) {
+    private Stream<Configuration> getInScopeConfigurations() {
         final Configuration[] configs = project.getConfigurations().stream()
                 .filter(configuration -> filterConfigurations(project, configuration))
                 .toArray(Configuration[]::new);

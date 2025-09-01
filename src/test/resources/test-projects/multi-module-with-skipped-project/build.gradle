@@ -1,0 +1,4 @@
+plugins {
+    id 'org.cyclonedx.bom'
+    id 'base'
+}

@@ -1,0 +1,13 @@
+plugins {
+    id 'org.cyclonedx.bom'
+    id 'java'
+}
+
+//group = 'com.example'
+version = '1.0.0'
+
+allprojects {p ->
+    tasks.cyclonedxDirectBom {
+        componentName = "${p.name}-component"
+    }
+}

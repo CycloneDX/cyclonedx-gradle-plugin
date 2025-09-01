@@ -1,0 +1,23 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+dependencies {
+    implementation(project(':app-a'))
+
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("com.github.stefanbirkner:system-lambda:1.2.1")
+}
+
+tasks.cyclonedxDirectBom {
+    componentName = "another name"
+}

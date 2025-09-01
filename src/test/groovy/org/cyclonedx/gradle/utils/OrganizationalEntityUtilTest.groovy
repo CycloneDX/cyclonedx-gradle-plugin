@@ -28,7 +28,7 @@ class OrganizationalEntityUtilTest extends Specification {
             group = 'com.example'
             version = '1.0.0'
 
-            cyclonedxBom {
+            tasks.cyclonedxBom {
             }
 
             dependencies {
@@ -72,7 +72,7 @@ class OrganizationalEntityUtilTest extends Specification {
             version = '1.0.0'
 
             def oe = new org.cyclonedx.model.OrganizationalEntity()
-            cyclonedxBom {
+            tasks.cyclonedxBom {
                 organizationalEntity = oe
             }
 
@@ -118,7 +118,7 @@ class OrganizationalEntityUtilTest extends Specification {
 
             def oe = new org.cyclonedx.model.OrganizationalEntity()
             oe.name = "name"
-            cyclonedxBom {
+            tasks.cyclonedxBom {
                 organizationalEntity = oe
             }
 

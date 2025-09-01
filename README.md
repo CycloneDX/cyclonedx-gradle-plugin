@@ -126,26 +126,52 @@ build. This provides a complete view of your application's supply chain.
 
 ## Configuration
 
-Configure the plugin using the `cyclonedxBom` extension in your root project's build file:
+To configure `cyclonedxDirectBom` task you have to configure it in each project individually. To configure
+`cyclonedxBom` task you have to configure it in the plugin placement project (usually root project).
 
-```groovy
-cyclonedxBom {
-    // Configuration properties
+For multi-project builds, you can also set common configuration options for all projects by configuring the
+`cyclonedxDirectBom` task in the root project using `allprojects` or `subprojects` blocks.
+```kotlin
+allprojects {
+    tasks.cyclonedxDirectBom {
+        // Configuration properties here
+    }
+}
+tasks.cyclonedxBom {
+    // Configuration properties here
 }
 ```
 
 ### Configuration Properties
 
+#### `cyclonedxDirectBom`
+
 | Property                         | Type                      | Default                   | Description                                                                        |
 |----------------------------------|---------------------------|---------------------------|------------------------------------------------------------------------------------|
 | `includeConfigs`                 | `List<String>`            | `[]` (all configurations) | Configurations to include in SBOM generation. Supports regex patterns              |
 | `skipConfigs`                    | `List<String>`            | `[]`                      | Configurations to exclude from SBOM generation. Supports regex patterns            |
-| `skipProjects`                   | `List<String>`            | `[]`                      | Project names to exclude from aggregated SBOM generation                           |
-| `projectType`                    | `String`                  | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
+| `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
 | `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
 | `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
 | `includeLicenseText`             | `boolean`                 | `true`                    | Include full license text in components                                            |
 | `includeMetadataResolution`      | `boolean`                 | `true`                    | Include complete metadata resolution for components                                |
+| `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                       |
+| `buildSystemEnvironmentVariable` | `String`                  | -                         | Custom environment variable for build system URL                                   |
+| `componentVersion`               | `String`                  | Project version           | Override the main component version                                                |
+| `componentName`                  | `String`                  | Project name              | Override the main component name                                                   |
+| `componentGroup`                 | `String`                  | Project group             | Override the main component group                                                  |
+| `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts        |
+| `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers       |
+| `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component                                         |
+
+#### `cyclonedxBom`
+
+| Property                         | Type                      | Default                   | Description                                                                        |
+|----------------------------------|---------------------------|---------------------------|------------------------------------------------------------------------------------|
+| `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
+| `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
+| `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
+| `includeLicenseText`             | `boolean`                 | `true`                    | Include full license text in components                                            |
 | `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                       |
 | `buildSystemEnvironmentVariable` | `String`                  | -                         | Custom environment variable for build system URL                                   |
 | `componentVersion`               | `String`                  | Project version           | Override the main component version                                                |
@@ -162,13 +188,13 @@ simultaneously or individually:
 
 ```kotlin
 allprojects {
-    tasks.withType<CyclonedxDirectTask> {
+    tasks.cyclonedxDirectBom {
         // Configure JSON output (default: build/reports/cyclonedx/bom.json)
         jsonOutput.set(file("build/reports/cyclonedx/${project.name}-bom.json"))
         // Configure XML output (default: build/reports/cyclonedx/bom.xml)
         xmlOutput.set(file("build/reports/cyclonedx/${project.name}-bom.xml"))
     }
-    tasks.withType<CyclonedxAggregateTask> {
+    tasks.cyclonedxBom {
         // Configure JSON output (default: build/reports/cyclonedx-aggregate/bom.json)
         jsonOutput.set(file("build/reports/cyclonedx-aggregate/${project.name}-bom.json"))
         // Configure XML output (default: build/reports/cyclonedx-aggregate/bom.xml)
@@ -182,13 +208,13 @@ allprojects {
 To generate only one format, you can disable the other by unsetting its convention:
 
 ```kotlin
-tasks.withType<CyclonedxDirectTask> {
+tasks.cyclonedxDirectBom {
     // Generate only JSON format
     xmlOutput.unsetConvention()
     // Or generate only XML format
     jsonOutput.unsetConvention()
 }
-tasks.withType<CyclonedxAggregateTask> {
+tasks.cyclonedxBom {
     // Generate only JSON format
     xmlOutput.unsetConvention()
     // Or generate only XML format
@@ -199,7 +225,7 @@ tasks.withType<CyclonedxAggregateTask> {
 ### Advanced Configuration
 
 ```kotlin
-cyclonedxBom {
+tasks.cyclonedxDirectBom {
     // Include only runtime dependencies
     includeConfigs = ["runtimeClasspath", "compileClasspath"]
 
@@ -256,7 +282,7 @@ plugins {
     id("application")
 }
 
-cyclonedxBom {
+tasks.cyclonedxDirectBom {
     projectType = "application"
     includeConfigs = listOf("runtimeClasspath")
 }
@@ -264,29 +290,40 @@ cyclonedxBom {
 
 #### Multi-Project with Filtering
 
+Root `/build.gradle.kts`:
+
 ```kotlin
-// Root build.gradle.kts
 plugins {
     id("org.cyclonedx.bom") version "3.0.0-alpha-0"
 }
 
-cyclonedxBom {
-    // Exclude test and development subprojects
-    skipProjects = listOf("test-utils", "dev-tools", "benchmarks")
+allprojects {
+    tasks.cyclonedxDirectBom {
+        // Include only production dependencies
+        includeConfigs = listOf("runtimeClasspath", "compileClasspath")
+        skipConfigs = listOf("testRuntimeClasspath", "testCompileClasspath")
 
-    // Include only production dependencies
-    includeConfigs = listOf("runtimeClasspath", "compileClasspath")
-    skipConfigs = listOf("testRuntimeClasspath", "testCompileClasspath")
+        // Application metadata
+        projectType = "application"
+        componentGroup = "com.example"
 
-    // Application metadata
+        // Enable build system tracking
+        includeBuildSystem = true
+    }
+}
+tasks.cyclonedxBom {
+    // Aggregated SBOM configuration
     projectType = "application"
-    componentGroup = "com.example"
     componentName = "my-enterprise-app"
     componentVersion = "1.0.0"
-
-    // Enable build system tracking
     includeBuildSystem = true
 }
+```
+
+Subproject `/test-utils/build.gradle.kts`:
+
+```kotlin
+tasks.cyclonedxDirectBom.enabled = false // Skip SBOM generation for this project
 ```
 
 #### Organizational Entity
@@ -300,7 +337,7 @@ plugins {
     id("java")
 }
 
-cyclonedxBom {
+tasks.cyclonedxDirectBom {
     // Project configuration
     projectType = "application"
     schemaVersion = SchemaVersion.VERSION_16
@@ -343,7 +380,7 @@ plugins {
     id("java")
 }
 
-cyclonedxBom {
+tasks.cyclonedxDirectBom {
     externalReferences = listOf(
         ExternalReference().apply {
             url = "https://cyclonedx.org/"
@@ -362,7 +399,7 @@ plugins {
     id("org.cyclonedx.bom") version "3.0.0-alpha-0"
     id("java")
 }
-cyclonedxBom {
+tasks.cyclonedxDirectBom {
     // Specify licenses for the main component
     licenseChoice = LicenseChoice().apply {
         addLicense(License().apply {
@@ -381,7 +418,7 @@ plugins {
     id("java")
 }
 
-cyclonedxBom {
+tasks.cyclonedxDirectBom {
     projectType = "application"
 
     // Dynamic versioning for CI/CD
@@ -402,7 +439,7 @@ cyclonedxBom {
     }
 }
 
-tasks.withType<CyclonedxAggregateTask> {
+tasks.cyclonedxBom {
     // Timestamped output artifacts (WARNING: will disable Gradle cache)
     jsonOutput = file("build/artifacts/sbom-${Instant.now()}.json")
     xmlOutput.unsetConvention()

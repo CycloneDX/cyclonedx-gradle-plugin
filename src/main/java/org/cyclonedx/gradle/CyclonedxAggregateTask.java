@@ -36,6 +36,7 @@ import org.cyclonedx.parsers.BomParserFactory;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.*;
 
 @CacheableTask
@@ -47,8 +48,12 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
     @PathSensitive(PathSensitivity.RELATIVE)
     abstract ConfigurableFileCollection getInputSboms();
 
+    protected final Provider<String> getProjectPath =
+            getProject().getProviders().provider(() -> getProject().getPath());
+
     @TaskAction
     public void aggregate() throws Exception {
+        logParameters();
         final Bom merged = mergeAll(getInputSboms().getFiles());
         LOGGER.info("{} Writing BOM", LOG_PREFIX);
         if (getJsonOutput().isPresent()) {
@@ -80,6 +85,11 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
                 // if the root project BOM main component is not the same as the sub-project BOM main component,
                 // add the sub-project main component to the map
                 // to avoid duplicating the root project component
+                LOGGER.info(
+                        "{} Adding sub-project component:[{}] {}",
+                        LOG_PREFIX,
+                        aggregateBom.getMetadata().getComponent().getBomRef(),
+                        subProjectBom.getMetadata().getComponent().getBomRef());
                 componentsByBomRef.putIfAbsent(
                         subProjectBom.getMetadata().getComponent().getBomRef(),
                         subProjectBom.getMetadata().getComponent());
@@ -132,8 +142,28 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
                         getComponentName().get(),
                         getComponentVersion().get(),
                         null,
-                        ":"))
+                        getProjectPath.get()))
                 .build();
         return new SbomBuilder<>(this).buildBom(new SbomGraph(Collections.emptyMap(), updatedRootComponent));
+    }
+
+    private void logParameters() {
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("CycloneDX Aggregate: Parameters");
+            LOGGER.info("------------------------------------------------------------------------");
+            LOGGER.info("schemaVersion             : {}", getSchemaVersion().get());
+            LOGGER.info(
+                    "includeLicenseText        : {}", getIncludeLicenseText().get());
+            LOGGER.info(
+                    "includeBomSerialNumber    : {}",
+                    getIncludeBomSerialNumber().get());
+            LOGGER.info("jsonOutput                : {}", getJsonOutput().getOrNull());
+            LOGGER.info("xmlOutput                 : {}", getXmlOutput().getOrNull());
+            LOGGER.info("componentGroup            : {}", getComponentGroup().get());
+            LOGGER.info("componentName             : {}", getComponentName().get());
+            LOGGER.info("componentVersion          : {}", getComponentVersion().get());
+            LOGGER.info("projectType               : {}", getProjectType().get());
+            LOGGER.info("------------------------------------------------------------------------");
+        }
     }
 }

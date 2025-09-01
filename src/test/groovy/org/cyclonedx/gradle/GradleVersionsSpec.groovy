@@ -3,6 +3,7 @@ package org.cyclonedx.gradle
 import org.gradle.api.JavaVersion
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
+import org.gradle.util.GradleVersion
 import org.junit.jupiter.api.Assumptions
 import spock.lang.Specification
 import spock.lang.Unroll
@@ -29,12 +30,12 @@ class GradleVersionsSpec extends Specification {
 
 
         when:
-        def gradleVersionMajor = Integer.parseInt(gradleVersion.split("\\.")[0])
         Assumptions.assumeFalse(
-            !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) && gradleVersionMajor >= 9,
+            !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)
+                && GradleVersion.version(gradleVersion).majorVersion >= 9,
             "Gradle 9 requires Java 17 or higher")
         def result = GradleRunner.create()
-        .withGradleVersion(gradleVersion)
+            .withGradleVersion(gradleVersion)
             .withProjectDir(testDir)
             .withArguments(TestUtils.arguments(taskName))
             .withPluginClasspath()

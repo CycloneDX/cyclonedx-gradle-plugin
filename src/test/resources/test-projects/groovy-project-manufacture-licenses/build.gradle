@@ -1,3 +1,4 @@
+import org.cyclonedx.gradle.BaseCyclonedxTask
 import org.cyclonedx.model.*;
 
 plugins {
@@ -40,7 +41,7 @@ license.setUrl("https://www.test-Url.org/")
 LicenseChoice lc = new LicenseChoice();
 lc.addLicense(license)
 
-cyclonedxBom {
+tasks.withType(BaseCyclonedxTask) {
     organizationalEntity = oe
     licenseChoice = lc
 }

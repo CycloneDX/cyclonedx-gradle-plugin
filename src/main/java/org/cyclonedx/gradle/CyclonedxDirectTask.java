@@ -20,6 +20,7 @@ package org.cyclonedx.gradle;
 
 import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
 
+import java.util.ArrayList;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.CyclonedxUtils;
 import org.cyclonedx.model.Bom;
@@ -42,19 +43,30 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     private static final Logger LOGGER = Logging.getLogger(CyclonedxDirectTask.class);
 
     /**
-     * @see CyclonedxBomExtension#getIncludeConfigs()
+     * The list of configuration names to include in the BOM.
+     * If not set, all configurations will be included.
+     * Regex patterns can be used to match multiple configurations.
+     *
+     * @return the list of configuration names to include
      */
     @Input
     public abstract ListProperty<String> getIncludeConfigs();
 
     /**
-     * @see CyclonedxBomExtension#getSkipConfigs()
+     * The list of configuration names to skip in the BOM.
+     * If not set, no configurations will be skipped.
+     * Regex patterns can be used to match multiple configurations.
+     *
+     * @return the list of configuration names to skip
      */
     @Input
     public abstract ListProperty<String> getSkipConfigs();
 
     /**
-     * @see CyclonedxBomExtension#getIncludeMetadataResolution()
+     * Whether to include metadata resolution in the BOM. For example, license information.
+     * If not set, it defaults to true.
+     *
+     * @return true if metadata resolution should be included, false otherwise
      */
     @Input
     public abstract Property<Boolean> getIncludeMetadataResolution();
@@ -62,6 +74,9 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     private final Provider<SbomGraph> componentsProvider;
 
     public CyclonedxDirectTask() {
+        getIncludeConfigs().convention(new ArrayList<>());
+        getSkipConfigs().convention(new ArrayList<>());
+        getIncludeMetadataResolution().convention(true);
         this.componentsProvider = getProject().getProviders().provider(new SbomGraphProvider(getProject(), this));
     }
 
@@ -72,7 +87,7 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     @TaskAction
     public void createBom() {
         logParameters();
-        final Bom bom = new SbomBuilder(this).buildBom(componentsProvider.get());
+        final Bom bom = new SbomBuilder<>(this).buildBom(componentsProvider.get());
         LOGGER.info("{} Writing BOM", LOG_PREFIX);
         if (getJsonOutput().isPresent()) {
             CyclonedxUtils.writeJsonBom(
@@ -99,8 +114,8 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
             LOGGER.info(
                     "includeMetadataResolution : {}",
                     getIncludeMetadataResolution().get());
-            LOGGER.info("json destination          : {}", getJsonOutput().getOrNull());
-            LOGGER.info("xml destination           : {}", getXmlOutput().getOrNull());
+            LOGGER.info("jsonOutput                : {}", getJsonOutput().getOrNull());
+            LOGGER.info("xmlOutput                 : {}", getXmlOutput().getOrNull());
             LOGGER.info("componentGroup            : {}", getComponentGroup().get());
             LOGGER.info("componentName             : {}", getComponentName().get());
             LOGGER.info("componentVersion          : {}", getComponentVersion().get());

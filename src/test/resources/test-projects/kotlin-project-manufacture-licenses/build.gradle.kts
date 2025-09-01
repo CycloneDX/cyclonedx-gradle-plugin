@@ -20,7 +20,7 @@ dependencies {
 }
 
 
-cyclonedxBom {
+tasks.withType<org.cyclonedx.gradle.BaseCyclonedxTask> {
     organizationalEntity.set(OrganizationalEntity().apply {
         name = "Test"
         urls = listOf("www.test.com")
