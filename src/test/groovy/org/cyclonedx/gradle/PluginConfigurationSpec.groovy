@@ -127,7 +127,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxBom {
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
                 schemaVersion = org.cyclonedx.Version.VERSION_13
             }
             dependencies {
@@ -170,9 +170,8 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
-                // No componentName override -> Use rootProject.name
-            }
+
+            // No componentName override -> Use rootProject.name
 
             dependencies {
                 implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
@@ -215,7 +214,10 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
+            tasks.cyclonedxDirectBom {
+                componentGroup = 'customized-component-group'
+            }
+            tasks.cyclonedxBom {
                 componentGroup = 'customized-component-group'
             }
             dependencies {
@@ -258,7 +260,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
                 componentName = 'customized-component-name'
             }
             dependencies {
@@ -301,7 +303,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
                 componentVersion = '999-SNAPSHOT'
             }
             dependencies {
@@ -345,7 +347,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxBom {
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
                 projectType = 'framework'
             }
             dependencies {
@@ -537,8 +539,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
-                schemaVersion = org.cyclonedx.Version.VERSION_13
+            tasks.cyclonedxDirectBom {
                 skipConfigs = ['.*']
             }
             dependencies {
@@ -579,8 +580,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
-                schemaVersion = org.cyclonedx.Version.VERSION_13
+            tasks.cyclonedxDirectBom {
                 includeConfigs = ['.*']
             }
             dependencies {
@@ -723,7 +723,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
+            tasks.cyclonedxDirectBom {
                 includeMetadataResolution = false
             }
             dependencies {
@@ -759,7 +759,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
                 schemaVersion = org.cyclonedx.Version.VERSION_16
             }
             dependencies {
@@ -799,7 +799,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
                 schemaVersion = org.cyclonedx.Version.VERSION_14
             }
             dependencies {
@@ -839,7 +839,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
                 includeBuildSystem = true
             }
             dependencies {
@@ -881,7 +881,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxBom {
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
                 includeBuildSystem = true
                 buildSystemEnvironmentVariable = '${SERVER}/build/${BUILD_ID}'
             }
@@ -924,7 +924,7 @@ class PluginConfigurationSpec extends Specification {
             }
             group = 'com.example'
             version = '1.0.0'
-            cyclonedxDirectBom {
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
                 includeBuildSystem = true
                 buildSystemEnvironmentVariable = '${SERVER}/build/${BUILD_ID}'
             }
@@ -1017,4 +1017,66 @@ class PluginConfigurationSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    def "should use use base config and apply custom subproject config"() {
+        given:
+        File testDir = TestUtils.duplicate("multi-module-with-custom-configs")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        result.task(":app-a:cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        result.task(":app-b:cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+
+        def objectMapper = new ObjectMapper()
+        def rootProjectBom = objectMapper.readValue(new File(testDir, "build/reports/cyclonedx-direct/bom.json"), Bom.class)
+        assert rootProjectBom.getMetadata().getComponent().getName() == 'multi-module-component'
+
+        def appAProjectBom = objectMapper.readValue(new File(testDir, "app-a/build/reports/cyclonedx-direct/bom.json"), Bom.class)
+        assert appAProjectBom.getMetadata().getComponent().getName() == 'app-a-component'
+
+        def appBProjectBom = objectMapper.readValue(new File(testDir, "app-b/build/reports/cyclonedx-direct/bom.json"), Bom.class)
+        assert appBProjectBom.getMetadata().getComponent().getName() == 'another name'
+
+        where:
+        taskName = "cyclonedxBom"
+        javaVersion = JavaVersion.current()
+    }
+
+    def "should skip sub-project when task is disabled"() {
+        given:
+        File testDir = TestUtils.duplicate("multi-module-with-skipped-project")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        result.task(":app-a:cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        result.task(":app-b:cyclonedxDirectBom").outcome == TaskOutcome.SKIPPED
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+
+        def objectMapper = new ObjectMapper()
+        def rootProjectBomFile = new File(testDir, "build/reports/cyclonedx-direct/bom.json")
+        assert rootProjectBomFile.exists()
+        def rootProjectBom = objectMapper.readValue(rootProjectBomFile, Bom.class)
+        assert rootProjectBom.getComponents().findAll { it.name == 'app-b' }.empty
+        def appAProjectBomFile = new File(testDir, "app-a/build/reports/cyclonedx-direct/bom.json")
+        assert appAProjectBomFile.exists()
+        assert !new File(testDir, "app-b/build/reports/cyclonedx-direct/bom.json").exists()
+
+        where:
+        taskName = "cyclonedxBom"
+        javaVersion = JavaVersion.current()
+    }
 }

@@ -107,29 +107,7 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
     private Metadata buildMetadata(final SbomComponent rootComponent) {
         final Metadata metadata = new Metadata();
         try {
-            final SbomComponent updatedRootComponent = new SbomComponent.Builder()
-                    .withId(new SbomComponentId(
-                            task.getComponentGroup().get(),
-                            task.getComponentName().get(),
-                            task.getComponentVersion().get(),
-                            null,
-                            rootComponent.getId().getGradleProjectPath()))
-                    .withArtifactFile(rootComponent.getArtifactFile().orElse(null))
-                    .withDependencyComponents(rootComponent.getDependencyComponents())
-                    .withInScopeConfigurations(rootComponent.getInScopeConfigurations())
-                    .withLicenses(rootComponent.getLicenses())
-                    .build();
-            final Component component = toComponent(updatedRootComponent, null, resolveProjectType());
-            component.setProperties(null);
-            component.setGroup(task.getComponentGroup().get());
-            component.setName(task.getComponentName().get());
-            component.setVersion(task.getComponentVersion().get());
-            addBuildSystemMetaData(component);
-            if (task.getExternalReferences().isPresent()) {
-                task.getExternalReferences().get().forEach(component::addExternalReference);
-            }
-            ExternalReferencesUtil.complementByEnvironment(component);
-            metadata.setComponent(component);
+            metadata.setComponent(buildFinilizedRootComponent(rootComponent));
         } catch (MalformedPackageURLException e) {
             LOGGER.warn(
                     "{} Error constructing packageUrl for parent component {}. Skipping...",
@@ -169,6 +147,21 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         }
 
         return metadata;
+    }
+
+    private Component buildFinilizedRootComponent(final SbomComponent rootComponent)
+            throws MalformedPackageURLException {
+        final Component component = toComponent(rootComponent, null, resolveProjectType());
+        component.setProperties(null);
+        component.setGroup(task.getComponentGroup().get());
+        component.setName(task.getComponentName().get());
+        component.setVersion(task.getComponentVersion().get());
+        addBuildSystemMetaData(component);
+        if (task.getExternalReferences().isPresent()) {
+            task.getExternalReferences().get().forEach(component::addExternalReference);
+        }
+        ExternalReferencesUtil.complementByEnvironment(component);
+        return component;
     }
 
     private void addBuildSystemMetaData(final Component component) {

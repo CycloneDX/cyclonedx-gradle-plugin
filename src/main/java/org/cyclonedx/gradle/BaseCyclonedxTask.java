@@ -37,32 +37,48 @@ import org.gradle.api.tasks.OutputFile;
 public abstract class BaseCyclonedxTask extends DefaultTask {
 
     /**
-     * @see CyclonedxBomExtension#getComponentGroup()
+     * The group of the component that will be used in the BOM.
+     * This is typically the group of the project.
+     * If not set, the project group will be used.
      *
+     * @see org.gradle.api.Project#getGroup()
+     * @return the group of the component
      */
     @Input
     public abstract Property<String> getComponentGroup();
 
     /**
-     * @see CyclonedxBomExtension#getComponentName()
+     * The name of the component that will be used in the BOM.
+     * This is typically the name of the project.
+     * If not set, the project name will be used.
      *
+     * @see org.gradle.api.Project#getName()
+     * @return the name of the component
      */
     @Input
     public abstract Property<String> getComponentName();
 
     /**
-     * @see CyclonedxBomExtension#getComponentVersion()
+     * The version of the component that will be used in the BOM.
+     * This is typically the version of the project.
+     * If not set, the project version will be used.
      *
+     * @see org.gradle.api.Project#getVersion()
+     * @return the version of the component
      */
     @Input
     public abstract Property<String> getComponentVersion();
 
     /**
-     * @see CyclonedxBomExtension#getSchemaVersion()
+     * The schema version of the BOM.
+     * It can be one of the supported versions, e.g., {@link Version#VERSION_16}.
+     * If not set, it defaults to {@link Version#VERSION_16}.
      *
+     * @see org.cyclonedx.Version
+     * @return the schema version of the BOM
      */
     @Input
-    abstract Property<Version> getSchemaVersion();
+    public abstract Property<Version> getSchemaVersion();
 
     /**
      * <p>The output file for the XML report.</p>
@@ -91,59 +107,102 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
     public abstract RegularFileProperty getJsonOutput();
 
     /**
-     * @see CyclonedxBomExtension#getIncludeBomSerialNumber()
+     * Whether to include the BOM serial number in the BOM.
+     * If not set, it defaults to true.
      *
+     * @return true if BOM serial number should be included, false otherwise
      */
     @Input
-    abstract Property<Boolean> getIncludeBomSerialNumber();
+    public abstract Property<Boolean> getIncludeBomSerialNumber();
 
     /**
-     * @see CyclonedxBomExtension#getProjectType()
+     * The type of the project that will be used in the BOM.
+     * It can be one of the types defined in {@link Component.Type}.
+     * If not set, it defaults to {@link Component.Type#LIBRARY}.
      *
+     * @return the type of the project
      */
     @Input
     public abstract Property<Component.Type> getProjectType();
 
     /**
-     * @see CyclonedxBomExtension#getIncludeBuildSystem()
+     * Whether to include the build system information in the BOM.
+     * If not set, it defaults to true.
      *
+     * @return true if build system information should be included, false otherwise
      */
     @Input
-    abstract Property<Boolean> getIncludeBuildSystem();
+    public abstract Property<Boolean> getIncludeBuildSystem();
 
     /**
-     * @see CyclonedxBomExtension#getBuildSystemEnvironmentVariable()
+     * The environment variable to use to determine the build system URL. If the
+     * build system URL needs to be constructed from multiple environment variables a
+     * pattern can be set using `buildSystemEnvironmentVariable = '${SERVER}/jobs/${JOB_ID}'`.
+     * Note, that when configuring in kotlin or groovy single quotes must be used to prevent the
+     * build itself from interpolating that variables.
      *
+     * @return the environment variable to use to determine the build system
      */
     @Input
     @Optional
-    abstract Property<String> getBuildSystemEnvironmentVariable();
+    public abstract Property<String> getBuildSystemEnvironmentVariable();
 
     /**
-     * @see CyclonedxBomExtension#getOrganizationalEntity()
+     * The organizational entity that will be used in the BOM.
+     * This is typically the organization that owns the project.
+     * If not set, it defaults to an empty organizational entity.
      *
+     * @return the organizational entity
      */
     @Internal
     public abstract Property<OrganizationalEntity> getOrganizationalEntity();
 
     /**
-     * @see CyclonedxBomExtension#getLicenseChoice()
+     * The license choice that will be used in the BOM.
+     * This is typically the license choice of the project.
+     * If not set, it defaults to an empty license choice.
      *
+     * @return the license choice
      */
     @Internal
     public abstract Property<LicenseChoice> getLicenseChoice();
 
     /**
-     * @see CyclonedxBomExtension#getExternalReferences()
+     * The external reference that will be used in the BOM.
+     * This can be used to link to external resources related to the project.
+     * If not set, it defaults to resolution of git remote URL, if available.
      *
+     * @return the external reference
      */
     @Internal
     public abstract ListProperty<ExternalReference> getExternalReferences();
 
     /**
-     * @see CyclonedxBomExtension#getIncludeLicenseText()
+     * Whether to include the license text in the BOM.
+     * If not set, it defaults to false.
      *
+     * @return true if license text should be included, false otherwise
      */
     @Input
-    abstract Property<Boolean> getIncludeLicenseText();
+    public abstract Property<Boolean> getIncludeLicenseText();
+
+    public BaseCyclonedxTask() {
+        super();
+        getComponentGroup().convention(getProject().getProviders().provider(() -> getProject()
+                .getGroup()
+                .toString()));
+        getComponentName().convention(getProject().getProviders().provider(() -> getProject()
+                .getName()));
+        getComponentVersion().convention(getProject().getProviders().provider(() -> getProject()
+                .getVersion()
+                .toString()));
+        getSchemaVersion().convention(Version.VERSION_16);
+        getIncludeLicenseText().convention(false);
+        getIncludeBomSerialNumber().convention(true);
+        getProjectType().convention(Component.Type.LIBRARY);
+        getIncludeBuildSystem().convention(true);
+        getOrganizationalEntity().convention(getProject().getObjects().property(OrganizationalEntity.class));
+        getLicenseChoice().convention(getProject().getObjects().property(LicenseChoice.class));
+        getExternalReferences().convention(getProject().getObjects().listProperty(ExternalReference.class));
+    }
 }

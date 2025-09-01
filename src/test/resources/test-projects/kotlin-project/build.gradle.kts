@@ -16,6 +16,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web:1.5.18.RELEASE")
 }
 
-cyclonedxBom {
+tasks.withType<org.cyclonedx.gradle.BaseCyclonedxTask> {
     includeBomSerialNumber = false
 }

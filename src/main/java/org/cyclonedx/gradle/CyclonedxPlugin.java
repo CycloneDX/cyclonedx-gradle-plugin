@@ -24,6 +24,7 @@ import javax.inject.Inject;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
@@ -40,7 +41,6 @@ public class CyclonedxPlugin implements Plugin<Project> {
     private static final Logger LOGGER = Logging.getLogger(CyclonedxPlugin.class);
 
     public static final String LOG_PREFIX = "[CycloneDX]";
-    protected final String cyclonedxBomExtensionName;
     protected final String cyclonedxDirectTaskName;
     protected final String cyclonedxDirectConfigurationName;
     protected final String cyclonedxAggregateTaskName;
@@ -51,7 +51,6 @@ public class CyclonedxPlugin implements Plugin<Project> {
     @Inject
     public CyclonedxPlugin() {
         this(
-                "cyclonedxBom",
                 "cyclonedxDirectBom",
                 "cyclonedxDirectBom",
                 "cyclonedxBom",
@@ -61,14 +60,12 @@ public class CyclonedxPlugin implements Plugin<Project> {
     }
 
     protected CyclonedxPlugin(
-            final String cyclonedxBomExtensionName,
             final String cyclonedxDirectTaskName,
             final String cyclonedxDirectConfigurationName,
             final String cyclonedxAggregateTaskName,
             final String cyclonedxAggregateConfigurationName,
             final String cyclonedxDirectReportDir,
             final String cyclonedxAggregateReportDir) {
-        this.cyclonedxBomExtensionName = cyclonedxBomExtensionName;
         this.cyclonedxDirectTaskName = cyclonedxDirectTaskName;
         this.cyclonedxDirectConfigurationName = cyclonedxDirectConfigurationName;
         this.cyclonedxAggregateTaskName = cyclonedxAggregateTaskName;
@@ -84,12 +81,7 @@ public class CyclonedxPlugin implements Plugin<Project> {
                     "warning: {} Support of Java versions prior to 17 is deprecated and will be removed in a future release.",
                     LOG_PREFIX);
         }
-        final CyclonedxBomExtension ext = project.getExtensions()
-                .create(cyclonedxBomExtensionName, CyclonedxBomExtension.class, project.getObjects());
-
-        // Register per-project SBOM generation task and outgoing configuration
-        Stream.concat(Stream.of(project), project.getSubprojects().stream())
-                .forEach(subProject -> configureProject(subProject, ext));
+        getProjectAndSubprojects(project).forEach(this::configureProject);
 
         // Incoming configuration at root to collect subproject SBOMs
         final Configuration cyclonedxBomAggregateConfiguration =
@@ -98,81 +90,64 @@ public class CyclonedxPlugin implements Plugin<Project> {
         cyclonedxBomAggregateConfiguration.setCanBeConsumed(false);
 
         // Aggregate task
-        registerCyclonedxAggregateBomTask(project, ext, cyclonedxBomAggregateConfiguration);
+        registerCyclonedxAggregateBomTask(project, cyclonedxBomAggregateConfiguration);
 
-        project.afterEvaluate(evaluatedProject -> Stream.concat(
-                        Stream.of(evaluatedProject), evaluatedProject.getSubprojects().stream())
-                .forEach(subProject -> {
+        getProjectAndSubprojects(project)
+                .forEach(subProject -> subProject.afterEvaluate(evaluatedProject -> {
+                    if (shouldSkipProject(evaluatedProject)) {
+                        LOGGER.info(
+                                "{} Project [{}] skipped because direct BOM task [{}] not found or disabled in the project",
+                                LOG_PREFIX,
+                                evaluatedProject.getDisplayName(),
+                                cyclonedxDirectTaskName);
+                        return;
+                    }
                     // Attach produced files lazily
-                    subProject.getTasksByName(cyclonedxDirectTaskName, false).forEach(task -> task.getOutputs()
-                            .getFiles()
-                            .getFiles()
-                            .forEach(file -> subProject
-                                    .getArtifacts()
-                                    .add(cyclonedxDirectConfigurationName, file, a -> a.builtBy(task))));
-                    // Extend from all subprojects' cyclonedxBom dynamically
                     evaluatedProject
-                            .getDependencies()
+                            .getTasksByName(cyclonedxDirectTaskName, false)
+                            .forEach(task -> task.getOutputs()
+                                    .getFiles()
+                                    .getFiles()
+                                    .forEach(file -> evaluatedProject
+                                            .getArtifacts()
+                                            .add(cyclonedxDirectConfigurationName, file, a -> a.builtBy(task))));
+                    // Extend from all subprojects' cyclonedxBom dynamically
+                    project.getDependencies()
                             .add(
                                     cyclonedxAggregateConfigurationName,
-                                    evaluatedProject
-                                            .getDependencies()
+                                    project.getDependencies()
                                             .project(ImmutableMap.of(
                                                     "path",
-                                                    subProject.getPath(),
+                                                    evaluatedProject.getPath(),
                                                     "configuration",
                                                     cyclonedxDirectConfigurationName)));
                 }));
     }
 
-    private void configureProject(final Project project, final CyclonedxBomExtension ext) {
-        if (!shouldIncludeProject(project, ext)) {
-            LOGGER.lifecycle(
-                    "{} Project [{}] excluded by user for CycloneDX BOM generation",
-                    LOG_PREFIX,
-                    project.getDisplayName());
-            return;
-        }
+    private static Stream<Project> getProjectAndSubprojects(final Project project) {
+        return Stream.concat(Stream.of(project), project.getSubprojects().stream());
+    }
+
+    private void configureProject(final Project project) {
         // Outgoing configuration to publish SBOMs as artifacts
         final Configuration cyclonedxBomConfiguration =
                 project.getConfigurations().maybeCreate(cyclonedxDirectConfigurationName);
         cyclonedxBomConfiguration.setCanBeConsumed(true);
         cyclonedxBomConfiguration.setCanBeResolved(false);
-        registerCyclonedxBomTask(project, ext);
+        registerCyclonedxBomTask(project);
     }
 
     private void registerCyclonedxAggregateBomTask(
-            final Project project,
-            final CyclonedxBomExtension ext,
-            final Configuration cyclonedxBomAggregateConfiguration) {
+            final Project project, final Configuration cyclonedxBomAggregateConfiguration) {
         project.getTasks().register(cyclonedxAggregateTaskName, CyclonedxAggregateTask.class, task -> {
-            task.dependsOn(Stream.concat(Stream.of(project), project.getSubprojects().stream())
-                    .filter(p -> shouldIncludeProject(p, ext))
+            task.dependsOn(getProjectAndSubprojects(project)
                     .map(p -> p.getPath() + ":"
                             + p.getTasks().named(cyclonedxDirectTaskName).getName())
                     .toArray(Object[]::new));
-
-            task.getComponentGroup()
-                    .set(ext.getComponentGroup().orElse(project.getProviders().provider(() -> project.getGroup()
-                            .toString())));
-            task.getComponentName().set(ext.getComponentName().orElse(project.getName()));
-            task.getComponentVersion()
-                    .set(ext.getComponentVersion().orElse(project.getProviders().provider(() -> project.getVersion()
-                            .toString())));
-            task.getSchemaVersion().set(ext.getSchemaVersion());
             final Provider<Directory> aggregateReportDir =
                     project.getLayout().getBuildDirectory().dir(cyclonedxAggregateReportDir);
             task.getXmlOutput().convention(aggregateReportDir.get().file("bom.xml"));
-            task.getJsonOutput().set(aggregateReportDir.get().file("bom.json"));
-            task.getProjectType().set(ext.getProjectType());
-            task.getIncludeBomSerialNumber().set(ext.getIncludeBomSerialNumber());
-            task.getLicenseChoice().convention(ext.getLicenseChoice());
-            task.getIncludeBomSerialNumber().set(ext.getIncludeBomSerialNumber());
-            task.getIncludeBuildSystem().set(ext.getIncludeBuildSystem());
-            task.getBuildSystemEnvironmentVariable().set(ext.getBuildSystemEnvironmentVariable());
-            task.getOrganizationalEntity().convention(ext.getOrganizationalEntity());
-            task.getExternalReferences().convention(ext.getExternalReferences());
-            task.getIncludeLicenseText().set(ext.getIncludeLicenseText());
+            task.getJsonOutput().convention(aggregateReportDir.get().file("bom.json"));
             // Wire inputs from configuration files
             Provider<ConfigurableFileCollection> files = project.getProviders()
                     .provider(() -> project.getObjects().fileCollection().from(cyclonedxBomAggregateConfiguration));
@@ -180,42 +155,17 @@ public class CyclonedxPlugin implements Plugin<Project> {
         });
     }
 
-    private TaskProvider<CyclonedxDirectTask> registerCyclonedxBomTask(
-            final Project project, final CyclonedxBomExtension ext) {
+    private TaskProvider<CyclonedxDirectTask> registerCyclonedxBomTask(final Project project) {
         return project.getTasks().register(cyclonedxDirectTaskName, CyclonedxDirectTask.class, task -> {
-            task.getComponentGroup()
-                    .set(ext.getComponentGroup().orElse(project.getProviders().provider(() -> project.getGroup()
-                            .toString())));
-            task.getComponentName().set(ext.getComponentName().orElse(project.getName()));
-            task.getComponentVersion()
-                    .set(ext.getComponentVersion().orElse(project.getProviders().provider(() -> project.getVersion()
-                            .toString())));
-            task.getIncludeConfigs().set(ext.getIncludeConfigs());
-            task.getSkipConfigs().set(ext.getSkipConfigs());
-            task.getSchemaVersion().set(ext.getSchemaVersion());
-            task.getIncludeLicenseText().set(ext.getIncludeLicenseText());
-            task.getIncludeMetadataResolution().set(ext.getIncludeMetadataResolution());
             final Provider<Directory> dir =
                     project.getLayout().getBuildDirectory().dir(cyclonedxDirectReportDir);
             task.getXmlOutput().convention(dir.get().file("bom.xml"));
             task.getJsonOutput().convention(dir.get().file("bom.json"));
-            task.getBuildSystemEnvironmentVariable().set(ext.getBuildSystemEnvironmentVariable());
-            task.getOrganizationalEntity().convention(ext.getOrganizationalEntity());
-            task.getExternalReferences().convention(ext.getExternalReferences());
-            task.getProjectType().set(ext.getProjectType());
-            task.getLicenseChoice().convention(ext.getLicenseChoice());
-            task.getIncludeBomSerialNumber().set(ext.getIncludeBomSerialNumber());
-            task.getIncludeBuildSystem().set(ext.getIncludeBuildSystem());
         });
     }
 
-    private boolean shouldIncludeProject(final Project project, final CyclonedxBomExtension ext) {
-        if (!ext.getIncludeProjects().get().isEmpty()
-                && !ext.getIncludeProjects().get().contains(project.getPath())
-                && !ext.getIncludeProjects().get().contains(project.getName())) {
-            return false;
-        }
-        return !ext.getSkipProjects().get().contains(project.getPath())
-                && !ext.getSkipProjects().get().contains(project.getName());
+    private boolean shouldSkipProject(final Project project) {
+        final TaskProvider<Task> directTask = project.getTasks().named(cyclonedxDirectTaskName);
+        return !(directTask.isPresent() && directTask.get().getEnabled());
     }
 }
