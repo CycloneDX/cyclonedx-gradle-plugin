@@ -22,17 +22,22 @@ import java.io.File;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
+import org.cyclonedx.Version;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.CycloneDxUtils;
 import org.cyclonedx.gradle.utils.GitUtils;
 import org.cyclonedx.model.Bom;
+import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.OrganizationalEntity;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
@@ -40,6 +45,7 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 
 /**
@@ -49,30 +55,56 @@ import org.gradle.api.tasks.TaskAction;
 public abstract class CycloneDxTask extends DefaultTask {
 
     private static final String MESSAGE_WRITING_BOM_OUTPUT = "CycloneDX: Writing BOM output";
-    private static final String DEFAULT_PROJECT_TYPE = "library";
+    private static final Component.Type DEFAULT_PROJECT_TYPE = Component.Type.LIBRARY;
 
-    private final Property<String> outputName;
-    private final Property<String> schemaVersion;
-    private final Property<String> componentName;
-    private final Property<String> componentVersion;
-    private final Property<String> outputFormat;
-    private final Property<Boolean> includeBomSerialNumber;
-    private final ListProperty<String> skipConfigs;
-    private final ListProperty<String> includeConfigs;
-    private final Property<Boolean> includeMetadataResolution;
-    private final Property<Boolean> includeLicenseText;
-    private final Property<String> projectType;
+    final Property<String> outputName;
+    final Property<String> outputFormat;
+    final Property<File> destination;
+    public final Property<Version> schemaVersion;
+    private final Property<String> schemaVersionAsString;
+    public final Property<String> componentName;
+    public final Property<String> componentVersion;
+    public final Property<Boolean> includeBomSerialNumber;
+    public final ListProperty<String> skipConfigs;
+    public final ListProperty<String> includeConfigs;
+    public final Property<Boolean> includeMetadataResolution;
+    public final Property<Boolean> includeLicenseText;
+    public final Property<Component.Type> projectType;
+    private final Property<String> projectTypeAsString;
     private final ListProperty<String> skipProjects;
-    private final Property<File> destination;
+    public final Property<Boolean> includeBuildSystem;
+    public final Property<String> buildSystemEnvironmentVariable;
+    public final Property<OrganizationalEntity> organizationalEntity;
+    public final Property<LicenseChoice> licenseChoice;
+    public final ListProperty<ExternalReference> externalReferences;
+
     private final Provider<SbomGraph> componentsProvider;
-    private final Property<Boolean> includeBuildSystem;
-    private final Property<String> buildSystemEnvironmentVariable;
 
-    @Nullable private OrganizationalEntity organizationalEntity;
+    /**
+     * <p>The output file for the XML report.</p>
+     * <p>If not set, the default is "${project.buildDir}/reports/cyclonedx/bom.xml".</p>
+     * <p>To disable the XML output, you need to unset convention: {@code xmlOutput.unsetConvention()}</p>
+     *
+     * @return the XML output file property
+     * @see #getJsonOutput()
+     * @see org.gradle.api.provider.Property#unsetConvention()
+     */
+    @OutputFile
+    @Optional
+    public abstract RegularFileProperty getXmlOutput();
 
-    @Nullable private LicenseChoice licenseChoice;
-
-    @Nullable private ExternalReference gitVCS;
+    /**
+     * <p>The output file for the JSON report.</p>
+     * <p>If not set, the default is "${project.buildDir}/reports/cyclonedx/bom.json".</p>
+     * <p>To disable the JSON output, you need to unset convention: {@code jsonOutput.unsetConvention()}</p>
+     *
+     * @return the JSON output file property
+     * @see #getXmlOutput()
+     * @see org.gradle.api.provider.Property#unsetConvention()
+     */
+    @OutputFile
+    @Optional
+    public abstract RegularFileProperty getJsonOutput();
 
     public CycloneDxTask() {
 
@@ -81,8 +113,11 @@ public abstract class CycloneDxTask extends DefaultTask {
         outputName = getProject().getObjects().property(String.class);
         outputName.convention("bom");
 
-        schemaVersion = getProject().getObjects().property(String.class);
-        schemaVersion.convention(CycloneDxUtils.DEFAULT_SCHEMA_VERSION.getVersionString());
+        schemaVersion = getProject().getObjects().property(Version.class);
+        schemaVersion.convention(CycloneDxUtils.DEFAULT_SCHEMA_VERSION);
+        schemaVersionAsString = getProject().getObjects().property(String.class);
+        schemaVersionAsString.convention(
+                getProject().getProviders().provider(() -> schemaVersion.get().getVersionString()));
 
         componentName = getProject().getObjects().property(String.class);
         componentName.convention(getProject().getName());
@@ -107,14 +142,17 @@ public abstract class CycloneDxTask extends DefaultTask {
         includeLicenseText = getProject().getObjects().property(Boolean.class);
         includeLicenseText.convention(true);
 
-        projectType = getProject().getObjects().property(String.class);
+        projectType = getProject().getObjects().property(Component.Type.class);
         projectType.convention(DEFAULT_PROJECT_TYPE);
+        projectTypeAsString = getProject().getObjects().property(String.class);
+        projectTypeAsString.convention(
+                getProject().getProviders().provider(() -> projectType.get().getTypeName()));
 
         skipProjects = getProject().getObjects().listProperty(String.class);
 
-        organizationalEntity = new OrganizationalEntity();
-        licenseChoice = new LicenseChoice();
-        gitVCS = new ExternalReference();
+        organizationalEntity = getProject().getObjects().property(OrganizationalEntity.class);
+        licenseChoice = getProject().getObjects().property(LicenseChoice.class);
+        externalReferences = getProject().getObjects().listProperty(ExternalReference.class);
 
         destination = getProject().getObjects().property(File.class);
         destination.convention(getProject()
@@ -129,22 +167,34 @@ public abstract class CycloneDxTask extends DefaultTask {
         buildSystemEnvironmentVariable = getProject().getObjects().property(String.class);
     }
 
+    /**
+     * @deprecated Use {@link #getJsonOutput()} and {@link #getXmlOutput()} instead. It will be removed in version 3.0.0.
+     */
     @Input
+    @Deprecated
     public Property<String> getOutputName() {
         return outputName;
     }
 
+    /**
+     * @deprecated Use {@link #getJsonOutput()} and {@link #getXmlOutput()} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setOutputName(final String output) {
         this.outputName.set(output);
     }
 
     @Input
     public Property<String> getSchemaVersion() {
-        return schemaVersion;
+        return schemaVersionAsString;
     }
 
+    /**
+     * @deprecated Use {@link #schemaVersion} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setSchemaVersion(final String schemaVersion) {
-        this.schemaVersion.set(schemaVersion);
+        this.schemaVersion.set(Version.fromVersionString(schemaVersion));
     }
 
     @Input
@@ -152,6 +202,10 @@ public abstract class CycloneDxTask extends DefaultTask {
         return componentName;
     }
 
+    /**
+     * @deprecated Use {@link #componentName} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setComponentName(final String componentName) {
         this.componentName.set(componentName);
     }
@@ -161,15 +215,27 @@ public abstract class CycloneDxTask extends DefaultTask {
         return componentVersion;
     }
 
+    /**
+     * @deprecated Use {@link #componentVersion} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setComponentVersion(final String componentVersion) {
         this.componentVersion.set(componentVersion);
     }
 
+    /**
+     * @deprecated Use {@link #getJsonOutput()} and {@link #getXmlOutput()} instead. It will be removed in version 3.0.0.
+     */
     @Input
+    @Deprecated
     public Property<String> getOutputFormat() {
         return outputFormat;
     }
 
+    /**
+     * @deprecated Use {@link #outputFormat} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setOutputFormat(final String format) {
         this.outputFormat.set(format);
     }
@@ -179,6 +245,10 @@ public abstract class CycloneDxTask extends DefaultTask {
         return includeBomSerialNumber;
     }
 
+    /**
+     * @deprecated Use {@link #includeBomSerialNumber} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setIncludeBomSerialNumber(final boolean includeBomSerialNumber) {
         this.includeBomSerialNumber.set(includeBomSerialNumber);
     }
@@ -188,6 +258,10 @@ public abstract class CycloneDxTask extends DefaultTask {
         return skipConfigs;
     }
 
+    /**
+     * @deprecated Use {@link #skipConfigs} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setSkipConfigs(final Collection<String> skipConfigs) {
         this.skipConfigs.addAll(skipConfigs);
     }
@@ -197,6 +271,10 @@ public abstract class CycloneDxTask extends DefaultTask {
         return includeConfigs;
     }
 
+    /**
+     * @deprecated Use {@link #includeConfigs} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setIncludeConfigs(final Collection<String> includeConfigs) {
         this.includeConfigs.addAll(includeConfigs);
     }
@@ -206,6 +284,10 @@ public abstract class CycloneDxTask extends DefaultTask {
         return includeMetadataResolution;
     }
 
+    /**
+     * @deprecated Use {@link #includeMetadataResolution} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setIncludeMetadataResolution(final boolean includeMetadataResolution) {
         this.includeMetadataResolution.set(includeMetadataResolution);
     }
@@ -215,17 +297,25 @@ public abstract class CycloneDxTask extends DefaultTask {
         return includeLicenseText;
     }
 
+    /**
+     * @deprecated Use {@link #includeLicenseText} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setIncludeLicenseText(final boolean includeLicenseText) {
         this.includeLicenseText.set(includeLicenseText);
     }
 
     @Input
     public Property<String> getProjectType() {
-        return projectType;
+        return projectTypeAsString;
     }
 
+    /**
+     * @deprecated Use {@link #projectType} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setProjectType(final String projectType) {
-        this.projectType.set(projectType);
+        this.projectType.set(Component.Type.valueOf(projectType.toUpperCase(Locale.ROOT)));
     }
 
     @Input
@@ -233,6 +323,10 @@ public abstract class CycloneDxTask extends DefaultTask {
         return skipProjects;
     }
 
+    /**
+     * @deprecated It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setSkipProjects(final Collection<String> skipProjects) {
         this.skipProjects.addAll(skipProjects);
     }
@@ -242,6 +336,10 @@ public abstract class CycloneDxTask extends DefaultTask {
         return includeBuildSystem;
     }
 
+    /**
+     * @deprecated Use {@link #includeBuildSystem} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setIncludeBuildSystem(final boolean includeBuildSystem) {
         this.includeBuildSystem.set(includeBuildSystem);
     }
@@ -261,30 +359,51 @@ public abstract class CycloneDxTask extends DefaultTask {
         return buildSystemEnvironmentVariable;
     }
 
+    /**
+     * @deprecated Use {@link #buildSystemEnvironmentVariable} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setBuildSystemEnvironmentVariable(final String buildSystemEnvironmentVariable) {
         this.buildSystemEnvironmentVariable.set(buildSystemEnvironmentVariable);
     }
 
     @Internal
     @Nullable OrganizationalEntity getOrganizationalEntity() {
-        return organizationalEntity;
+        return organizationalEntity.getOrNull();
     }
 
     @Internal
     @Nullable LicenseChoice getLicenseChoice() {
-        return licenseChoice;
+        return licenseChoice.getOrNull();
     }
 
     @Internal
-    @Nullable ExternalReference getGitVCS() {
-        return gitVCS;
+    List<ExternalReference> getExternalReferences() {
+        return externalReferences.get();
     }
 
+    /**
+     * @deprecated Use {@link #externalReferences} instead. It will be removed in version 3.0.0.
+     */
+    @Internal
+    @Deprecated
+    @Nullable ExternalReference getGitVCS() {
+        return externalReferences.get().get(0);
+    }
+
+    /**
+     * @deprecated Use {@link #getJsonOutput()} and {@link #getXmlOutput()} instead. It will be removed in version 3.0.0.
+     */
     @OutputDirectory
+    @Deprecated
     public Property<File> getDestination() {
         return destination;
     }
 
+    /**
+     * @deprecated Use {@link #getJsonOutput()} and {@link #getXmlOutput()} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setDestination(final File destination) {
         this.destination.set(destination);
     }
@@ -309,81 +428,88 @@ public abstract class CycloneDxTask extends DefaultTask {
                 getOutputName().get(),
                 CycloneDxUtils.schemaVersion(getSchemaVersion().get()),
                 getOutputFormat().get());
-    }
 
+        if (getJsonOutput().isPresent()) {
+            CycloneDxUtils.writeJSONBom(
+                    schemaVersion.get(), bom, getJsonOutput().getAsFile().get());
+        }
+        if (getXmlOutput().isPresent()) {
+            CycloneDxUtils.writeXmlBom(
+                    schemaVersion.get(), bom, getXmlOutput().getAsFile().get());
+        }
+    }
+    /**
+     * @deprecated Use {@link #organizationalEntity} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setOrganizationalEntity(final Consumer<OrganizationalEntity> customizer) {
         final OrganizationalEntity origin = new OrganizationalEntity();
         customizer.accept(origin);
-        this.organizationalEntity = origin;
+        this.organizationalEntity.set(origin);
 
         final Map<String, String> organizationalEntity = new HashMap<>();
 
-        organizationalEntity.put("name", this.organizationalEntity.getName());
-        if (this.organizationalEntity.getUrls() != null) {
-            for (int i = 0; i < this.organizationalEntity.getUrls().size(); i++) {
-                organizationalEntity.put(
-                        "url" + i, this.organizationalEntity.getUrls().get(i));
+        organizationalEntity.put("name", origin.getName());
+        if (origin.getUrls() != null) {
+            for (int i = 0; i < origin.getUrls().size(); i++) {
+                organizationalEntity.put("url" + i, origin.getUrls().get(i));
             }
         }
-        if (this.organizationalEntity.getContacts() != null) {
-            for (int i = 0; i < this.organizationalEntity.getContacts().size(); i++) {
+        if (origin.getContacts() != null) {
+            for (int i = 0; i < origin.getContacts().size(); i++) {
                 organizationalEntity.put(
-                        "contact_name" + i,
-                        this.organizationalEntity.getContacts().get(i).getName());
+                        "contact_name" + i, origin.getContacts().get(i).getName());
                 organizationalEntity.put(
-                        "contact_email" + i,
-                        this.organizationalEntity.getContacts().get(i).getEmail());
+                        "contact_email" + i, origin.getContacts().get(i).getEmail());
                 organizationalEntity.put(
-                        "contact_phone" + i,
-                        this.organizationalEntity.getContacts().get(i).getPhone());
+                        "contact_phone" + i, origin.getContacts().get(i).getPhone());
             }
         }
         // Definition of gradle Input via Hashmap because Hashmap is serializable (OrganizationalEntity isn't
         // serializable)
         getInputs().property("OrganizationalEntity", organizationalEntity);
     }
-
+    /**
+     * @deprecated Use {@link #licenseChoice} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setLicenseChoice(final Consumer<LicenseChoice> customizer) {
         final LicenseChoice origin = new LicenseChoice();
         customizer.accept(origin);
-        this.licenseChoice = origin;
+        this.licenseChoice.set(origin);
 
         final Map<String, String> licenseChoice = new HashMap<>();
 
-        if (this.licenseChoice.getLicenses() != null) {
-            for (int i = 0; i < this.licenseChoice.getLicenses().size(); i++) {
-                if (this.licenseChoice.getLicenses().get(i).getName() != null) {
+        if (origin.getLicenses() != null) {
+            for (int i = 0; i < origin.getLicenses().size(); i++) {
+                if (origin.getLicenses().get(i).getName() != null) {
                     licenseChoice.put(
                             "licenseChoice" + i + "name",
-                            this.licenseChoice.getLicenses().get(i).getName());
+                            origin.getLicenses().get(i).getName());
                 }
-                if (this.licenseChoice.getLicenses().get(i).getId() != null) {
+                if (origin.getLicenses().get(i).getId() != null) {
                     licenseChoice.put(
                             "licenseChoice" + i + "id",
-                            this.licenseChoice.getLicenses().get(i).getId());
+                            origin.getLicenses().get(i).getId());
                 }
                 licenseChoice.put(
                         "licenseChoice" + i + "text",
-                        this.licenseChoice
-                                .getLicenses()
-                                .get(i)
-                                .getAttachmentText()
-                                .getText());
+                        origin.getLicenses().get(i).getAttachmentText().getText());
                 licenseChoice.put(
-                        "licenseChoice" + i + "url",
-                        this.licenseChoice.getLicenses().get(i).getUrl());
+                        "licenseChoice" + i + "url", origin.getLicenses().get(i).getUrl());
             }
         }
 
-        if (this.licenseChoice.getExpression() != null) {
-            licenseChoice.put(
-                    "licenseChoice_Expression",
-                    this.licenseChoice.getExpression().getValue());
+        if (origin.getExpression() != null) {
+            licenseChoice.put("licenseChoice_Expression", origin.getExpression().getValue());
         }
         // Definition of gradle Input via Hashmap because Hashmap is serializable (LicenseChoice isn't serializable)
         getInputs().property("LicenseChoice", licenseChoice);
     }
-
+    /**
+     * @deprecated Use {@link #externalReferences} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
     public void setVCSGit(final Consumer<ExternalReference> customizer) {
         final ExternalReference origin = new ExternalReference();
         customizer.accept(origin);
@@ -395,14 +521,14 @@ public abstract class CycloneDxTask extends DefaultTask {
             return;
         }
 
-        this.gitVCS = origin;
-        this.gitVCS.setType(ExternalReference.Type.VCS);
+        origin.setType(ExternalReference.Type.VCS);
+        this.externalReferences.add(origin);
 
         final Map<String, String> externalReference = new HashMap<>();
 
-        externalReference.put("type", this.gitVCS.getType().toString());
-        externalReference.put("url", this.gitVCS.getUrl());
-        externalReference.put("comment", this.gitVCS.getComment());
+        externalReference.put("type", origin.getType().toString());
+        externalReference.put("url", origin.getUrl());
+        externalReference.put("comment", origin.getComment());
 
         // Definition of gradle Input via Hashmap because Hashmap is serializable
         // (OrganizationalEntity isn't serializable)
@@ -420,12 +546,11 @@ public abstract class CycloneDxTask extends DefaultTask {
             getLogger().info("skipConfigs               : " + skipConfigs.get());
             getLogger().info("skipProjects              : " + skipProjects.get());
             getLogger().info("includeMetadataResolution : " + includeMetadataResolution.get());
-            getLogger().info("destination               : " + destination.get());
-            getLogger().info("outputName                : " + outputName.get());
             getLogger().info("componentName             : " + componentName.get());
             getLogger().info("componentVersion          : " + componentVersion.get());
-            getLogger().info("outputFormat              : " + outputFormat.get());
             getLogger().info("projectType               : " + projectType.get());
+            getLogger().info("jsonOutput                : {}", getJsonOutput().getOrNull());
+            getLogger().info("xmlOutput                 : {}", getXmlOutput().getOrNull());
             getLogger().info("------------------------------------------------------------------------");
         }
     }

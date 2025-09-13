@@ -52,13 +52,10 @@ cyclonedxBom {
     // Specified the type of project being built. Defaults to 'library'
     projectType = "application"
     // Specified the version of the CycloneDX specification to use. Defaults to '1.6'
-    schemaVersion = "1.6"
-    // Boms destination directory. Defaults to 'build/reports'
-    destination = file("build/reports")
-    // The file name for the generated BOMs (before the file format suffix). Defaults to 'bom'
-    outputName = "bom"
-    // The file format generated, can be xml, json or all for generating both. Defaults to 'all'
-    outputFormat = "json"
+    schemaVersion = org.cyclonedx.model.schema.SchemaVersion.VERSION_16
+    // Custom output locations
+    jsonOutput = file("build/reports/sbom/${project.name}-sbom.json")
+    xmlOutput = file("build/reports/sbom/${project.name}-sbom.xml")
     // Include BOM Serial Number. Defaults to 'true'
     includeBomSerialNumber = false
     // Include License Text. Defaults to 'true'
@@ -80,19 +77,18 @@ If you are using the Kotlin DSL, the plugin can be configured as following:
 
 ```kotlin
 tasks.cyclonedxBom {
-    setIncludeConfigs(listOf("runtimeClasspath"))
-    setSkipConfigs(listOf("compileClasspath", "testCompileClasspath"))
-    setSkipProjects(listOf(rootProject.name, "yourTestSubProject"))
-    setProjectType("application")
-    setSchemaVersion("1.6")
-    setDestination(project.file("build/reports"))
-    setOutputName("bom")
-    setOutputFormat("json")
-    setIncludeBomSerialNumber(false)
-    setIncludeLicenseText(true)
-    setIncludeMetadataResolution(true)
-    setComponentVersion("2.0.0")
-    setComponentName("my-component")
+    includeConfigs = listOf("runtimeClasspath")
+    skipConfigs = listOf("compileClasspath", "testCompileClasspath")
+    skipProjects = listOf(rootProject.name, "yourTestSubProject")
+    projectType = "application"
+    schemaVersion = org.cyclonedx.model.schema.SchemaVersion.VERSION_16
+    jsonOutput = file("build/reports/sbom/${project.name}-sbom.json")
+    xmlOutput = file("build/reports/sbom/${project.name}-sbom.xml")
+    includeBomSerialNumber = false
+    includeLicenseText = true
+    includeMetadataResolution = true
+    componentVersion = "2.0.0"
+    componentName = "my-component"
 }
 ```
 
@@ -128,10 +124,9 @@ allprojects{
     skipConfigs = ["compileClasspath", "testCompileClasspath"]
     skipProjects = [rootProject.name, "yourTestSubProject"]
     projectType = "application"
-    schemaVersion = "1.6"
-    destination = file("build/reports")
-    outputName = "bom"
-    outputFormat = "json"
+    schemaVersion = org.cyclonedx.model.schema.SchemaVersion.VERSION_16
+    jsonOutput = file("build/reports/sbom/${project.name}-sbom.json")
+    xmlOutput = file("build/reports/sbom/${project.name}-sbom.xml")
     includeBomSerialNumber = false
     includeLicenseText = true
     componentVersion = "2.0.0"

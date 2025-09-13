@@ -18,6 +18,7 @@
  */
 package org.cyclonedx.gradle;
 
+import java.io.File;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
@@ -31,6 +32,29 @@ public class CycloneDxPlugin implements Plugin<Project> {
         project.getTasks().register("cyclonedxBom", CycloneDxTask.class, (task) -> {
             task.setGroup("Reporting");
             task.setDescription("Generates a CycloneDX compliant Software Bill of Materials (SBOM)");
+
+            task.getJsonOutput().convention(project.getProviders().provider(() -> {
+                if (!task.outputFormat.get().equals("all")
+                        && !task.outputFormat.get().equals("json")) {
+                    return null;
+                }
+                return project.getLayout()
+                        .file(project.getProviders()
+                                .provider(() -> new File(
+                                        task.destination.get(), String.format("%s.json", task.outputName.get()))))
+                        .get();
+            }));
+            task.getXmlOutput().convention(project.getProviders().provider(() -> {
+                if (!task.outputFormat.get().equals("all")
+                        && !task.outputFormat.get().equals("xml")) {
+                    return null;
+                }
+                return project.getLayout()
+                        .file(project.getProviders()
+                                .provider(() -> new File(
+                                        task.destination.get(), String.format("%s.xml", task.outputName.get()))))
+                        .get();
+            }));
         });
     }
 }
