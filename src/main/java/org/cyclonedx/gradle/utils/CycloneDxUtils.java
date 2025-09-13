@@ -82,7 +82,7 @@ public class CycloneDxUtils {
         }
     }
 
-    private static void writeJSONBom(final Version schemaVersion, final Bom bom, final File destination) {
+    public static void writeJSONBom(final Version schemaVersion, final Bom bom, final File destination) {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
         try {
             final String bomString = bomGenerator.toJsonString();
@@ -94,7 +94,7 @@ public class CycloneDxUtils {
         validateBom(new JsonParser(), schemaVersion, destination);
     }
 
-    private static void writeXmlBom(final Version schemaVersion, final Bom bom, final File destination) {
+    public static void writeXmlBom(final Version schemaVersion, final Bom bom, final File destination) {
 
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         try {

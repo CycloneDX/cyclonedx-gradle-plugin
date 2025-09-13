@@ -114,7 +114,13 @@ class SbomBuilder {
             component.setName(task.getComponentName().get());
             component.setVersion(task.getComponentVersion().get());
             addBuildSystemMetaData(component);
-            component.addExternalReference(task.getGitVCS());
+            if (task.getExternalReferences().isEmpty()) {
+                // this to maintain backward compatibility
+                component.addExternalReference(new ExternalReference());
+            } else {
+                task.getExternalReferences().forEach(component::addExternalReference);
+            }
+
             ExternalReferencesUtil.complementByEnvironment(component, logger);
             metadata.setComponent(component);
         } catch (MalformedPackageURLException e) {
