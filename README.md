@@ -163,31 +163,29 @@ cyclonedxBom {
     organizationalContact.setEmail("max.mustermann@test.org")
     organizationalContact.setPhone("0000 99999999")
 
+    // declaration of the Object from OrganizationalEntity
+    OrganizationalEntity oe = new OrganizationalEntity()
+    oe.setName("Test")
+    oe.setUrl(Arrays.asList("www.test1.com", "www.test2.com"))
+    oe.addContact(organizationalContact)
+
     // passing Data to the plugin
-    organizationalEntity { oe ->
-        oe.name = 'Test'
-        oe.url = ['www.test1.com', 'www.test2.com']
-        oe.addContact(organizationalContact)
-    }
+    organizationalEntity = oe
 }
 ```
 
 __Example (Kotlin):__
 ```kotlin
-cyclonedxBom {
+tasks.cyclonedxBom {
     // declaration of the Object from OrganizationalContact
-    var organizationalContact1 = OrganizationalContact()
-
-    // setting the Name[String], Email[String] and Phone[String] of the Object
-    organizationalContact1.setName("Max_Mustermann")
-    organizationalContact1.setEmail("max.mustermann@test.org")
-    organizationalContact1.setPhone("0000 99999999")
-
-    // passing data to the plugin
-    setOrganizationalEntity { oe ->
-        oe.name = "Test";
-        oe.urls = listOf("www.test1.com", "www.test2.com")
-        oe.addContact(organizationalContact1)
+    organizationalEntity = OrganizationalEntity().apply {
+        name = "ACME Corporation"
+        urls = listOf("https://www.acme.com", "https://security.acme.com")
+        addContact(OrganizationalContact().apply {
+            name = "Security Team"
+            email = "security@acme.com"
+            phone = "+1-555-SECURITY"
+        })
     }
 }
 ```
@@ -209,48 +207,26 @@ The object from LicenseChoice includes __either license or expression__. It can'
 __Example (groovy):__
 ```groovy
 cyclonedxBom {
-    // declaration of the object from AttachmentText -> Needed for the setting of LicenseText
-    AttachmentText attachmentText = new AttachmentText()
-    attachmentText.setText("This is a Licenses-Text")
-
-    // declaration of the Object from License
+    // Declaration of the Object from LicenseChoice
+    LicenseChoice lc = new LicenseChoice()
+    // Declaration of the Object from License
     License license = new License()
-
-    // setting the Name[String], LicenseText[AttachmentText] and Url[String]
-    license.setName("XXXX XXXX Software")
-
-    // license.setId("Mup")     // either id or name -> both not possible
-    license.setLicenseText(attachmentText);
-    license.setUrl("https://www.test-Url.org/")
-
-    // passing Data to Plugin
-    licenseChoice { lc ->
-        lc.addLicense(license)
-    }
+    license.setName("Apache-2.0")
+    license.setUrl("https://www.apache.org/licenses/LICENSE-2.0.txt")
+    lc.addLicense(license)
+    // passing Data to the plugin
+    licenseChoice = lc
 }
 ```
 
 __Example (Kotlin):__
 ```kotlin
 cyclonedxBom {
-    // declaration of the object from AttachmentText -> Needed for the setting of LicenseText
-    val attachmentText = AttachmentText()
-    attachmentText.setText("This is a Licenses-Text")
-
-    // declaration of the object from License
-    val license = License()
-
-    // setting the Name[String], LicenseText[AttachmentText] and Url[String]
-    license.setName("XXXX XXXX Software")
-
-    // license.setId("Mup")
-    // either id or name -> both not possible
-    license.setLicenseText(attachmentText)
-    license.setUrl("https://www.test-Url.org/")
-
-    // passing Data to Plugin
-    setLicenseChoice { lc ->
-        lc.addLicense(license)
+    licenseChoice = LicenseChoice().apply {
+        addLicense(License().apply {
+            name = "Apache-2.0"
+            url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        })
     }
 }
 ```
@@ -271,14 +247,13 @@ __Example (groovy) and (Kotlin):__
 
 ```groovy
 cyclonedxBom {
+    // Declaration of the Object from ExternalReference
+    ExternalReference er = new ExternalReference()
+    // set the URL[String] of the remote repository
+    er.setUrl("https://github.com/CycloneDX/cyclonedx-gradle-plugin.git")
+    er.setType(ExternalReference.Type.VCS)
     //passing Data to the plugin
-    setVCSGit { vcs ->
-        // set the URL[String] of the remote repository
-        vcs.url = "https://github.com/CycloneDX/cyclonedx-gradle-plugin.git"
-
-        // (optional) you can add a comment to describe your repository
-        // vcs.comment = "comment"
-    }
+    externalReferences = [er]
 }
 ```
 
