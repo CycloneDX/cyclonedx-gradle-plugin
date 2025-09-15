@@ -9,8 +9,7 @@ name: Publish CI
 
 on:
   release:
-    types:
-      - created
+    types: [published]
 
 permissions:
   contents: read
@@ -22,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5.0.0
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Set up JDK
         uses: actions/setup-java@v5.0.0
