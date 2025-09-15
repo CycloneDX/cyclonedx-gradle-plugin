@@ -422,13 +422,6 @@ public abstract class CycloneDxTask extends DefaultTask {
         final Bom bom = builder.buildBom(components.getGraph(), components.getRootComponent());
 
         getLogger().info(MESSAGE_WRITING_BOM_OUTPUT);
-        CycloneDxUtils.writeBom(
-                bom,
-                getDestination().get(),
-                getOutputName().get(),
-                CycloneDxUtils.schemaVersion(getSchemaVersion().get()),
-                getOutputFormat().get());
-
         if (getJsonOutput().isPresent()) {
             CycloneDxUtils.writeJSONBom(
                     schemaVersion.get(), bom, getJsonOutput().getAsFile().get());

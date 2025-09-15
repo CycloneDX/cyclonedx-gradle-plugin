@@ -64,24 +64,6 @@ public class CycloneDxUtils {
         }
     }
 
-    public static void writeBom(
-            final Bom bom,
-            final File destination,
-            final String outputName,
-            final Version version,
-            final String formats) {
-
-        if (formats.equals("all") || formats.equals("json")) {
-            final File jsonFile = new File(destination, String.format("%s.json", outputName));
-            writeJSONBom(version, bom, jsonFile);
-        }
-
-        if (formats.equals("all") || formats.equals("xml")) {
-            final File xmlFile = new File(destination, String.format("%s.xml", outputName));
-            writeXmlBom(version, bom, xmlFile);
-        }
-    }
-
     public static void writeJSONBom(final Version schemaVersion, final Bom bom, final File destination) {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
         try {
