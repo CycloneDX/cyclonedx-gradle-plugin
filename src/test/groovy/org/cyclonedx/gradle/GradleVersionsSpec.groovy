@@ -46,6 +46,6 @@ class GradleVersionsSpec extends Specification {
         where:
         taskName = 'cyclonedxBom'
         javaVersion = JavaVersion.current()
-        gradleVersion << ['9.0.0', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
+        gradleVersion << ['9.1.0', '9.0.0', '8.14', '8.13', '8.12', '8.11', '8.10', '8.9', '8.8', '8.7', '8.6', '8.5', '8.4']
     }
 }
