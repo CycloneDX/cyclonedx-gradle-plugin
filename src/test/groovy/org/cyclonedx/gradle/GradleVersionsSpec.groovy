@@ -34,6 +34,10 @@ class GradleVersionsSpec extends Specification {
             !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)
                 && GradleVersion.version(gradleVersion).majorVersion >= 9,
             "Gradle 9 requires Java 17 or higher")
+        Assumptions.assumeFalse(
+            JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_25)
+                && GradleVersion.version(gradleVersion).majorVersion < 9,
+            "Gradle prior 9 does not support Java 25 or higher")
         def result = GradleRunner.create()
             .withGradleVersion(gradleVersion)
             .withProjectDir(testDir)
