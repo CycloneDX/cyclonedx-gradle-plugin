@@ -44,7 +44,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
-import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 
@@ -394,7 +393,7 @@ public abstract class CycloneDxTask extends DefaultTask {
     /**
      * @deprecated Use {@link #getJsonOutput()} and {@link #getXmlOutput()} instead. It will be removed in version 3.0.0.
      */
-    @OutputDirectory
+    @Internal
     @Deprecated
     public Property<File> getDestination() {
         return destination;
