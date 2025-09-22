@@ -127,6 +127,44 @@ class PluginConfigurationSpec extends Specification {
         assert jsonBom.text.contains("\"specVersion\" : \"1.3\"")
     }
 
+    @Issue("https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/690")
+    def "should use configured schemaVersion as java object"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                schemaVersion = org.cyclonedx.Version.VERSION_13
+            }
+            dependencies {
+                implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
+                implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        assert jsonBom.text.contains("\"specVersion\" : \"1.3\"")
+    }
+
     def "should use project name as componentName"() {
         given:
         File testDir = TestUtils.createFromString("""
@@ -255,6 +293,43 @@ class PluginConfigurationSpec extends Specification {
             version = '1.0.0'
             cyclonedxBom {
                 projectType = 'framework'
+            }
+            dependencies {
+                implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("cyclonedxBom", "--configuration-cache")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, "build/reports")
+
+        assert reportDir.exists()
+        reportDir.listFiles({File file -> file.isFile()} as FileFilter).length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        assert jsonBom.text.contains("\"type\" : \"framework\"")
+    }
+
+    @Issue("https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/690")
+    def "should use configured projectType as java object"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            cyclonedxBom {
+                projectType = org.cyclonedx.model.Component.Type.FRAMEWORK
             }
             dependencies {
                 implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
