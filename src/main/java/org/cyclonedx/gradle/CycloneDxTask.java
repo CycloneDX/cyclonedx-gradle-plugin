@@ -196,6 +196,14 @@ public abstract class CycloneDxTask extends DefaultTask {
         this.schemaVersion.set(Version.fromVersionString(schemaVersion));
     }
 
+    /**
+     * @deprecated Use {@link #schemaVersion} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
+    public void setSchemaVersion(final Version schemaVersion) {
+        this.schemaVersion.set(schemaVersion);
+    }
+
     @Input
     public Property<String> getComponentName() {
         return componentName;
@@ -315,6 +323,14 @@ public abstract class CycloneDxTask extends DefaultTask {
     @Deprecated
     public void setProjectType(final String projectType) {
         this.projectType.set(Component.Type.valueOf(projectType.toUpperCase(Locale.ROOT)));
+    }
+
+    /**
+     * @deprecated Use {@link #projectType} instead. It will be removed in version 3.0.0.
+     */
+    @Deprecated
+    public void setProjectType(final Component.Type projectType) {
+        this.projectType.set(projectType);
     }
 
     @Input
