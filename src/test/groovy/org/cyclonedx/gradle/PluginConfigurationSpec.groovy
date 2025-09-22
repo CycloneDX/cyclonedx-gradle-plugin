@@ -8,7 +8,9 @@ import org.cyclonedx.model.ExternalReference
 import org.cyclonedx.model.Tool
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
+import spock.lang.Issue
 import spock.lang.Specification
+import java.util.jar.JarFile
 
 
 class PluginConfigurationSpec extends Specification {
@@ -799,5 +801,49 @@ class PluginConfigurationSpec extends Specification {
         File jsonBom = new File(testDir, "build/reports/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         assert bom.getMetadata().getComponent().getExternalReferences().size() == 0
+    }
+
+    @Issue("https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/686")
+    def "should support bom copy"() {
+        given:
+        File testDir = TestUtils.createFromString('''
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            tasks.named("processResources") {
+                dependsOn(tasks.named("cyclonedxBom"))
+                from(tasks.named("cyclonedxBom")) {
+                    include("bom.json")
+                    into("META-INF/sbom")
+                }
+            }
+            dependencies {
+            }''', "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("jar", "--configuration-cache", "--stacktrace")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        result.task(":processResources").outcome == TaskOutcome.SUCCESS
+        result.task(":jar").outcome == TaskOutcome.SUCCESS
+
+        File jarFile = new File(testDir, "build/libs/hello-world-1.0.0.jar")
+        assert jarFile.exists()
+
+        def jarContents = new JarFile(jarFile)
+        def entry = jarContents.getEntry("META-INF/sbom/bom.json")
+        assert entry != null
+        jarContents.close()
     }
 }
