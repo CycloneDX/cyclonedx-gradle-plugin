@@ -5,7 +5,7 @@ import net.ltgt.gradle.errorprone.errorprone
 plugins {
     id("java-gradle-plugin")
     id("com.gradle.plugin-publish")  version "2.0.0"
-    id("org.cyclonedx.bom") version "2.4.0"
+    id("org.cyclonedx.bom") version "2.4.1"
     id("groovy")
     id("com.diffplug.spotless") version "7.2.1"
     id("net.ltgt.errorprone") version "4.3.0"
@@ -17,7 +17,7 @@ version = "3.0.0-alpha-1"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -47,7 +47,7 @@ dependencies {
     errorprone("com.google.errorprone:error_prone_core:2.42.0")
 }
 
-listOf(8, 11, 17, 21).forEach { version ->
+listOf(8, 11, 17, 21, 25).forEach { version ->
     tasks.register<Test>("testJava$version") {
         description = "Runs tests with Java $version"
         group = "verification"
@@ -73,7 +73,7 @@ listOf(8, 11, 17, 21).forEach { version ->
 }
 
 tasks.named("test") {
-    dependsOn("testJava8", "testJava11", "testJava17", "testJava21")
+    dependsOn("testJava8", "testJava11", "testJava17", "testJava21", "testJava25")
     enabled = false // Prevents the default test task from running tests itself
 }
 
