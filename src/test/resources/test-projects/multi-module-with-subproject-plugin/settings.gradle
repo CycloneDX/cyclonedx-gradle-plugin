@@ -1,0 +1,10 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'multi-module'
+
+include 'app-a', 'app-b'

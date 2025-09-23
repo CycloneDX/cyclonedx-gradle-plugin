@@ -134,7 +134,7 @@ public class CyclonedxPlugin implements Plugin<Project> {
                 project.getConfigurations().maybeCreate(cyclonedxDirectConfigurationName);
         cyclonedxBomConfiguration.setCanBeConsumed(true);
         cyclonedxBomConfiguration.setCanBeResolved(false);
-        registerCyclonedxBomTask(project);
+        registerCyclonedxDirectBomTask(project);
     }
 
     private void registerCyclonedxAggregateBomTask(
@@ -149,14 +149,22 @@ public class CyclonedxPlugin implements Plugin<Project> {
             task.getXmlOutput().convention(aggregateReportDir.get().file("bom.xml"));
             task.getJsonOutput().convention(aggregateReportDir.get().file("bom.json"));
             // Wire inputs from configuration files
-            Provider<ConfigurableFileCollection> files = project.getProviders()
+            final Provider<ConfigurableFileCollection> files = project.getProviders()
                     .provider(() -> project.getObjects().fileCollection().from(cyclonedxBomAggregateConfiguration));
             task.getInputSboms().from(files);
         });
     }
 
-    private TaskProvider<CyclonedxDirectTask> registerCyclonedxBomTask(final Project project) {
-        return project.getTasks().register(cyclonedxDirectTaskName, CyclonedxDirectTask.class, task -> {
+    private void registerCyclonedxDirectBomTask(final Project project) {
+        if (!project.getTasks().withType(CyclonedxDirectTask.class).isEmpty()) {
+            LOGGER.info(
+                    "{} Task [{}] already exists in project [{}], skipping creation",
+                    LOG_PREFIX,
+                    cyclonedxDirectTaskName,
+                    project.getDisplayName());
+            return;
+        }
+        project.getTasks().register(cyclonedxDirectTaskName, CyclonedxDirectTask.class, task -> {
             final Provider<Directory> dir =
                     project.getLayout().getBuildDirectory().dir(cyclonedxDirectReportDir);
             task.getXmlOutput().convention(dir.get().file("bom.xml"));
