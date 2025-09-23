@@ -1079,4 +1079,25 @@ class PluginConfigurationSpec extends Specification {
         taskName = "cyclonedxBom"
         javaVersion = JavaVersion.current()
     }
+
+    def "should run aggregate task on root and subproject"() {
+        given:
+        File testDir = TestUtils.duplicate("multi-module-with-subproject-plugin")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        result.task(":app-a:cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        result.task(":app-b:cyclonedxBom").outcome == TaskOutcome.SUCCESS
+
+        where:
+        taskName = "cyclonedxBom"
+        javaVersion = JavaVersion.current()
+    }
 }
