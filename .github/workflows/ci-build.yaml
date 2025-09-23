@@ -34,8 +34,8 @@ jobs:
             8
             11
             17
-            21
             25
+            21
           cache: "gradle"
 
       - name: Setup Gradle
