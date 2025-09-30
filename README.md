@@ -48,7 +48,7 @@ Apply the plugin to your project:
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '3.0.0-alpha-1'
+    id 'org.cyclonedx.bom' version '3.0.0-alpha-2'
 }
 ```
 
@@ -56,7 +56,7 @@ plugins {
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.0.0-alpha-1"
+    id("org.cyclonedx.bom") version "3.0.0-alpha-2"
 }
 ```
 
@@ -278,7 +278,7 @@ Both tasks support:
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.0.0-alpha-1"
+    id("org.cyclonedx.bom") version "3.0.0-alpha-2"
     id("application")
 }
 
@@ -294,7 +294,7 @@ Root `/build.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.0.0-alpha-1"
+    id("org.cyclonedx.bom") version "3.0.0-alpha-2"
 }
 
 allprojects {
@@ -333,7 +333,7 @@ import org.cyclonedx.model.*
 import org.cyclonedx.model.schema.*
 
 plugins {
-    id("org.cyclonedx.bom") version "3.0.0-alpha-1"
+    id("org.cyclonedx.bom") version "3.0.0-alpha-2"
     id("java")
 }
 
@@ -376,7 +376,7 @@ tasks.cyclonedxDirectBom {
 import org.cyclonedx.model.*
 
 plugins {
-    id("org.cyclonedx.bom") version "3.0.0-alpha-1"
+    id("org.cyclonedx.bom") version "3.0.0-alpha-2"
     id("java")
 }
 
@@ -396,7 +396,7 @@ tasks.cyclonedxDirectBom {
 import org.cyclonedx.model.*
 
 plugins {
-    id("org.cyclonedx.bom") version "3.0.0-alpha-1"
+    id("org.cyclonedx.bom") version "3.0.0-alpha-2"
     id("java")
 }
 tasks.cyclonedxDirectBom {
@@ -414,7 +414,7 @@ tasks.cyclonedxDirectBom {
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.0.0-alpha-1"
+    id("org.cyclonedx.bom") version "3.0.0-alpha-2"
     id("java")
 }
 
