@@ -307,6 +307,9 @@ class MavenHelper {
     @Nullable MavenProject extractPom(final @Nullable File artifact, final ModuleVersionIdentifier mid) {
         if (artifact != null && artifact.exists()) {
             try {
+                if (artifact.getName().endsWith(".pom")) {
+                    return readPom(artifact);
+                }
                 final JarFile jarFile = new JarFile(artifact);
                 final JarEntry entry =
                         jarFile.getJarEntry("META-INF/maven/" + mid.getGroup() + "/" + mid.getName() + "/pom.xml");
