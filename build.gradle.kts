@@ -39,7 +39,7 @@ dependencies {
     testImplementation("org.spockframework:spock-core:2.4-M6-groovy-4.0") {
         exclude(module = "groovy-all")
     }
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:6.0.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("com.github.stefanbirkner:system-lambda:1.2.1")
 
