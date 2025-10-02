@@ -307,8 +307,13 @@ class MavenHelper {
     @Nullable MavenProject extractPom(final @Nullable File artifact, final ModuleVersionIdentifier mid) {
         if (artifact != null && artifact.exists()) {
             try {
+                LOGGER.debug("{} extractPom {}", LOG_PREFIX, artifact.getName());
                 if (artifact.getName().endsWith(".pom")) {
                     return readPom(artifact);
+                }
+                if (!artifact.getName().endsWith(".jar")) {
+                    LOGGER.debug("{} Skipping pom extraction of non jar artifact: {}", LOG_PREFIX, artifact.getName());
+                    return null;
                 }
                 final JarFile jarFile = new JarFile(artifact);
                 final JarEntry entry =
