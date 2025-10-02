@@ -22,4 +22,4 @@ jobs:
           java-version: 25
           cache: "gradle"
       - name: Generate and submit dependency graph
-        uses: gradle/actions/dependency-submission@v4.4.4
+        uses: gradle/actions/dependency-submission@v5.0.0
