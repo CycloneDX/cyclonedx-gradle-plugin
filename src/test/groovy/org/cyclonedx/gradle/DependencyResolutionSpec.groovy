@@ -135,7 +135,6 @@ class DependencyResolutionSpec extends Specification {
             componenta.hashes.find(c -> c.algorithm == "SHA-256" && c.value == "8b6a28fbdb87b7a521b61bc15d265820fb8dd1273cb44dd44a8efdcd6cd40848")
         assert hasha != null
         Component componentb = bom.getComponents().find(c -> c.name == 'componentb')
-        print componentb.hashes
         Hash hashb =
             componentb.hashes.find(c -> c.algorithm == "SHA-256" && c.value == "bb34c92067bc03509efe39750fee47a684ddf71682de66897ba369c0dab3b65d")
         assert hashb != null
