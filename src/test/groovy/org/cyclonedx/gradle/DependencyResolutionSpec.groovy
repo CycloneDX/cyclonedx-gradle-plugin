@@ -136,14 +136,14 @@ class DependencyResolutionSpec extends Specification {
         assert hasha != null
         Component componentb = bom.getComponents().find(c -> c.name == 'componentb')
         Hash hashb =
-            componentb.hashes.find(c -> c.algorithm == "SHA-256" && c.value == "5a5407bd92e71336b546642b8b62b6a9544bca5c4ab2fbb8864d9faa5400ba48")
+            componentb.hashes.find(c -> c.algorithm == "SHA-256" && c.value == "bb34c92067bc03509efe39750fee47a684ddf71682de66897ba369c0dab3b65d")
         assert hashb != null
 
         where:
         javaVersion = JavaVersion.current()
     }
 
-    def "should generate bom for non-jar artrifacts"() {
+    def "should generate bom for non-jar artifacts"() {
         given:
         String localRepoUri = TestUtils.duplicateRepo("local")
 
@@ -162,6 +162,7 @@ class DependencyResolutionSpec extends Specification {
 
             dependencies {
                 implementation("com.test:componentc:1.0.0")
+                implementation("com.test:componente-bom:1.0.0")
             }""", "rootProject.name = 'simple-project'")
 
         when:
@@ -172,6 +173,8 @@ class DependencyResolutionSpec extends Specification {
             .build()
 
         then:
+        !result.output.contains("An error occurred attempting to extract POM from artifact")
+        !result.output.contains("java.util.zip.ZipException")
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
         File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
