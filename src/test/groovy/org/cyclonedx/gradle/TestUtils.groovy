@@ -38,7 +38,12 @@ class TestUtils {
             }
         }
 
-        return """file://${tmpDir.absolutePath.replace("\\","/")}/repository"""
+        def os = System.properties['os.name'].toLowerCase()
+        def fileUrlPrefix = "file://"
+        if (os.contains('windows')) {
+            fileUrlPrefix = "file:/"
+        }
+        return """${fileUrlPrefix}${tmpDir.absolutePath.replace("\\","/")}/repository"""
     }
 
     static File createFromString(String buildContent, String settingsContent, VCS withVCS) {
