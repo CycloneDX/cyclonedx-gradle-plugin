@@ -5,7 +5,7 @@ import net.ltgt.gradle.errorprone.errorprone
 plugins {
     id("java-gradle-plugin")
     id("com.gradle.plugin-publish")  version "2.0.0"
-    id("org.cyclonedx.bom") version "3.0.0"
+    id("org.cyclonedx.bom") version "3.0.1"
     id("groovy")
     id("com.diffplug.spotless") version "8.0.0"
     id("net.ltgt.errorprone") version "4.3.0"
