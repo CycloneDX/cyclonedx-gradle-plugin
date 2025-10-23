@@ -1,7 +1,7 @@
 # Gradle Plugin Portal publishing
 
 Gradle provides a registry of published plugins that can easily be imported
-into projects without having to modify the pluginManagement resoultionStrategy.
+into projects without having to modify the pluginManagement resolutionStrategy.
 
 Additionally, gradle provides a plugin to facilitate the building of plugins
 that does extra validation checks, and another plugin that simplifies the
