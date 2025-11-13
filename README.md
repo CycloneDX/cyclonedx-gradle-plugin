@@ -224,6 +224,8 @@ tasks.cyclonedxBom {
 
 ### Advanced Configuration
 
+#### Full Configuration Example
+
 ```kotlin
 tasks.cyclonedxDirectBom {
     // Include only runtime dependencies
@@ -231,9 +233,6 @@ tasks.cyclonedxDirectBom {
 
     // Exclude all test-related configurations using regex
     skipConfigs = [".*test.*", ".*Test.*"]
-
-    // Skip specific projects from aggregation
-    skipProjects = ["test-utils", "integration-tests"]
 
     // Set application metadata
     projectType = "application"
@@ -256,6 +255,18 @@ tasks.cyclonedxDirectBom {
     jsonOutput = file("build/reports/sbom/${project.name}-sbom.json")
     xmlOutput = file("build/reports/sbom/${project.name}-sbom.xml")
 }
+```
+
+#### Excluding Projects from Aggregation
+
+To exclude a specific project from SBOM generation (both direct and aggregate tasks), disable the task:
+
+```kotlin
+subprojects {
+    tasks.cyclonedxDirectBom.enabled = false // Skip SBOM generation for this project
+}
+// Or in a specific project's build.gradle.kts:
+tasks.cyclonedxDirectBom.enabled = false
 ```
 
 ## Tasks
@@ -323,7 +334,8 @@ tasks.cyclonedxBom {
 Subproject `/test-utils/build.gradle.kts`:
 
 ```kotlin
-tasks.cyclonedxDirectBom.enabled = false // Skip SBOM generation for this project
+// Disable SBOM generation for test utility projects
+tasks.cyclonedxDirectBom.enabled = false
 ```
 
 #### Organizational Entity
