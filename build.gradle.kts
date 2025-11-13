@@ -32,7 +32,7 @@ dependencies {
     api("org.jspecify:jspecify:1.0.0")
 
     implementation("commons-codec:commons-codec:1.20.0")
-    implementation("commons-io:commons-io:2.20.0")
+    implementation("commons-io:commons-io:2.21.0")
     implementation("org.apache.maven:maven-core:3.9.11")
 
     testImplementation(gradleTestKit())
