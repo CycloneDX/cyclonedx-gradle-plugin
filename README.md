@@ -20,6 +20,7 @@ and creates a valid CycloneDX SBOM. CycloneDX is a lightweight software bill of 
 - [Usage](#usage)
     - [Per-Project SBOM Generation](#per-project-sbom-generation)
     - [Multi-Project Aggregation](#multi-project-aggregation)
+    - [Usage with Initialization Script](#usage-with-initialization-script)
 - [Configuration](#configuration)
     - [Configuration Properties](#configuration-properties)
     - [Output Configuration](#output-configuration)
@@ -123,6 +124,35 @@ build. This provides a complete view of your application's supply chain.
 
 - JSON: `build/reports/cyclonedx/bom.json`
 - XML: `build/reports/cyclonedx/bom.xml`
+
+### Usage with Initialization Script
+
+It is possible to use the plugin without modifying the project's build script. This is useful for CI/CD pipelines or when you want to generate an SBOM for a project that you do not own or cannot modify.
+
+1. Create a file named `init.gradle.kts` with the following content:
+
+```kotlin
+import org.cyclonedx.gradle.CyclonedxPlugin
+
+initscript {
+    repositories {
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath("org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.0.2")
+    }
+}
+
+rootProject {
+    apply<CyclonedxPlugin>()
+}
+```
+
+2. Run the SBOM generation task using the `--init-script` parameter:
+
+```bash
+./gradlew cyclonedxBom --init-script init.gradle.kts
+```
 
 ## Configuration
 
