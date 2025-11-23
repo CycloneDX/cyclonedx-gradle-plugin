@@ -185,6 +185,7 @@ tasks.cyclonedxBom {
 | `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
 | `includeLicenseText`             | `boolean`                 | `true`                    | Include full license text in components                                            |
 | `includeMetadataResolution`      | `boolean`                 | `true`                    | Include complete metadata resolution for components                                |
+| `includeBuildEnvironment`        | `boolean`                 | `false`                   | Include build environment dependencies (e.g. from buildscript)                     |
 | `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                       |
 | `buildSystemEnvironmentVariable` | `String`                  | -                         | Custom environment variable for build system URL                                   |
 | `componentVersion`               | `String`                  | Project version           | Override the main component version                                                |
@@ -276,6 +277,7 @@ tasks.cyclonedxDirectBom {
     includeBomSerialNumber = true
     includeLicenseText = true
     includeMetadataResolution = true
+    includeBuildEnvironment = false
     includeBuildSystem = true
 
     // Custom build system URL template

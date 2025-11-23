@@ -196,9 +196,20 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private Stream<Configuration> getInScopeConfigurations() {
-        final Configuration[] configs = project.getConfigurations().stream()
-                .filter(configuration -> filterConfigurations(project, configuration))
-                .toArray(Configuration[]::new);
+        final Stream<Configuration> projectConfigs = project.getConfigurations().stream()
+                .filter(configuration -> filterConfigurations(project, configuration));
+
+        final Stream<Configuration> buildScriptConfigs;
+        if (task.getIncludeBuildEnvironment().get()) {
+            buildScriptConfigs = project.getBuildscript().getConfigurations().stream()
+                    .filter(configuration -> filterConfigurations(project, configuration));
+        } else {
+            buildScriptConfigs = Stream.empty();
+        }
+
+        final Configuration[] configs =
+                Stream.concat(projectConfigs, buildScriptConfigs).toArray(Configuration[]::new);
+
         LOGGER.info(
                 "{} For project {} following configurations are in scope to build the dependency graph: {}",
                 LOG_PREFIX,

@@ -646,6 +646,106 @@ class PluginConfigurationSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    def "should include build environment dependencies when includeBuildEnvironment is true"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            buildscript {
+                repositories {
+                    mavenCentral()
+                }
+                dependencies {
+                    classpath 'org.apache.commons:commons-lang3:3.12.0'
+                }
+            }
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            tasks.cyclonedxDirectBom {
+                includeBuildEnvironment = true
+            }
+            dependencies {
+                implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.15.0'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":" + taskName).outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, reportLocation + "/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component commonsLang = bom.getComponents().find(c -> c.name == 'commons-lang3')
+        Component log4jCore = bom.getComponents().find(c -> c.name == 'log4j-core')
+
+        assert commonsLang != null
+        assert commonsLang.version == '3.12.0'
+        assert log4jCore != null
+
+        where:
+        taskName             | reportLocation
+        "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
+        "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = JavaVersion.current()
+    }
+
+    def "should not include build environment dependencies by default"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            buildscript {
+                repositories {
+                    mavenCentral()
+                }
+                dependencies {
+                    classpath 'org.apache.commons:commons-lang3:3.12.0'
+                }
+            }
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            dependencies {
+                implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.15.0'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":" + taskName).outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, reportLocation + "/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component commonsLang = bom.getComponents().find(c -> c.name == 'commons-lang3')
+        Component log4jCore = bom.getComponents().find(c -> c.name == 'log4j-core')
+
+        assert commonsLang == null
+        assert log4jCore != null
+
+        where:
+        taskName             | reportLocation
+        "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
+        "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = JavaVersion.current()
+    }
+
     def "should print error if project group, name, or version unset"() {
         given:
         File testDir = TestUtils.createFromString("""

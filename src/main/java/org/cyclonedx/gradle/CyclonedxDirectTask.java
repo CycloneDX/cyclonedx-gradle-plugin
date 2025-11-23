@@ -71,12 +71,22 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     @Input
     public abstract Property<Boolean> getIncludeMetadataResolution();
 
+    /**
+     * Whether to include the build environment dependencies (e.g. from buildscript) in the BOM.
+     * If not set, it defaults to false.
+     *
+     * @return true if build environment dependencies should be included, false otherwise
+     */
+    @Input
+    public abstract Property<Boolean> getIncludeBuildEnvironment();
+
     private final Provider<SbomGraph> componentsProvider;
 
     public CyclonedxDirectTask() {
         getIncludeConfigs().convention(new ArrayList<>());
         getSkipConfigs().convention(new ArrayList<>());
         getIncludeMetadataResolution().convention(true);
+        getIncludeBuildEnvironment().convention(false);
         this.componentsProvider = getProject().getProviders().provider(new SbomGraphProvider(getProject(), this));
     }
 
@@ -114,6 +124,9 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
             LOGGER.info(
                     "includeMetadataResolution : {}",
                     getIncludeMetadataResolution().get());
+            LOGGER.info(
+                    "includeBuildEnvironment   : {}",
+                    getIncludeBuildEnvironment().get());
             LOGGER.info("jsonOutput                : {}", getJsonOutput().getOrNull());
             LOGGER.info("xmlOutput                 : {}", getXmlOutput().getOrNull());
             LOGGER.info("componentGroup            : {}", getComponentGroup().get());
