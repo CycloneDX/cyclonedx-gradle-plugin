@@ -51,6 +51,7 @@ listOf(8, 11, 17, 21, 25).forEach { version ->
     tasks.register<Test>("testJava$version") {
         description = "Runs tests with Java $version"
         group = "verification"
+        inputs.files(tasks.test.get().inputs.files)
         javaLauncher.set(
             javaToolchains.launcherFor {
                 languageVersion.set(JavaLanguageVersion.of(version))
