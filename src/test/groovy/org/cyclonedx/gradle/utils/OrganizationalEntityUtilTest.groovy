@@ -1,6 +1,7 @@
 package org.cyclonedx.gradle.utils
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.cyclonedx.Version
 import org.cyclonedx.gradle.TestUtils
 import org.cyclonedx.model.Bom
 import org.gradle.api.JavaVersion
@@ -11,8 +12,10 @@ import spock.lang.Specification
 import spock.lang.Unroll
 
 @IgnoreIf({ !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) })
-@Unroll("java version: #javaVersion")
+@Unroll("java version: #javaVersion, spec version: #specVersion.name()")
 class OrganizationalEntityUtilTest extends Specification {
+
+    static final Version[] versionsToSkip = [ Version.VERSION_10, Version.VERSION_11, Version.VERSION_12 ]
 
     def "manufacturer should be empty if no organizational entity is provided"() {
         given: "A mocked project directory with no git repo configuration"
@@ -29,6 +32,7 @@ class OrganizationalEntityUtilTest extends Specification {
             version = '1.0.0'
 
             tasks.cyclonedxBom {
+                schemaVersion = org.cyclonedx.Version.${specVersion.name()}
             }
 
             dependencies {
@@ -51,10 +55,12 @@ class OrganizationalEntityUtilTest extends Specification {
         File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
+        assert bom.getMetadata().getManufacture() == null
         assert bom.getMetadata().getManufacturer() == null
 
         where:
         javaVersion = JavaVersion.current()
+        specVersion << Version.values() - versionsToSkip
     }
 
     def "manufacturer should be empty if empty organizational entity is provided"() {
@@ -73,6 +79,7 @@ class OrganizationalEntityUtilTest extends Specification {
 
             def oe = new org.cyclonedx.model.OrganizationalEntity()
             tasks.cyclonedxBom {
+                schemaVersion = org.cyclonedx.Version.${specVersion.name()}
                 organizationalEntity = oe
             }
 
@@ -96,10 +103,12 @@ class OrganizationalEntityUtilTest extends Specification {
         File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
+        assert bom.getMetadata().getManufacture() == null
         assert bom.getMetadata().getManufacturer() == null
 
         where:
         javaVersion = JavaVersion.current()
+        specVersion << Version.values() - versionsToSkip
     }
 
     def "manufacturer should not be empty if organizational entity is provided"() {
@@ -119,6 +128,7 @@ class OrganizationalEntityUtilTest extends Specification {
             def oe = new org.cyclonedx.model.OrganizationalEntity()
             oe.name = "name"
             tasks.cyclonedxBom {
+                schemaVersion = org.cyclonedx.Version.${specVersion.name()}
                 organizationalEntity = oe
             }
 
@@ -142,9 +152,16 @@ class OrganizationalEntityUtilTest extends Specification {
         File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
 
-        assert bom.getMetadata().getManufacturer().getName() == "name"
+        if (specVersion.compareTo(Version.VERSION_16) >= 0) {
+            assert bom.getMetadata().getManufacture() == null
+            assert bom.getMetadata().getManufacturer().getName() == "name"
+        } else {
+            assert bom.getMetadata().getManufacture().getName() == "name"
+            assert bom.getMetadata().getManufacturer() == null
+        }
 
         where:
         javaVersion = JavaVersion.current()
+        specVersion << Version.values() - versionsToSkip
     }
 }

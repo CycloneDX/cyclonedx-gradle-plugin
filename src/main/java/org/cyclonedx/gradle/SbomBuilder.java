@@ -122,7 +122,11 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         if (task.getOrganizationalEntity().isPresent()
                 && !new OrganizationalEntity()
                         .equals(task.getOrganizationalEntity().get())) {
-            metadata.setManufacturer(task.getOrganizationalEntity().get());
+            if (version.compareTo(Version.VERSION_16) >= 0) {
+                metadata.setManufacturer(task.getOrganizationalEntity().get());
+            } else {
+                metadata.setManufacture(task.getOrganizationalEntity().get());
+            }
         }
 
         final Properties pluginProperties = readPluginProperties();
