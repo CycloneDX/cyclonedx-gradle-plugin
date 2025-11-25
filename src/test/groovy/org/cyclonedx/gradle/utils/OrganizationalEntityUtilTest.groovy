@@ -1,9 +1,10 @@
 package org.cyclonedx.gradle.utils
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.cyclonedx.Version
 import org.cyclonedx.gradle.TestUtils
 import org.cyclonedx.model.Bom
+import org.cyclonedx.parsers.JsonParser
+import org.cyclonedx.parsers.XmlParser
 import org.gradle.api.JavaVersion
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
@@ -52,11 +53,14 @@ class OrganizationalEntityUtilTest extends Specification {
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
-        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        File reportDir = new File(testDir, "build/reports/cyclonedx")
+        Bom jsonBom = new JsonParser().parse(new File(reportDir, "bom.json"))
+        Bom xmlBom = new XmlParser().parse(new File(reportDir, "bom.xml"))
 
-        assert bom.getMetadata().getManufacture() == null
-        assert bom.getMetadata().getManufacturer() == null
+        assert jsonBom.getMetadata().getManufacture() == null
+        assert xmlBom.getMetadata().getManufacture() == null
+        assert jsonBom.getMetadata().getManufacturer() == null
+        assert xmlBom.getMetadata().getManufacturer() == null
 
         where:
         javaVersion = JavaVersion.current()
@@ -100,11 +104,14 @@ class OrganizationalEntityUtilTest extends Specification {
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
-        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        File reportDir = new File(testDir, "build/reports/cyclonedx")
+        Bom jsonBom = new JsonParser().parse(new File(reportDir, "bom.json"))
+        Bom xmlBom = new XmlParser().parse(new File(reportDir, "bom.xml"))
 
-        assert bom.getMetadata().getManufacture() == null
-        assert bom.getMetadata().getManufacturer() == null
+        assert jsonBom.getMetadata().getManufacture() == null
+        assert xmlBom.getMetadata().getManufacture() == null
+        assert jsonBom.getMetadata().getManufacturer() == null
+        assert xmlBom.getMetadata().getManufacturer() == null
 
         where:
         javaVersion = JavaVersion.current()
@@ -149,15 +156,20 @@ class OrganizationalEntityUtilTest extends Specification {
 
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
-        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        File reportDir = new File(testDir, "build/reports/cyclonedx")
+        Bom jsonBom = new JsonParser().parse(new File(reportDir, "bom.json"))
+        Bom xmlBom = new XmlParser().parse(new File(reportDir, "bom.xml"))
 
         if (specVersion.compareTo(Version.VERSION_16) >= 0) {
-            assert bom.getMetadata().getManufacture() == null
-            assert bom.getMetadata().getManufacturer().getName() == "name"
+            assert jsonBom.getMetadata().getManufacture() == null
+            assert xmlBom.getMetadata().getManufacture() == null
+            assert jsonBom.getMetadata().getManufacturer().getName() == "name"
+            assert xmlBom.getMetadata().getManufacturer().getName() == "name"
         } else {
-            assert bom.getMetadata().getManufacture().getName() == "name"
-            assert bom.getMetadata().getManufacturer() == null
+            assert jsonBom.getMetadata().getManufacture().getName() == "name"
+            assert xmlBom.getMetadata().getManufacture().getName() == "name"
+            assert jsonBom.getMetadata().getManufacturer() == null
+            assert xmlBom.getMetadata().getManufacturer() == null
         }
 
         where:
