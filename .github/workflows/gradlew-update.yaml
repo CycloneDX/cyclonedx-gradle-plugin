@@ -15,7 +15,7 @@ jobs:
     if: ${{ github.repository == 'CycloneDX/cyclonedx-gradle-plugin' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.0
+        uses: actions/checkout@v6.0.1
 
       - name: Validate Gradle Wrapper
         uses: gradle-update/update-gradle-wrapper-action@v2.1.0
