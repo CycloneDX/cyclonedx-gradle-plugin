@@ -41,7 +41,7 @@ dependencies {
     testImplementation("com.github.stefanbirkner:system-lambda:1.2.1")
 
     errorprone("com.uber.nullaway:nullaway:0.12.15")
-    errorprone("com.google.errorprone:error_prone_core:2.45.0")
+    errorprone("com.google.errorprone:error_prone_core:2.46.0")
 }
 
 listOf(8, 11, 17, 21, 25).forEach { version ->
