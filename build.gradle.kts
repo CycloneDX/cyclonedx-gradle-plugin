@@ -8,7 +8,7 @@ plugins {
     id("org.cyclonedx.bom") version "3.1.0"
     id("groovy")
     id("com.diffplug.spotless") version "8.1.0"
-    id("net.ltgt.errorprone") version "4.3.0"
+    id("net.ltgt.errorprone") version "4.4.0"
 }
 
 val organization = "CycloneDX"
