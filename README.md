@@ -183,7 +183,7 @@ tasks.cyclonedxBom {
 | `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
 | `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
 | `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
-| `includeLicenseText`             | `boolean`                 | `true`                    | Include full license text in components                                            |
+| `includeLicenseText`             | `boolean`                 | `false`                   | Include full license text in components                                            |
 | `includeMetadataResolution`      | `boolean`                 | `true`                    | Include complete metadata resolution for components                                |
 | `includeBuildEnvironment`        | `boolean`                 | `false`                   | Include build environment dependencies (e.g. from buildscript)                     |
 | `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                       |
@@ -202,7 +202,7 @@ tasks.cyclonedxBom {
 | `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
 | `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
 | `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
-| `includeLicenseText`             | `boolean`                 | `true`                    | Include full license text in components                                            |
+| `includeLicenseText`             | `boolean`                 | `false`                   | Include full license text in components                                            |
 | `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                       |
 | `buildSystemEnvironmentVariable` | `String`                  | -                         | Custom environment variable for build system URL                                   |
 | `componentVersion`               | `String`                  | Project version           | Override the main component version                                                |
