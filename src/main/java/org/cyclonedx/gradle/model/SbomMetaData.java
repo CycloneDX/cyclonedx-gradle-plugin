@@ -66,7 +66,7 @@ public class SbomMetaData implements Serializable {
         metaData.setPublisher(component.getPublisher());
         if (component.getExternalReferences() != null) {
             component.getExternalReferences().forEach(reference -> {
-                metaData.addExternalReference(reference.getType().toString(), reference.getUrl());
+                metaData.addExternalReference(reference.getType().getTypeName(), reference.getUrl());
             });
         }
         return metaData;

@@ -5,5 +5,8 @@
     <groupId>com.test</groupId>
     <artifactId>componentb</artifactId>
     <version>1.0.0</version>
+    <scm>
+        <url>https://test-repos.local.repository.com/test</url>
+    </scm>
 
 </project>
