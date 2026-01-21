@@ -6,6 +6,7 @@ import org.cyclonedx.gradle.utils.CyclonedxUtils
 import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
 import org.cyclonedx.model.Dependency
+import org.cyclonedx.model.ExternalReference
 import org.cyclonedx.model.Hash
 import org.gradle.api.JavaVersion
 import org.gradle.testkit.runner.GradleRunner
@@ -449,6 +450,49 @@ class DependencyResolutionSpec extends Specification {
         File reportDir = new File(testDir, "build/reports/cyclonedx")
 
         assert reportDir.exists()
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "should contain correct external references"() {
+        given:
+        String localRepoUrl = TestUtils.duplicateRepo("local")
+
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                maven {
+                    url "$localRepoUrl"
+                }
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            dependencies {
+                implementation("com.test:componentb:1.0.0")
+            }
+            """, "rootProject.name = 'ext-ref-test-project'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File bomFile = new File(testDir, "build/reports/cyclonedx/bom.json")
+        Bom bom = new ObjectMapper().readValue(bomFile, Bom.class)
+        Component component = bom.getComponents().find(c -> c.name == 'componentb')
+        assert component != null
+        assert component.externalReferences?.size() == 1
+        ExternalReference externalReference = component.externalReferences.first()
+        assert externalReference.type == ExternalReference.Type.VCS
+        assert externalReference.url == "https://test-repos.local.repository.com/test"
 
         where:
         javaVersion = JavaVersion.current()
