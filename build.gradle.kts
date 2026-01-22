@@ -40,7 +40,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("com.github.stefanbirkner:system-lambda:1.2.1")
 
-    errorprone("com.uber.nullaway:nullaway:0.12.15")
+    errorprone("com.uber.nullaway:nullaway:0.13.0")
     errorprone("com.google.errorprone:error_prone_core:2.46.0")
 }
 
