@@ -169,6 +169,7 @@ public class CyclonedxPlugin implements Plugin<Project> {
                     project.getLayout().getBuildDirectory().dir(cyclonedxDirectReportDir);
             task.getXmlOutput().convention(dir.get().file("bom.xml"));
             task.getJsonOutput().convention(dir.get().file("bom.json"));
+            task.getAggregateConfigurationName().convention(cyclonedxAggregateConfigurationName);
         });
     }
 
