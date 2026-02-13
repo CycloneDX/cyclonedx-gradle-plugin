@@ -49,7 +49,7 @@ Apply the plugin to your project:
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '3.1.1'
+    id 'org.cyclonedx.bom' version '3.2.0'
 }
 ```
 
@@ -57,7 +57,7 @@ plugins {
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.1.1"
+    id("org.cyclonedx.bom") version "3.2.0"
 }
 ```
 
@@ -139,7 +139,7 @@ initscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath("org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.1.1")
+        classpath("org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.2.0")
     }
 }
 
@@ -321,7 +321,7 @@ Both tasks support:
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.1.1"
+    id("org.cyclonedx.bom") version "3.2.0"
     id("application")
 }
 
@@ -337,7 +337,7 @@ Root `/build.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.1.1"
+    id("org.cyclonedx.bom") version "3.2.0"
 }
 
 allprojects {
@@ -377,7 +377,7 @@ import org.cyclonedx.model.*
 import org.cyclonedx.model.schema.*
 
 plugins {
-    id("org.cyclonedx.bom") version "3.1.1"
+    id("org.cyclonedx.bom") version "3.2.0"
     id("java")
 }
 
@@ -388,7 +388,7 @@ tasks.cyclonedxDirectBom {
 
     // Component details
     componentName = "acme-payment-service"
-    componentVersion = "3.1.1"
+    componentVersion = "3.2.0"
 
     // Dependency filtering
     includeConfigs = listOf("runtimeClasspath", "compileClasspath")
@@ -420,7 +420,7 @@ tasks.cyclonedxDirectBom {
 import org.cyclonedx.model.*
 
 plugins {
-    id("org.cyclonedx.bom") version "3.1.1"
+    id("org.cyclonedx.bom") version "3.2.0"
     id("java")
 }
 
@@ -440,7 +440,7 @@ tasks.cyclonedxDirectBom {
 import org.cyclonedx.model.*
 
 plugins {
-    id("org.cyclonedx.bom") version "3.1.1"
+    id("org.cyclonedx.bom") version "3.2.0"
     id("java")
 }
 tasks.cyclonedxDirectBom {
@@ -458,7 +458,7 @@ tasks.cyclonedxDirectBom {
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.1.1"
+    id("org.cyclonedx.bom") version "3.2.0"
     id("java")
 }
 
