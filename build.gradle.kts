@@ -134,7 +134,7 @@ gradlePlugin {
 
 spotless {
     java {
-        palantirJavaFormat("2.50.0")
+        palantirJavaFormat("2.86.0")
         formatAnnotations()
         licenseHeader("/*\n" +
             " * This file is part of CycloneDX Gradle Plugin.\n" +
