@@ -12,6 +12,7 @@ import org.gradle.api.JavaVersion
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import spock.lang.IgnoreIf
+import spock.lang.Issue
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -493,6 +494,53 @@ class DependencyResolutionSpec extends Specification {
         ExternalReference externalReference = component.externalReferences.first()
         assert externalReference.type == ExternalReference.Type.VCS
         assert externalReference.url == "https://test-repos.local.repository.com/test"
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    @Issue("https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/777")
+    def "should not fail with ConcurrentModificationException when configuration container is modified during resolution"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            dependencies {
+                implementation 'org.apache.commons:commons-lang3:3.12.0'
+            }
+
+            // Force modification of configurations container during resolution to trigger CME
+            // This simulates complex build logic or plugins that might add configurations lazily
+            configurations.all { config ->
+                config.incoming.beforeResolve {
+                    def newName = "dynamicConfig_" + config.name
+                    if (!project.configurations.findByName(newName)) {
+                        project.configurations.create(newName)
+                    }
+                }
+            }
+
+            tasks.named('cyclonedxDirectBom') {
+                 skipConfigs = ["runtimeClasspath"]
+            }
+            """, "rootProject.name = 'issue-777'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments('cyclonedxDirectBom', '--stacktrace')
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
 
         where:
         javaVersion = JavaVersion.current()
