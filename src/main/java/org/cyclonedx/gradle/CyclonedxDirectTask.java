@@ -122,7 +122,7 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
      * This is used for up-to-date checking to detect dependency changes.
      */
     private Set<File> getResolvedConfigurationFiles() {
-        return new HashSet<>(getInScopeConfigurations()
+        return new HashSet<>(getInScopeConfigurations().collect(Collectors.toList()).stream()
                 .flatMap(config -> {
                     try {
                         return config
