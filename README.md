@@ -356,6 +356,7 @@ Groovy.
 | `componentName` | `String` | Project name | Name of the document's main component. |
 | `componentVersion` | `String` | Project version | Version of the document's main component. |
 | `componentDescription` | `String` | Not set | Description of the document's main component. |
+| `excludeArtifacts` | `List<String>` | `[]` | `group:name:version` patterns for artifacts to exclude from the SBOM. `*` matches any sequence of characters within a segment; an omitted trailing segment matches anything. |
 | `projectType` | `Component.Type` | `LIBRARY` | CycloneDX type of the main component. Kotlin requires an enum value such as `Component.Type.APPLICATION`; Groovy also accepts a type name such as `'application'`. |
 | `schemaVersion` | `Version` | `VERSION_16` | CycloneDX schema used for serialization. Set `Version.VERSION_17` to opt in to CycloneDX 1.7. |
 | `includeBomSerialNumber` | `Boolean` | `true` | Add a generated `urn:uuid:` serial number. |
