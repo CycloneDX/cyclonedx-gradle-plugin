@@ -25,11 +25,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.cyclonedx.gradle.model.ArtifactExclusion;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomGraph;
@@ -143,6 +145,10 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private Map<ComponentIdentifier, File> getArtifacts() {
+        final List<ArtifactExclusion> exclusions = task.getExcludeArtifacts().get().stream()
+                .map(ArtifactExclusion::new)
+                .collect(Collectors.toList());
+
         return getInScopeConfigurations()
                 .flatMap(config -> {
                     final ResolvedArtifactResult[] resolvedArtifacts = config.getIncoming()
@@ -159,6 +165,9 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                             summarize(resolvedArtifacts, v -> v.getId().getDisplayName()));
                     return Arrays.stream(resolvedArtifacts);
                 })
+                .filter(artifact -> exclusions.stream()
+                        .noneMatch(
+                                exclusion -> exclusion.matches(artifact.getId().getComponentIdentifier())))
                 .collect(Collectors.toMap(
                         artifact -> artifact.getId().getComponentIdentifier(),
                         ResolvedArtifactResult::getFile,
