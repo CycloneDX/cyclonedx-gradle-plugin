@@ -186,6 +186,15 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
     @Input
     public abstract Property<Boolean> getIncludeLicenseText();
 
+    /**
+     * The list of artifacts to exclude from the BOM.
+     * The format is `group:name:version` where `group`, `name`, and `version` can be regular expressions.
+     *
+     * @return the list of artifacts to exclude
+     */
+    @Input
+    public abstract ListProperty<String> getExcludeArtifacts();
+
     public BaseCyclonedxTask() {
         super();
         getComponentGroup().convention(getProject().getProviders().provider(() -> getProject()
@@ -204,5 +213,7 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
         getOrganizationalEntity().convention(getProject().getObjects().property(OrganizationalEntity.class));
         getLicenseChoice().convention(getProject().getObjects().property(LicenseChoice.class));
         getExternalReferences().convention(getProject().getObjects().listProperty(ExternalReference.class));
+        getExcludeArtifacts()
+                .convention(getProject().getObjects().listProperty(String.class).empty());
     }
 }
