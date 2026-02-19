@@ -235,6 +235,7 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
             LOGGER.info("componentName             : {}", getComponentName().get());
             LOGGER.info("componentVersion          : {}", getComponentVersion().get());
             LOGGER.info("projectType               : {}", getProjectType().get());
+            LOGGER.info("hashAlgorithms            : {}", getHashAlgorithms().get());
             LOGGER.info("------------------------------------------------------------------------");
         }
     }

@@ -184,6 +184,7 @@ tasks.cyclonedxBom {
 | `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
 | `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
 | `includeLicenseText`             | `boolean`                 | `false`                   | Include full license text in components                                            |
+| `hashAlgorithms`                 | `List<String>`            | `[]` (all algorithms)     | Hash algorithms to include in components. Supported values: "MD5", "SHA-1", "SHA-256", "SHA-512", "SHA3-256", "SHA3-512". Leave empty for schema defaults |
 | `includeMetadataResolution`      | `boolean`                 | `true`                    | Include complete metadata resolution for components                                |
 | `includeBuildEnvironment`        | `boolean`                 | `false`                   | Include build environment dependencies (e.g. from buildscript)                     |
 | `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                       |
@@ -288,6 +289,25 @@ tasks.cyclonedxDirectBom {
     xmlOutput = file("build/reports/sbom/${project.name}-sbom.xml")
 }
 ```
+
+#### Hash Algorithm Filtering
+
+To reduce SBOM file size and generation time, you can limit the hash algorithms included in the SBOM:
+
+```kotlin
+tasks.cyclonedxDirectBom {
+    // Include only SHA-256
+    hashAlgorithms = listOf("SHA-256")
+}
+
+// Or include multiple algorithms
+tasks.cyclonedxDirectBom {
+    // Include both SHA-256 and SHA-512 for additional verification
+    hashAlgorithms = listOf("SHA-256", "SHA-512")
+}
+```
+
+By default (when `hashAlgorithms` is empty), all hash algorithms supported by the selected CycloneDX schema version are included.
 
 #### Excluding Projects from Aggregation
 
