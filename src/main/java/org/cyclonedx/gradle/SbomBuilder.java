@@ -33,6 +33,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.cyclonedx.Version;
 import org.cyclonedx.gradle.model.ComponentComparator;
 import org.cyclonedx.gradle.model.DependencyComparator;
@@ -292,6 +293,13 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
     private List<Hash> calculateHashes(final File artifactFile) {
         return artifactHashes.computeIfAbsent(artifactFile, f -> {
             try {
+                List<String> configuredAlgorithms = task.getHashAlgorithms().get();
+                if (!configuredAlgorithms.isEmpty()) {
+                    List<Hash.Algorithm> algorithms = configuredAlgorithms.stream()
+                            .map(Hash.Algorithm::fromSpec)
+                            .collect(Collectors.toList());
+                    return BomUtils.calculateHashes(f, version, algorithms);
+                }
                 return BomUtils.calculateHashes(f, version);
             } catch (IOException e) {
                 LOGGER.error("{} Error encountered calculating hashes", LOG_PREFIX, e);

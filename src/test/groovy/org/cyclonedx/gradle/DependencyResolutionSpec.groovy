@@ -145,6 +145,92 @@ class DependencyResolutionSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    def "should filter hashes by configured algorithms"() {
+        given:
+        String localRepoUri = TestUtils.duplicateRepo("local")
+
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                maven{
+                    url '$localRepoUri'
+                }
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            dependencies {
+                implementation("com.test:componenta:1.0.0")
+            }
+
+            tasks.named("cyclonedxDirectBom") {
+                hashAlgorithms = ['SHA-256', 'SHA-512']
+            }""", "rootProject.name = 'simple-project'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component componenta = bom.getComponents().find(c -> c.name == 'componenta')
+        assert componenta.hashes != null
+        assert componenta.hashes*.algorithm.sort() == ["SHA-256", "SHA-512"].sort()
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "should return all hash algorithms when none are configured"() {
+        given:
+        String localRepoUri = TestUtils.duplicateRepo("local")
+
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                maven{
+                    url '$localRepoUri'
+                }
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            dependencies {
+                implementation("com.test:componenta:1.0.0")
+            }""", "rootProject.name = 'simple-project'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component componenta = bom.getComponents().find(c -> c.name == 'componenta')
+        assert componenta.hashes != null
+        // https://github.com/CycloneDX/cyclonedx-core-java/blob/master/src/main/java/org/cyclonedx/util/BomUtils.java#L59-L70
+        assert componenta.hashes*.algorithm.sort() == 
+            ["MD5", "SHA-1", "SHA-256", "SHA-384", "SHA-512", "SHA3-256", "SHA3-384", "SHA3-512"].sort()
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
     def "should generate bom for non-jar artifacts"() {
         given:
         String localRepoUri = TestUtils.duplicateRepo("local")
