@@ -1,6 +1,6 @@
 plugins {
     id 'org.cyclonedx.bom'
-    id 'java'
+    id 'java-library'
     id 'maven-publish'
 }
 
