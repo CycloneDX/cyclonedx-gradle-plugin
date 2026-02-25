@@ -379,8 +379,7 @@ class DependencyResolutionSpec extends Specification {
 
         def appAComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
         assert appAComponent.hasComponentDefined()
-        assert appAComponent.component.hashes != null
-        assert !appAComponent.component.hashes.empty
+        assert appAComponent.component.hashes == null // there is no artifact and hash because cyclonedx task does not depend on 'jar' task
         assert !appAComponent.dependsOn("pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
 
         def appBComponent = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")

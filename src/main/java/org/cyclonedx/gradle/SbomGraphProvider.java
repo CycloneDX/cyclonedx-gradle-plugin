@@ -37,6 +37,7 @@ import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
@@ -148,6 +149,8 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                     final ResolvedArtifactResult[] resolvedArtifacts = config.getIncoming()
                             .artifactView(view -> {
                                 view.lenient(true);
+                                view.componentFilter(
+                                        componentId -> !(componentId instanceof ProjectComponentIdentifier));
                             })
                             .getArtifacts()
                             .getArtifacts()
