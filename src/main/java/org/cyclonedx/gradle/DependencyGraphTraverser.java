@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.maven.model.License;
 import org.apache.maven.project.MavenProject;
+import org.cyclonedx.gradle.model.ArtifactExclusion;
 import org.cyclonedx.gradle.model.ConfigurationScope;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
@@ -60,15 +61,18 @@ class DependencyGraphTraverser {
     private final MavenProjectLookup mavenLookup;
     private final boolean includeMetaData;
     private final MavenHelper mavenHelper;
+    private final List<ArtifactExclusion> artifactExclusions;
 
     DependencyGraphTraverser(
             final Map<ComponentIdentifier, File> resolvedArtifacts,
             final MavenProjectLookup mavenLookup,
-            final CyclonedxDirectTask task) {
+            final CyclonedxDirectTask task,
+            final List<ArtifactExclusion> artifactExclusions) {
         this.resolvedArtifacts = resolvedArtifacts;
         this.mavenLookup = mavenLookup;
         this.includeMetaData = task.getIncludeMetadataResolution().get();
         this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get());
+        this.artifactExclusions = artifactExclusions;
     }
 
     /**
@@ -97,6 +101,9 @@ class DependencyGraphTraverser {
                 projectName);
         while (!queue.isEmpty()) {
             final GraphNode graphNode = queue.poll();
+            if (isExcluded(graphNode.id)) {
+                continue;
+            }
             if (!graph.containsKey(graphNode)) {
                 graph.put(graphNode, new HashSet<>());
                 LOGGER.debug("{} Traversing node with ID {}", LOG_PREFIX, graphNode.id);
@@ -109,6 +116,9 @@ class DependencyGraphTraverser {
                                 ((ResolvedDependencyResult) dep).getSelected();
                         if (graphNode.id.equals(dependencyComponent.getId())) {
                             continue; // Skip self-references
+                        }
+                        if (isExcluded(dependencyComponent.getId())) {
+                            continue;
                         }
                         LOGGER.debug(
                                 "{} Node with ID {} has dependency with ID {}",
@@ -132,6 +142,10 @@ class DependencyGraphTraverser {
         }
 
         return toSbomComponents(graph);
+    }
+
+    private boolean isExcluded(final ComponentIdentifier id) {
+        return artifactExclusions.stream().anyMatch(exclusion -> exclusion.matches(id));
     }
 
     private Map<SbomComponentId, SbomComponent> toSbomComponents(final Map<GraphNode, Set<GraphNode>> graph) {

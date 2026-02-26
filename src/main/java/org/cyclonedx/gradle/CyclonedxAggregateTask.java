@@ -24,6 +24,7 @@ import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.cyclonedx.exception.ParseException;
+import org.cyclonedx.gradle.model.ArtifactExclusion;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomGraph;
@@ -54,7 +55,9 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
     @TaskAction
     public void aggregate() throws Exception {
         logParameters();
-        final Bom merged = mergeAll(getInputSboms().getFiles());
+        final List<ArtifactExclusion> exclusions =
+                getExcludeArtifacts().get().stream().map(ArtifactExclusion::new).collect(Collectors.toList());
+        final Bom merged = mergeAll(getInputSboms().getFiles(), exclusions);
         LOGGER.info("{} Writing BOM", LOG_PREFIX);
         if (getJsonOutput().isPresent()) {
             CyclonedxUtils.writeJsonBom(
@@ -68,7 +71,7 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
         }
     }
 
-    private Bom mergeAll(final Set<File> files) throws ParseException {
+    private Bom mergeAll(final Set<File> files, final List<ArtifactExclusion> exclusions) throws ParseException {
         LOGGER.info("{} Received files: {}", LOG_PREFIX, files);
         final Bom aggregateBom = getRootProjectBom();
         final Map<String, Component> componentsByBomRef = new TreeMap<>();
@@ -85,20 +88,30 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
                 // if the root project BOM main component is not the same as the sub-project BOM main component,
                 // add the sub-project main component to the map
                 // to avoid duplicating the root project component
-                LOGGER.info(
-                        "{} Adding sub-project component:[{}] {}",
-                        LOG_PREFIX,
-                        aggregateBom.getMetadata().getComponent().getBomRef(),
-                        subProjectBom.getMetadata().getComponent().getBomRef());
-                componentsByBomRef.putIfAbsent(
-                        subProjectBom.getMetadata().getComponent().getBomRef(),
-                        subProjectBom.getMetadata().getComponent());
+                if (exclusions.stream()
+                        .noneMatch(exclusion -> exclusion.matches(
+                                subProjectBom.getMetadata().getComponent().getGroup(),
+                                subProjectBom.getMetadata().getComponent().getName(),
+                                subProjectBom.getMetadata().getComponent().getVersion()))) {
+                    LOGGER.info(
+                            "{} Adding sub-project component:[{}] {}",
+                            LOG_PREFIX,
+                            aggregateBom.getMetadata().getComponent().getBomRef(),
+                            subProjectBom.getMetadata().getComponent().getBomRef());
+                    componentsByBomRef.putIfAbsent(
+                            subProjectBom.getMetadata().getComponent().getBomRef(),
+                            subProjectBom.getMetadata().getComponent());
+                }
             }
             if (subProjectBom.getComponents() == null) {
                 continue; // no components in this BOM
             }
             for (final Component component : subProjectBom.getComponents()) {
-                componentsByBomRef.putIfAbsent(component.getBomRef(), component);
+                if (exclusions.stream()
+                        .noneMatch(exclusion ->
+                                exclusion.matches(component.getGroup(), component.getName(), component.getVersion()))) {
+                    componentsByBomRef.putIfAbsent(component.getBomRef(), component);
+                }
             }
             // merge dependencies of all BOMs
             if (subProjectBom.getDependencies() == null) {
@@ -109,18 +122,28 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
                 if (dependency.getDependencies() == null || bomRef == null) {
                     continue;
                 }
-                dependenciesByBomRef.compute(bomRef, (key, existingDeps) -> {
-                    final List<String> nextLevelDeps = dependency.getDependencies().stream()
-                            .map(BomReference::getRef)
-                            .filter(ref -> !ref.equals(key))
-                            .collect(Collectors.toList());
-                    if (existingDeps == null) {
-                        return new TreeSet<>(nextLevelDeps);
-                    } else {
-                        existingDeps.addAll(nextLevelDeps);
-                        return existingDeps;
-                    }
-                });
+                // Only keep dependency if the ref is not excluded
+                if (componentsByBomRef.containsKey(bomRef)
+                        || aggregateBom.getMetadata().getComponent().getBomRef().equals(bomRef)) {
+                    dependenciesByBomRef.compute(bomRef, (key, existingDeps) -> {
+                        final List<String> nextLevelDeps = dependency.getDependencies().stream()
+                                .map(BomReference::getRef)
+                                .filter(ref -> !ref.equals(key))
+                                .filter(ref -> componentsByBomRef.containsKey(ref)
+                                        || aggregateBom
+                                                .getMetadata()
+                                                .getComponent()
+                                                .getBomRef()
+                                                .equals(ref))
+                                .collect(Collectors.toList());
+                        if (existingDeps == null) {
+                            return new TreeSet<>(nextLevelDeps);
+                        } else {
+                            existingDeps.addAll(nextLevelDeps);
+                            return existingDeps;
+                        }
+                    });
+                }
             }
         }
         aggregateBom.setComponents(new ArrayList<>(componentsByBomRef.values()));
