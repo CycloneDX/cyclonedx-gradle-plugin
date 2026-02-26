@@ -62,6 +62,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     private final Iterable<Configuration> buildScriptConfigurations;
     private final CyclonedxDirectTask task;
     private final MavenProjectLookup mavenLookup;
+    private List<ArtifactExclusion> exclusions = new ArrayList<>();
 
     @Nullable private SbomGraph cachedResult;
 
@@ -100,6 +101,10 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         if (cachedResult != null) {
             return cachedResult;
         }
+
+        this.exclusions = task.getExcludeArtifacts().get().stream()
+            .map(ArtifactExclusion::new)
+            .collect(Collectors.toList());
 
         if (projectGroup.get().isEmpty() || projectVersion.get().isEmpty()) {
             LOGGER.warn(
@@ -174,17 +179,14 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private Stream<Map<SbomComponentId, SbomComponent>> traverseProject() {
-        final DependencyGraphTraverser traverser = new DependencyGraphTraverser(getArtifacts(), mavenLookup, task);
+        final DependencyGraphTraverser traverser =
+                new DependencyGraphTraverser(getArtifacts(), mavenLookup, task, exclusions);
         return getInScopeConfigurations()
                 .map(config -> traverser.traverseGraph(
                         config.getIncoming().getResolutionResult().getRoot(), projectName, config.getName()));
     }
 
     private Map<ComponentIdentifier, File> getArtifacts() {
-        final List<ArtifactExclusion> exclusions = task.getExcludeArtifacts().get().stream()
-                .map(ArtifactExclusion::new)
-                .collect(Collectors.toList());
-
         return getInScopeConfigurations()
                 .flatMap(config -> {
                     final ResolvedArtifactResult[] resolvedArtifacts = config.getIncoming()
