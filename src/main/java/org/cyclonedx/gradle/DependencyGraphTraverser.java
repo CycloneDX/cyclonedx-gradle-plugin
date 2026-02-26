@@ -66,14 +66,13 @@ class DependencyGraphTraverser {
     DependencyGraphTraverser(
             final Map<ComponentIdentifier, File> resolvedArtifacts,
             final MavenProjectLookup mavenLookup,
-            final CyclonedxDirectTask task) {
+            final CyclonedxDirectTask task,
+            final List<ArtifactExclusion> artifactExclusions) {
         this.resolvedArtifacts = resolvedArtifacts;
         this.mavenLookup = mavenLookup;
         this.includeMetaData = task.getIncludeMetadataResolution().get();
         this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get());
-        this.artifactExclusions = task.getExcludeArtifacts().get().stream()
-                .map(ArtifactExclusion::new)
-                .collect(Collectors.toList());
+        this.artifactExclusions = artifactExclusions;
     }
 
     /**

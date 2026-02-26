@@ -29,7 +29,6 @@ import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.CyclonedxUtils;
-import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.BomReference;
 import org.cyclonedx.model.Component;
@@ -90,8 +89,10 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
                 // add the sub-project main component to the map
                 // to avoid duplicating the root project component
                 if (exclusions.stream()
-                        .noneMatch(exclusion -> exclusion.matches(DependencyUtils.toComponentIdentifier(
-                                subProjectBom.getMetadata().getComponent())))) {
+                        .noneMatch(exclusion -> exclusion.matches(
+                                subProjectBom.getMetadata().getComponent().getGroup(),
+                                subProjectBom.getMetadata().getComponent().getName(),
+                                subProjectBom.getMetadata().getComponent().getVersion()))) {
                     LOGGER.info(
                             "{} Adding sub-project component:[{}] {}",
                             LOG_PREFIX,
@@ -107,7 +108,8 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
             }
             for (final Component component : subProjectBom.getComponents()) {
                 if (exclusions.stream()
-                        .noneMatch(exclusion -> exclusion.matches(DependencyUtils.toComponentIdentifier(component)))) {
+                        .noneMatch(exclusion ->
+                                exclusion.matches(component.getGroup(), component.getName(), component.getVersion()))) {
                     componentsByBomRef.putIfAbsent(component.getBomRef(), component);
                 }
             }

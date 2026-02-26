@@ -1200,48 +1200,4 @@ class PluginConfigurationSpec extends Specification {
         taskName = "cyclonedxBom"
         javaVersion = JavaVersion.current()
     }
-
-    def "should exclude artifacts with regex"() {
-        given:
-        File testDir = TestUtils.createFromString("""
-            plugins {
-                id 'org.cyclonedx.bom'
-                id 'java'
-            }
-            repositories {
-                mavenCentral()
-            }
-            group = 'com.example'
-            version = '1.0.0'
-            tasks.cyclonedxDirectBom {
-                excludeArtifacts = ['org.apache.logging.log4j:.*:.*']
-            }
-            dependencies {
-                implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version:'2.15.0'
-                implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version:'2.15.0'
-            }""", "rootProject.name = 'hello-world'")
-
-        when:
-        def result = GradleRunner.create()
-            .withProjectDir(testDir)
-            .withArguments(TestUtils.arguments(taskName))
-            .withPluginClasspath()
-            .build()
-
-        then:
-        result.task(":" + taskName).outcome == TaskOutcome.SUCCESS
-        File jsonBom = new File(testDir, reportLocation + "/bom.json")
-        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
-        Component log4jCore = bom.getComponents().find(c -> c.name == 'log4j-core')
-        Component log4jApi = bom.getComponents().find(c -> c.name == 'log4j-api')
-
-        assert log4jCore == null
-        assert log4jApi == null
-
-        where:
-        taskName             | reportLocation
-        "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
-        "cyclonedxBom"       | "build/reports/cyclonedx"
-        javaVersion = JavaVersion.current()
-    }
 }

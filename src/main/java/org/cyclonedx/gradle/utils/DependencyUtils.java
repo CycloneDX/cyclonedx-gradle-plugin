@@ -28,9 +28,6 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
-import org.cyclonedx.model.Component;
-import org.gradle.api.artifacts.ModuleIdentifier;
-import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
@@ -39,45 +36,6 @@ import org.jspecify.annotations.Nullable;
 public class DependencyUtils {
 
     private static final String UNSPECIFIED = "unspecified";
-
-    public static ComponentIdentifier toComponentIdentifier(final Component component) {
-        return new ModuleComponentIdentifier() {
-            @Override
-            public String getGroup() {
-                return component.getGroup();
-            }
-
-            @Override
-            public String getModule() {
-                return component.getName();
-            }
-
-            @Override
-            public String getVersion() {
-                return component.getVersion();
-            }
-
-            @Override
-            public ModuleIdentifier getModuleIdentifier() {
-                return new ModuleIdentifier() {
-                    @Override
-                    public String getGroup() {
-                        return component.getGroup();
-                    }
-
-                    @Override
-                    public String getName() {
-                        return component.getName();
-                    }
-                };
-            }
-
-            @Override
-            public String getDisplayName() {
-                return component.getGroup() + ":" + component.getName() + ":" + component.getVersion();
-            }
-        };
-    }
 
     public static Map<SbomComponentId, SbomComponent> mergeGraphs(
             final Map<SbomComponentId, SbomComponent> firstGraph,

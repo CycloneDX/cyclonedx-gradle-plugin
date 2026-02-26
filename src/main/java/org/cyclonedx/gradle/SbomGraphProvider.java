@@ -55,6 +55,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     private final Project project;
     private final CyclonedxDirectTask task;
     private final MavenProjectLookup mavenLookup;
+    private List<ArtifactExclusion> exclusions = new ArrayList<>();
 
     SbomGraphProvider(final Project project, final CyclonedxDirectTask task) {
         this.project = project;
@@ -73,6 +74,10 @@ class SbomGraphProvider implements Callable<SbomGraph> {
      */
     @Override
     public SbomGraph call() {
+        this.exclusions = task.getExcludeArtifacts().get().stream()
+                .map(ArtifactExclusion::new)
+                .collect(Collectors.toList());
+
         if (project.getGroup().equals("") || project.getVersion().equals("")) {
             LOGGER.warn(
                     "{} Project group or version are not set for project [{}], will use \"unspecified\"",
@@ -138,17 +143,14 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private Stream<Map<SbomComponentId, SbomComponent>> traverseProject() {
-        final DependencyGraphTraverser traverser = new DependencyGraphTraverser(getArtifacts(), mavenLookup, task);
+        final DependencyGraphTraverser traverser =
+                new DependencyGraphTraverser(getArtifacts(), mavenLookup, task, exclusions);
         return getInScopeConfigurations()
                 .map(config -> traverser.traverseGraph(
                         config.getIncoming().getResolutionResult().getRoot(), project.getName(), config.getName()));
     }
 
     private Map<ComponentIdentifier, File> getArtifacts() {
-        final List<ArtifactExclusion> exclusions = task.getExcludeArtifacts().get().stream()
-                .map(ArtifactExclusion::new)
-                .collect(Collectors.toList());
-
         return getInScopeConfigurations()
                 .flatMap(config -> {
                     final ResolvedArtifactResult[] resolvedArtifacts = config.getIncoming()
