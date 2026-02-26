@@ -32,9 +32,19 @@ public class ArtifactExclusion implements Serializable {
 
     public ArtifactExclusion(final String exclusion) {
         final String[] parts = exclusion.split(":");
-        this.groupPattern = Pattern.compile(parts.length > 0 ? parts[0].replace("*", ".*") : ".*");
-        this.namePattern = Pattern.compile(parts.length > 1 ? parts[1].replace("*", ".*") : ".*");
-        this.versionPattern = Pattern.compile(parts.length > 2 ? parts[2].replace("*", ".*") : ".*");
+        this.groupPattern = createPattern(parts.length > 0 ? parts[0] : "*");
+        this.namePattern = createPattern(parts.length > 1 ? parts[1] : "*");
+        this.versionPattern = createPattern(parts.length > 2 ? parts[2] : "*");
+    }
+
+    private Pattern createPattern(final String part) {
+        return Pattern.compile(part);
+    }
+
+    public boolean matches(final String group, final String name, final String version) {
+        return groupPattern.matcher(Objects.toString(group, "")).matches()
+                && namePattern.matcher(Objects.toString(name, "")).matches()
+                && versionPattern.matcher(Objects.toString(version, "")).matches();
     }
 
     public boolean matches(final ComponentIdentifier componentIdentifier) {
@@ -49,8 +59,6 @@ public class ArtifactExclusion implements Serializable {
             version = moduleComponentIdentifier.getVersion();
         }
 
-        return groupPattern.matcher(Objects.toString(group, "")).matches()
-                && namePattern.matcher(Objects.toString(name, "")).matches()
-                && versionPattern.matcher(Objects.toString(version, "")).matches();
+        return matches(group, name, version);
     }
 }
