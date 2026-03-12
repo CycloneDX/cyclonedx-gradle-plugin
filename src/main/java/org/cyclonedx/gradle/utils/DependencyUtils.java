@@ -28,6 +28,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
+import org.gradle.api.artifacts.ArtifactView;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
@@ -90,6 +91,16 @@ public class DependencyUtils {
         }
 
         return fileExtension;
+    }
+
+    /**
+     * Configures an artifact view to only include external module dependencies.
+     * This excludes project dependencies and file dependencies (which may be backed
+     * by task outputs, causing implicit task dependency errors).
+     */
+    public static void configureExternalArtifactView(final ArtifactView.ViewConfiguration view) {
+        view.lenient(true);
+        view.componentFilter(componentId -> componentId instanceof ModuleComponentIdentifier);
     }
 
     public static String generatePackageUrl(final SbomComponentId componentId) throws MalformedPackageURLException {
