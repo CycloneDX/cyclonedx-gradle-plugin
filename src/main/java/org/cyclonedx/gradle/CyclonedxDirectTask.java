@@ -28,9 +28,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.CyclonedxUtils;
+import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.model.Bom;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.logging.Logger;
@@ -128,12 +128,7 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
                     try {
                         return config
                                 .getIncoming()
-                                .artifactView(view -> {
-                                    view.lenient(true);
-                                    // Exclude project dependencies to avoid resolution issues during input snapshotting
-                                    view.componentFilter(
-                                            componentId -> !(componentId instanceof ProjectComponentIdentifier));
-                                })
+                                .artifactView(DependencyUtils::configureExternalArtifactView)
                                 .getArtifacts()
                                 .getArtifacts()
                                 .stream()
