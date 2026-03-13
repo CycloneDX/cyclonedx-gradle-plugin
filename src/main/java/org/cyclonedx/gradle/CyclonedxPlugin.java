@@ -139,19 +139,31 @@ public class CyclonedxPlugin implements Plugin<Project> {
 
     private void registerCyclonedxAggregateBomTask(
             final Project project, final Configuration cyclonedxBomAggregateConfiguration) {
-        project.getTasks().register(cyclonedxAggregateTaskName, CyclonedxAggregateTask.class, task -> {
-            task.dependsOn(getProjectAndSubprojects(project)
-                    .map(p -> p.getPath() + ":"
-                            + p.getTasks().named(cyclonedxDirectTaskName).getName())
-                    .toArray(Object[]::new));
-            final Provider<Directory> aggregateReportDir =
-                    project.getLayout().getBuildDirectory().dir(cyclonedxAggregateReportDir);
-            task.getXmlOutput().convention(aggregateReportDir.get().file("bom.xml"));
-            task.getJsonOutput().convention(aggregateReportDir.get().file("bom.json"));
-            // Wire inputs from configuration files
-            final Provider<ConfigurableFileCollection> files = project.getProviders()
-                    .provider(() -> project.getObjects().fileCollection().from(cyclonedxBomAggregateConfiguration));
-            task.getInputSboms().from(files);
+        final TaskProvider<CyclonedxAggregateTask> aggregateTaskProvider = project.getTasks()
+                .register(cyclonedxAggregateTaskName, CyclonedxAggregateTask.class, task -> {
+                    task.dependsOn(getProjectAndSubprojects(project)
+                            .map(p -> p.getPath() + ":"
+                                    + p.getTasks()
+                                            .named(cyclonedxDirectTaskName)
+                                            .getName())
+                            .toArray(Object[]::new));
+                    final Provider<Directory> aggregateReportDir =
+                            project.getLayout().getBuildDirectory().dir(cyclonedxAggregateReportDir);
+                    task.getXmlOutput().convention(aggregateReportDir.get().file("bom.xml"));
+                    task.getJsonOutput().convention(aggregateReportDir.get().file("bom.json"));
+                    // Wire inputs from configuration files
+                    final Provider<ConfigurableFileCollection> files = project.getProviders()
+                            .provider(() ->
+                                    project.getObjects().fileCollection().from(cyclonedxBomAggregateConfiguration));
+                    task.getInputSboms().from(files);
+                });
+
+        getProjectAndSubprojects(project).forEach(p -> {
+            p.getTasks().withType(CyclonedxDirectTask.class).configureEach(directTask -> {
+                directTask
+                        .getExcludeArtifacts()
+                        .addAll(aggregateTaskProvider.flatMap(CyclonedxAggregateTask::getExcludeArtifacts));
+            });
         });
     }
 
