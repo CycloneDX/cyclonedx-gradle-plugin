@@ -48,7 +48,6 @@ import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.util.LicenseResolver;
-import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.logging.Logger;
@@ -381,13 +380,11 @@ class MavenHelper {
      *
      * @param pomFile
      *            the dependency pomFile
-     * @param gradleProject
-     *            the current gradle project which gets used as the base resolver
+     * @param modelResolver
+     *            the model resolver used to resolve parent POMs
      * @return model for effective pom
      */
-    static @Nullable Model resolveEffectivePom(final @Nullable File pomFile, final Project gradleProject) {
-        // force the parent POMs and BOMs to be resolved
-        final ModelResolver modelResolver = new GradleAssistedMavenModelResolverImpl(gradleProject);
+    static @Nullable Model resolveEffectivePom(final @Nullable File pomFile, final ModelResolver modelResolver) {
         final ModelBuildingRequest req = new DefaultModelBuildingRequest();
         req.setModelResolver(modelResolver);
         req.setPomFile(pomFile);

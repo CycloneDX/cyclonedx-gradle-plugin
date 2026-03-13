@@ -545,6 +545,62 @@ class DependencyResolutionSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    def "should resolve licenses across subprojects sharing transitive dependencies"() {
+        given:
+        File testDir = File.createTempDir("multi-deps-")
+        new File(testDir, "settings.gradle").text = """
+            rootProject.name = 'multi-deps'
+            include 'lib-a', 'lib-b'
+        """
+        new File(testDir, "build.gradle").text = """
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            allprojects { repositories { mavenCentral() } }
+            subprojects { group = 'com.example'; version = '1.0.0' }
+        """
+        ['lib-a', 'lib-b'].each { name ->
+            def dir = new File(testDir, name)
+            dir.mkdirs()
+            new File(dir, "build.gradle").text = """
+                plugins { id 'java-library' }
+                dependencies {
+                    implementation 'com.google.guava:guava:33.4.0-jre'
+                    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.3'
+                }
+            """
+        }
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+
+        def guava = bom.getComponents().find { it.name == 'guava' }
+        def jackson = bom.getComponents().find { it.name == 'jackson-databind' }
+
+        assert guava != null
+        assert jackson != null
+        assert guava.getLicenses() != null && !guava.getLicenses().getLicenses().isEmpty()
+        assert jackson.getLicenses() != null && !jackson.getLicenses().getLicenses().isEmpty()
+
+        and: "POM files were batch-resolved rather than individually"
+        result.output.contains("Batch resolved")
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
     private static def loadJsonBom(File file) {
         return new JsonSlurper().parse(file)
     }
