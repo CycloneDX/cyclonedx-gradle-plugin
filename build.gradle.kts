@@ -30,7 +30,7 @@ dependencies {
         exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j-impl")
     }
     api("org.jspecify:jspecify:1.0.0")
-    implementation("org.apache.maven:maven-core:3.9.12")
+    implementation("org.apache.maven:maven-core:3.9.14")
 
     testImplementation(gradleTestKit())
     testImplementation("org.spockframework:spock-core:2.4-M6-groovy-4.0") {
