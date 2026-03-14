@@ -66,8 +66,7 @@ plugins {
 > aggregates SBOMs from the project and all subprojects in multi-project builds.
 
 > [!IMPORTANT]
-> Although the plugin is compatible with Java versions starting from 8, support of all versions prior to 17 is
-> deprecated it will be removed in future releases.
+> The plugin requires Java 17 or higher.
 
 ## Quick Start
 
