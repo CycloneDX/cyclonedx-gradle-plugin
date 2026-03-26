@@ -106,7 +106,18 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
         getSkipConfigs().convention(new ArrayList<>());
         getIncludeMetadataResolution().convention(true);
         getIncludeBuildEnvironment().convention(false);
-        this.componentsProvider = getProject().getProviders().provider(new SbomGraphProvider(getProject(), this));
+        this.componentsProvider = getProject()
+                .getProviders()
+                .provider(new SbomGraphProvider(
+                        () -> getProject().getGroup().toString(),
+                        getProject().getName(),
+                        () -> getProject().getVersion().toString(),
+                        getProject().getPath(),
+                        getProject().getDisplayName(),
+                        getProject().getConfigurations(),
+                        getProject().getBuildscript().getConfigurations(),
+                        new MavenProjectLookup(getProject()),
+                        this));
 
         // Wire resolved dependencies for cache invalidation
         // Derives input files from the same SbomGraph used for BOM generation,

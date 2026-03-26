@@ -1255,4 +1255,45 @@ class PluginConfigurationSpec extends Specification {
         taskName = "cyclonedxDirectBom"
         javaVersion = JavaVersion.current()
     }
+
+    def "should reuse configuration cache on second run"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories { mavenCentral() }
+            group = 'com.example'
+            version = '1.0.0'
+            dependencies {
+                implementation 'commons-io:commons-io:2.18.0'
+            }
+        """.stripIndent(), "rootProject.name = 'config-cache-test'")
+
+        when: "first run stores configuration cache"
+        def result1 = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result1.task(":" + taskName).outcome == TaskOutcome.SUCCESS
+
+        when: "second run should reuse configuration cache"
+        def result2 = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result2.task(":" + taskName).outcome in [TaskOutcome.SUCCESS, TaskOutcome.UP_TO_DATE, TaskOutcome.FROM_CACHE]
+        result2.output.contains("Reusing configuration cache")
+
+        where:
+        taskName = "cyclonedxDirectBom"
+        javaVersion = JavaVersion.current()
+    }
 }
