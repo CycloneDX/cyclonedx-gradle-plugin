@@ -1221,4 +1221,38 @@ class PluginConfigurationSpec extends Specification {
         taskName = "help"
         javaVersion = JavaVersion.current()
     }
+
+    def "should resolve dependencies only once per project"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories { mavenCentral() }
+            group = 'com.example'
+            version = '1.0.0'
+            dependencies {
+                implementation 'commons-io:commons-io:2.18.0'
+            }
+        """.stripIndent(), "rootProject.name = 'single-resolution-test'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        def resolvingMessages = result.output.readLines().findAll {
+            it.contains("[CycloneDX] Resolving dependencies for project")
+        }
+        resolvingMessages.size() == 1
+
+        where:
+        taskName = "cyclonedxDirectBom"
+        javaVersion = JavaVersion.current()
+    }
 }

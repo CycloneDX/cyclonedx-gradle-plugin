@@ -40,6 +40,7 @@ import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Provider that lazily calculates the aggregated dependency graph. The usage of a provider is essential to support
@@ -53,6 +54,8 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     private final Project project;
     private final CyclonedxDirectTask task;
     private final MavenProjectLookup mavenLookup;
+
+    @Nullable private SbomGraph cachedResult;
 
     SbomGraphProvider(final Project project, final CyclonedxDirectTask task) {
         this.project = project;
@@ -71,6 +74,10 @@ class SbomGraphProvider implements Callable<SbomGraph> {
      */
     @Override
     public SbomGraph call() {
+        if (cachedResult != null) {
+            return cachedResult;
+        }
+
         if (project.getGroup().equals("") || project.getVersion().equals("")) {
             LOGGER.warn(
                     "{} Project group or version are not set for project [{}], will use \"unspecified\"",
@@ -81,7 +88,8 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         LOGGER.info("{} Resolving dependencies for project [{}]", LOG_PREFIX, project.getDisplayName());
         final Map<SbomComponentId, SbomComponent> graph =
                 traverseProject().reduce(new HashMap<>(), DependencyUtils::mergeGraphs);
-        return buildSbomGraph(graph);
+        cachedResult = buildSbomGraph(graph);
+        return cachedResult;
     }
 
     private SbomGraph buildSbomGraph(final Map<SbomComponentId, SbomComponent> graph) {

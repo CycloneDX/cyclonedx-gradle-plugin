@@ -232,4 +232,57 @@ class CacheInvalidationSpec extends Specification {
         "cyclonedxDirectBom" | _
         javaVersion = JavaVersion.current()
     }
+
+    def "task should re-run when dependency version changes with single resolution"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories { mavenCentral() }
+            group = 'com.example'
+            version = '1.0.0'
+            dependencies {
+                implementation 'commons-io:commons-io:2.18.0'
+            }
+        """.stripIndent(), "rootProject.name = 'cache-test'")
+
+        when: "first run"
+        def result1 = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result1.task(":" + taskName).outcome == TaskOutcome.SUCCESS
+
+        when: "change dependency version"
+        new File(testDir, "build.gradle").text = """
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories { mavenCentral() }
+            group = 'com.example'
+            version = '1.0.0'
+            dependencies {
+                implementation 'commons-io:commons-io:2.17.0'
+            }
+        """.stripIndent()
+        def result2 = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then: "task should re-execute (not UP_TO_DATE)"
+        result2.task(":" + taskName).outcome == TaskOutcome.SUCCESS
+
+        where:
+        taskName             | _
+        "cyclonedxDirectBom" | _
+        javaVersion = JavaVersion.current()
+    }
 }
