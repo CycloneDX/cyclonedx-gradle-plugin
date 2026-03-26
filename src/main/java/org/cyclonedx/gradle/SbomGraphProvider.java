@@ -28,13 +28,13 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.DependencyUtils;
-import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
@@ -51,16 +51,37 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     private static final Logger LOGGER = Logging.getLogger(SbomGraphProvider.class);
     private static final ResolvedArtifactResult[] ARTIFACT_TYPE = new ResolvedArtifactResult[0];
 
-    private final Project project;
+    private final Supplier<String> projectGroup;
+    private final String projectName;
+    private final Supplier<String> projectVersion;
+    private final String projectPath;
+    private final String projectDisplayName;
+    private final Iterable<Configuration> projectConfigurations;
+    private final Iterable<Configuration> buildScriptConfigurations;
     private final CyclonedxDirectTask task;
     private final MavenProjectLookup mavenLookup;
 
     @Nullable private SbomGraph cachedResult;
 
-    SbomGraphProvider(final Project project, final CyclonedxDirectTask task) {
-        this.project = project;
+    SbomGraphProvider(
+            final Supplier<String> projectGroup,
+            final String projectName,
+            final Supplier<String> projectVersion,
+            final String projectPath,
+            final String projectDisplayName,
+            final Iterable<Configuration> projectConfigurations,
+            final Iterable<Configuration> buildScriptConfigurations,
+            final MavenProjectLookup mavenLookup,
+            final CyclonedxDirectTask task) {
+        this.projectGroup = projectGroup;
+        this.projectName = projectName;
+        this.projectVersion = projectVersion;
+        this.projectPath = projectPath;
+        this.projectDisplayName = projectDisplayName;
+        this.projectConfigurations = projectConfigurations;
+        this.buildScriptConfigurations = buildScriptConfigurations;
+        this.mavenLookup = mavenLookup;
         this.task = task;
-        this.mavenLookup = new MavenProjectLookup(project);
     }
 
     /**
@@ -78,14 +99,14 @@ class SbomGraphProvider implements Callable<SbomGraph> {
             return cachedResult;
         }
 
-        if (project.getGroup().equals("") || project.getVersion().equals("")) {
+        if (projectGroup.get().isEmpty() || projectVersion.get().isEmpty()) {
             LOGGER.warn(
                     "{} Project group or version are not set for project [{}], will use \"unspecified\"",
                     LOG_PREFIX,
-                    project.getName());
+                    projectName);
         }
 
-        LOGGER.info("{} Resolving dependencies for project [{}]", LOG_PREFIX, project.getDisplayName());
+        LOGGER.info("{} Resolving dependencies for project [{}]", LOG_PREFIX, projectDisplayName);
         final Map<SbomComponentId, SbomComponent> graph =
                 traverseProject().reduce(new HashMap<>(), DependencyUtils::mergeGraphs);
         cachedResult = buildSbomGraph(graph);
@@ -93,18 +114,14 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private SbomGraph buildSbomGraph(final Map<SbomComponentId, SbomComponent> graph) {
-        final SbomComponentId projectBasedRootComponentId = new SbomComponentId(
-                project.getGroup().toString(),
-                project.getName(),
-                project.getVersion().toString(),
-                null,
-                project.getPath());
+        final SbomComponentId projectBasedRootComponentId =
+                new SbomComponentId(projectGroup.get(), projectName, projectVersion.get(), null, projectPath);
         final SbomComponentId configurationBasedRootComponentId = new SbomComponentId(
                 task.getComponentGroup().get(),
                 task.getComponentName().get(),
                 task.getComponentVersion().get(),
                 null,
-                project.getPath());
+                projectPath);
         final SbomComponent sbomComponentFromGraph = graph.get(projectBasedRootComponentId);
         if (sbomComponentFromGraph == null) {
             LOGGER.warn(
@@ -147,7 +164,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         final DependencyGraphTraverser traverser = new DependencyGraphTraverser(getArtifacts(), mavenLookup, task);
         return getInScopeConfigurations()
                 .map(config -> traverser.traverseGraph(
-                        config.getIncoming().getResolutionResult().getRoot(), project.getName(), config.getName()));
+                        config.getIncoming().getResolutionResult().getRoot(), projectName, config.getName()));
     }
 
     private Map<ComponentIdentifier, File> getArtifacts() {
@@ -161,7 +178,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                     LOGGER.debug(
                             "{} For project {} following artifacts have been resolved: {}",
                             LOG_PREFIX,
-                            project.getName(),
+                            projectName,
                             summarize(resolvedArtifacts, v -> v.getId().getDisplayName()));
                     return Arrays.stream(resolvedArtifacts);
                 })
@@ -184,7 +201,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                 || task.getIncludeConfigs().get().stream().anyMatch(configuration.getName()::matches);
     }
 
-    private boolean filterConfigurations(final Project project, final Configuration configuration) {
+    private boolean filterConfigurations(final Configuration configuration) {
         final boolean include = shouldIncludeConfiguration(configuration);
         final boolean skip = shouldSkipConfiguration(configuration);
         final boolean resolvable = configuration.isCanBeResolved();
@@ -193,7 +210,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                     "{}, Skipping configuration '{}' (project: {}, include: {}, skip: {}, canBeResolved: {})",
                     LOG_PREFIX,
                     configuration.getName(),
-                    project,
+                    projectName,
                     include,
                     skip,
                     resolvable);
@@ -202,13 +219,12 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private Stream<Configuration> getInScopeConfigurations() {
-        final Stream<Configuration> projectConfigs = project.getConfigurations().stream()
-                .filter(configuration -> filterConfigurations(project, configuration));
+        final Stream<Configuration> projectConfigs =
+                toStream(projectConfigurations).filter(this::filterConfigurations);
 
         final Stream<Configuration> buildScriptConfigs;
         if (task.getIncludeBuildEnvironment().get()) {
-            buildScriptConfigs = project.getBuildscript().getConfigurations().stream()
-                    .filter(configuration -> filterConfigurations(project, configuration));
+            buildScriptConfigs = toStream(buildScriptConfigurations).filter(this::filterConfigurations);
         } else {
             buildScriptConfigs = Stream.empty();
         }
@@ -219,8 +235,12 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         LOGGER.info(
                 "{} For project {} following configurations are in scope to build the dependency graph: {}",
                 LOG_PREFIX,
-                project.getName(),
+                projectName,
                 summarize(configs, Configuration::getName));
         return Arrays.stream(configs);
+    }
+
+    private static <T> Stream<T> toStream(final Iterable<T> iterable) {
+        return java.util.stream.StreamSupport.stream(iterable.spliterator(), false);
     }
 }
