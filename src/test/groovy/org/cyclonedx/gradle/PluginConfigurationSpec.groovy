@@ -1200,4 +1200,25 @@ class PluginConfigurationSpec extends Specification {
         taskName = "cyclonedxBom"
         javaVersion = JavaVersion.current()
     }
+
+    def "should not realize cyclonedx tasks for unrelated builds"() {
+        given:
+        File testDir = TestUtils.duplicate("multi-module")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("help"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":help").outcome == TaskOutcome.SUCCESS
+        result.task(":cyclonedxDirectBom") == null
+        !result.output.contains("[CycloneDX] Resolving dependencies")
+
+        where:
+        taskName = "help"
+        javaVersion = JavaVersion.current()
+    }
 }
