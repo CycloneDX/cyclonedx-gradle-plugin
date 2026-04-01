@@ -545,6 +545,55 @@ class DependencyResolutionSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    @Issue("https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/816")
+    def "should generate BOM when Shadow plugin is applied"() {
+        given: "a project with both CycloneDX and Shadow plugins"
+        // Shadow plugin (9.4.1+) brings in plexus-xml which provides a replacement Xpp3Dom
+        // that delegates to XmlService via ServiceLoader. SbomGraphProvider must set the
+        // thread context classloader so ServiceLoader can discover service implementations.
+        //
+        // This test loads the CycloneDX plugin from a local maven repository (not via
+        // withPluginClasspath()) to reproduce proper Gradle classloader isolation where
+        // the thread context classloader during configuration phase does not include
+        // plugin dependencies.
+        def localRepoUrl = System.getProperty("localRepoUrl")
+        def pluginVersion = System.getProperty("pluginVersion")
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'java'
+                id 'org.cyclonedx.bom' version '${pluginVersion}'
+                id 'com.gradleup.shadow' version '9.4.1'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            dependencies {
+                implementation 'com.google.guava:guava:33.4.0-jre'
+            }""", """
+            pluginManagement {
+                repositories {
+                    maven { url '${localRepoUrl}' }
+                    gradlePluginPortal()
+                }
+            }
+            rootProject.name = 'issue-816'
+        """)
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .build()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
     private static def loadJsonBom(File file) {
         return new JsonSlurper().parse(file)
     }

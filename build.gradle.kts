@@ -67,6 +67,9 @@ listOf(8, 11, 17, 21, 25).forEach { version ->
         testLogging {
             events("passed", "skipped", "failed")
         }
+        dependsOn("publishAllPublicationsToLocalTestRepository")
+        systemProperty("localRepoUrl", layout.buildDirectory.dir("local-repo").get().asFile.toURI().toString())
+        systemProperty("pluginVersion", project.version.toString())
     }
 }
 
@@ -115,6 +118,15 @@ tasks.named<ProcessResources>("processResources") {
     pluginProperties["version"] = project.version
     doLast {
         pluginProperties.store(pluginPropertiesFile.writer(), "Automatically populated by Gradle build.")
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "localTest"
+            url = uri(layout.buildDirectory.dir("local-repo"))
+        }
     }
 }
 
