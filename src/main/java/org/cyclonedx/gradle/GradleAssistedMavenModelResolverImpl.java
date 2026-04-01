@@ -23,6 +23,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.Repository;
@@ -33,21 +35,26 @@ import org.gradle.api.artifacts.Configuration;
 import org.jspecify.annotations.Nullable;
 
 public class GradleAssistedMavenModelResolverImpl implements ModelResolver {
+
     private final Project project;
+    private final Map<String, File> resolvedPomCache;
 
     public GradleAssistedMavenModelResolverImpl(Project project) {
         super();
         this.project = project;
+        this.resolvedPomCache = new HashMap<>();
     }
 
     @Override
     public ModelSource2 resolveModel(String groupId, String artifactId, String version) {
         String depNotation = String.format("%s:%s:%s@pom", groupId, artifactId, version);
-        org.gradle.api.artifacts.Dependency dependency =
-                project.getDependencies().create(depNotation);
-        Configuration config = project.getConfigurations().detachedConfiguration(dependency);
 
-        File pomXml = config.getSingleFile();
+        File pomXml = resolvedPomCache.computeIfAbsent(depNotation, notation -> {
+            org.gradle.api.artifacts.Dependency dependency =
+                    project.getDependencies().create(notation);
+            Configuration config = project.getConfigurations().detachedConfiguration(dependency);
+            return config.getSingleFile();
+        });
         return new ModelSource2() {
             @Override
             public InputStream getInputStream() throws IOException {

@@ -161,7 +161,12 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     }
 
     private Stream<Map<SbomComponentId, SbomComponent>> traverseProject() {
-        final DependencyGraphTraverser traverser = new DependencyGraphTraverser(getArtifacts(), mavenLookup, task);
+        final Map<ComponentIdentifier, File> artifacts = getArtifacts();
+
+        // Batch resolve all POM files in a single query before traversal
+        mavenLookup.batchResolvePomFiles(artifacts.keySet());
+
+        final DependencyGraphTraverser traverser = new DependencyGraphTraverser(artifacts, mavenLookup, task);
         return getInScopeConfigurations()
                 .map(config -> traverser.traverseGraph(
                         config.getIncoming().getResolutionResult().getRoot(), projectName, config.getName()));

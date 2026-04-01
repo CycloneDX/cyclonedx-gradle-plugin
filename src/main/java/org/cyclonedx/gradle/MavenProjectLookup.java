@@ -19,14 +19,14 @@
 package org.cyclonedx.gradle;
 
 import java.io.File;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import org.apache.maven.model.Model;
 import org.apache.maven.project.MavenProject;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
-import org.gradle.api.artifacts.result.ArtifactResolutionResult;
 import org.gradle.api.artifacts.result.ArtifactResult;
 import org.gradle.api.artifacts.result.ComponentArtifactsResult;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
@@ -45,10 +45,32 @@ class MavenProjectLookup {
     private static final Logger LOGGER = Logging.getLogger(MavenProjectLookup.class);
     private final Project project;
     private final Map<ComponentIdentifier, MavenProject> cache;
+    private final Map<ComponentIdentifier, File> pomFileCache;
+    private final GradleAssistedMavenModelResolverImpl modelResolver;
 
     MavenProjectLookup(final Project project) {
         this.project = project;
         this.cache = new HashMap<>();
+        this.pomFileCache = new HashMap<>();
+        this.modelResolver = new GradleAssistedMavenModelResolverImpl(project);
+    }
+
+    /**
+     * Resolves POM files for all provided component identifiers in a single batch query.
+     * This is significantly faster than resolving them one at a time, as it avoids
+     * N individual Gradle artifact resolution API calls.
+     *
+     * @param componentIds the component identifiers to resolve POM files for
+     */
+    void batchResolvePomFiles(final Collection<ComponentIdentifier> componentIds) {
+        if (componentIds.isEmpty()) {
+            return;
+        }
+
+        LOGGER.info("CycloneDX: Batch resolving {} POM files", componentIds.size());
+        resolvePomFiles(componentIds);
+        LOGGER.info(
+                "CycloneDX: Batch resolved {} POM files out of {} requested", pomFileCache.size(), componentIds.size());
     }
 
     /**
@@ -74,7 +96,7 @@ class MavenProjectLookup {
             final MavenProject mavenProject = MavenHelper.readPom(pomFile);
             if (mavenProject != null) {
                 LOGGER.debug("CycloneDX: parse queried pom file for component {}", result.getId());
-                final Model model = MavenHelper.resolveEffectivePom(pomFile, project);
+                final Model model = MavenHelper.resolveEffectivePom(pomFile, modelResolver);
                 if (model != null) {
                     mavenProject.setLicenses(model.getLicenses());
                 }
@@ -89,32 +111,25 @@ class MavenProjectLookup {
     }
 
     @Nullable File buildMavenProject(final ComponentIdentifier id) {
+        if (!pomFileCache.containsKey(id)) {
+            resolvePomFiles(Collections.singletonList(id));
+        }
+        return pomFileCache.get(id);
+    }
 
-        final ArtifactResolutionResult result = project.getDependencies()
+    private void resolvePomFiles(final Collection<ComponentIdentifier> componentIds) {
+        for (final ComponentArtifactsResult componentResult : project.getDependencies()
                 .createArtifactResolutionQuery()
-                .forComponents(id)
+                .forComponents(componentIds)
                 .withArtifacts(MavenModule.class, MavenPomArtifact.class)
-                .execute();
-
-        final Iterator<ComponentArtifactsResult> componentIt =
-                result.getResolvedComponents().iterator();
-        if (!componentIt.hasNext()) {
-            return null;
+                .execute()
+                .getResolvedComponents()) {
+            for (final ArtifactResult artifact : componentResult.getArtifacts(MavenPomArtifact.class)) {
+                if (artifact instanceof ResolvedArtifactResult) {
+                    pomFileCache.put(componentResult.getId(), ((ResolvedArtifactResult) artifact).getFile());
+                    LOGGER.debug("CycloneDX: found pom file for component {}", componentResult.getId());
+                }
+            }
         }
-
-        final Iterator<ArtifactResult> artifactIt =
-                componentIt.next().getArtifacts(MavenPomArtifact.class).iterator();
-        if (!artifactIt.hasNext()) {
-            return null;
-        }
-
-        final ArtifactResult artifact = artifactIt.next();
-        if (artifact instanceof ResolvedArtifactResult) {
-            LOGGER.debug("CycloneDX: found pom file for component {}", id);
-            final ResolvedArtifactResult resolvedArtifact = (ResolvedArtifactResult) artifact;
-            return resolvedArtifact.getFile();
-        }
-
-        return null;
     }
 }
