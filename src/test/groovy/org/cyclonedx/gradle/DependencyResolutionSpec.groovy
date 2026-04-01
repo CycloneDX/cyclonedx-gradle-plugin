@@ -545,6 +545,42 @@ class DependencyResolutionSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    @Issue("https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/793")
+    def "should not fail for libraries built with Maven 4"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            dependencies {
+                implementation("org.jline:jline-terminal-ffm:4.0.0")
+            }""", "rootProject.name = 'maven4-project'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, "build/reports/cyclonedx/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        Component jlineTerminalFfm = bom.getComponents().find(c -> c.name == 'jline-terminal-ffm')
+        assert jlineTerminalFfm != null
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
     private static def loadJsonBom(File file) {
         return new JsonSlurper().parse(file)
     }

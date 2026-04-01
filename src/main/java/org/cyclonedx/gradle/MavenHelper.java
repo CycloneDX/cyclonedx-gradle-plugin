@@ -88,7 +88,8 @@ class MavenHelper {
         extractMetadata(project, component);
         if (project.getParent() != null) {
             getClosestMetadata(artifact, project.getParent(), component, mid);
-        } else if (project.getModel().getParent() != null) {
+        } else if (project.getModel().getParent() != null
+                && project.getModel().getParent().getGroupId() != null) {
             final MavenProject parentProject = retrieveParentProject(artifact, project, mid);
             if (parentProject != null) {
                 getClosestMetadata(artifact, parentProject, component, mid);
@@ -272,7 +273,10 @@ class MavenHelper {
             return null;
         }
         final Model model = project.getModel();
-        if (model.getParent() != null) {
+        if (model.getParent() != null
+                && model.getParent().getGroupId() != null
+                && model.getParent().getArtifactId() != null
+                && model.getParent().getVersion() != null) {
             final Parent parent = model.getParent();
             // Navigate out of version, artifactId, and first (possibly only) level of
             // groupId
