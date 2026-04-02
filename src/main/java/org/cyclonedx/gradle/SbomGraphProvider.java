@@ -108,7 +108,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
 
         LOGGER.info("{} Resolving dependencies for project [{}]", LOG_PREFIX, projectDisplayName);
         final Map<SbomComponentId, SbomComponent> graph =
-                traverseProject().reduce(new HashMap<>(), DependencyUtils::mergeGraphs);
+                withPluginClassLoader(() -> traverseProject().reduce(new HashMap<>(), DependencyUtils::mergeGraphs));
         cachedResult = buildSbomGraph(graph);
         return cachedResult;
     }
@@ -157,6 +157,17 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                 graph.put(configurationBasedRootComponentId, configurationBasedSbomComponent);
                 return new SbomGraph(graph, configurationBasedSbomComponent);
             }
+        }
+    }
+
+    private static <T> T withPluginClassLoader(final Supplier<T> action) {
+        final Thread currentThread = Thread.currentThread();
+        final ClassLoader original = currentThread.getContextClassLoader();
+        try {
+            currentThread.setContextClassLoader(SbomGraphProvider.class.getClassLoader());
+            return action.get();
+        } finally {
+            currentThread.setContextClassLoader(original);
         }
     }
 
