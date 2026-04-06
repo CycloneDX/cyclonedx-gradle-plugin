@@ -39,7 +39,7 @@ jobs:
           cache: "gradle"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5.0.2
+        uses: gradle/actions/setup-gradle@v6.1.0
 
       - name: Build with Gradle
         run: ./gradlew build -i
