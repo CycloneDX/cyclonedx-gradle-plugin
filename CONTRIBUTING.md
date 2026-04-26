@@ -32,7 +32,7 @@ Before contributing, please:
 
 ### Prerequisites
 
-- **Java Development Kit (JDK)**: Java 8 or higher
+- **Java Development Kit (JDK)**: Java 17 or higher
 - **Git**: For version control
 - **IDE**: IntelliJ IDEA, Eclipse, or VS Code with Java support
 
@@ -47,8 +47,8 @@ cd cyclonedx-gradle-plugin
 
 This project uses Gradle toolchains to ensure compatibility across different Java versions. The build is configured to:
 
-- **Target Java Version**: Java 8 (for maximum compatibility)
-- **Testing**: Multiple LTS Java versions (8, 11, 17, 21)
+- **Target Java Version**: Java 17
+- **Testing**: Multiple LTS Java versions (17, 21, 25)
 - **Gradle**: Java 21
 
 ### Testing with Multiple Java Versions
@@ -140,7 +140,7 @@ For detailed information about the PalantirJavaFormat style, see:
 
 The project uses GitHub Actions for CI/CD. All pull requests must:
 
-- Pass all tests on multiple Java versions (8, 11, 17, 21)
+- Pass all tests on multiple Java versions (17, 21, 25)
 - Pass Spotless formatting checks
 - Build successfully
 - Every commit must be signed off with `git commit -s` to acknowledge

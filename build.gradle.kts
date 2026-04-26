@@ -44,7 +44,7 @@ dependencies {
     errorprone("com.google.errorprone:error_prone_core:2.49.0")
 }
 
-listOf(8, 11, 17, 21, 25).forEach { version ->
+listOf(17, 21, 25).forEach { version ->
     tasks.register<Test>("testJava$version") {
         description = "Runs tests with Java $version"
         group = "verification"
@@ -58,7 +58,7 @@ listOf(8, 11, 17, 21, 25).forEach { version ->
         classpath = sourceSets["test"].runtimeClasspath
         useJUnitPlatform()
         maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
-        if (version >= 11) {
+        if (version >= 17) {
             jvmArgs = listOf(
                 "--add-opens", "java.base/java.util=ALL-UNNAMED",
                 "--add-opens", "java.base/java.lang=ALL-UNNAMED"
@@ -74,14 +74,14 @@ listOf(8, 11, 17, 21, 25).forEach { version ->
 }
 
 tasks.named("test") {
-    dependsOn("testJava8", "testJava11", "testJava17", "testJava21", "testJava25")
+    dependsOn("testJava17", "testJava21", "testJava25")
     enabled = false // Prevents the default test task from running tests itself
 }
 
 tasks.withType<JavaCompile>().configureEach {
     dependsOn("processResources")
     options.encoding = "UTF-8"
-    options.release = 8
+    options.release = 17
     options.errorprone {
         check("NullAway", CheckSeverity.ERROR)
         check("DefaultCharset", CheckSeverity.ERROR)
@@ -100,10 +100,10 @@ tasks.withType<JavaCompile>().configureEach {
 tasks.withType<GroovyCompile>().configureEach {
     dependsOn("processResources")
     options.encoding = "UTF-8"
-    options.release = 8
+    options.release = 17
     javaLauncher.set(
         javaToolchains.launcherFor {
-            languageVersion.set(JavaLanguageVersion.of(8))
+            languageVersion.set(JavaLanguageVersion.of(17))
         }
     )
 }
