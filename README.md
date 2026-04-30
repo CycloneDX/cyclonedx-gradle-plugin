@@ -197,20 +197,20 @@ tasks.cyclonedxBom {
 
 #### `cyclonedxBom`
 
-| Property                         | Type                      | Default                   | Description                                                                        |
-|----------------------------------|---------------------------|---------------------------|------------------------------------------------------------------------------------|
-| `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
-| `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
-| `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
-| `includeLicenseText`             | `boolean`                 | `false`                   | Include full license text in components                                            |
-| `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                       |
-| `buildSystemEnvironmentVariable` | `String`                  | -                         | Custom environment variable for build system URL                                   |
-| `componentVersion`               | `String`                  | Project version           | Override the main component version                                                |
-| `componentName`                  | `String`                  | Project name              | Override the main component name                                                   |
-| `componentGroup`                 | `String`                  | Project group             | Override the main component group                                                  |
-| `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts        |
-| `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers       |
-| `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component                                         |
+| Property                         | Type                      | Default                   | Description                                                                               |
+|----------------------------------|---------------------------|---------------------------|-------------------------------------------------------------------------------------------|
+| `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.)        |
+| `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                           |
+| `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                          |
+| `includeLicenseText`             | `boolean`                 | `false`                   | Include full license text in components                                                   |
+| `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                              |
+| `buildSystemEnvironmentVariable` | `String`                  | -                         | Custom environment variable for build system URL                                          |
+| `componentVersion`               | `String`                  | Project version           | Override the main component version                                                       |
+| `componentName`                  | `String`                  | Project name              | Override the main component name                                                          |
+| `componentGroup`                 | `String`                  | Project group             | Override the main component group                                                         |
+| `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts               |
+| `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers              |
+| `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component; this value replaces any auto-detected license |
 
 ### Output Configuration
 

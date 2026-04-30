@@ -475,8 +475,8 @@ class PluginConfigurationSpec extends Specification {
         reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
-        //check Manufacture Data
-        OrganizationalEntity manufacturer = bom.getMetadata().getManufacturer()
+        //check main component Manufacturer Data
+        OrganizationalEntity manufacturer = bom.getMetadata().getComponent().getManufacturer()
         assert manufacturer != null
         assert manufacturer.getName() == "Test"
         assert !manufacturer.getUrls().isEmpty()
@@ -486,14 +486,18 @@ class PluginConfigurationSpec extends Specification {
                 it.phone == "0000 99999999"
         }).isEmpty()
 
-        //check Licenses Data
-        LicenseChoice licenseChoice = bom.getMetadata().getLicenses()
+        //check main component Licenses Data
+        LicenseChoice licenseChoice = bom.getMetadata().getComponent().getLicenses()
         assert licenseChoice != null
         assert licenseChoice.getLicenses() != null
         assert !licenseChoice.getLicenses().findAll({
             it.getAttachmentText().getText() == "This is a Licenses-Test" &&
             it.getUrl() == "https://www.test-Url.org/"
         }).isEmpty()
+
+        // check SBOM licenses and manufacturer are empty
+        assert bom.getMetadata().getLicenses() == null
+        assert bom.getMetadata().getManufacturer() == null
 
         where:
         taskName             | reportLocation
@@ -520,8 +524,8 @@ class PluginConfigurationSpec extends Specification {
         reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
-        //check Manufacture Data
-        OrganizationalEntity manufacturer = bom.getMetadata().getManufacturer()
+        //check main component Manufacture Data
+        OrganizationalEntity manufacturer = bom.getMetadata().getComponent().getManufacturer()
         assert manufacturer != null
         assert manufacturer.getName() == "Test"
         assert !manufacturer.getUrls().isEmpty()
@@ -531,14 +535,18 @@ class PluginConfigurationSpec extends Specification {
                 it.phone == "0000 99999999"
         }).isEmpty()
 
-        //check Licenses Data
-        LicenseChoice licenseChoice = bom.getMetadata().getLicenses()
+        //check main component Licenses Data
+        LicenseChoice licenseChoice = bom.getMetadata().getComponent().getLicenses()
         assert licenseChoice != null
         assert licenseChoice.getLicenses() != null
         assert !licenseChoice.getLicenses().findAll({
             it.getAttachmentText().getText() == "This is a Licenses-Test" &&
             it.getUrl() == "https://www.test-Url.org/"
         }).isEmpty()
+
+        // check SBOM licenses and manufacturer are empty
+        assert bom.getMetadata().getLicenses() == null
+        assert bom.getMetadata().getManufacturer() == null
 
         where:
         taskName             | reportLocation
