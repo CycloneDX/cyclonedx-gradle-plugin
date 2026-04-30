@@ -115,19 +115,6 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
                     rootComponent.getId().getName(),
                     e);
         }
-        if (task.getLicenseChoice().isPresent()) {
-            metadata.setLicenses(task.getLicenseChoice().get());
-        }
-
-        if (task.getOrganizationalEntity().isPresent()
-                && !new OrganizationalEntity()
-                        .equals(task.getOrganizationalEntity().get())) {
-            if (version.compareTo(Version.VERSION_16) >= 0) {
-                metadata.setManufacturer(task.getOrganizationalEntity().get());
-            } else {
-                metadata.setManufacture(task.getOrganizationalEntity().get());
-            }
-        }
 
         final Properties pluginProperties = readPluginProperties();
         if (!pluginProperties.isEmpty()) {
@@ -163,6 +150,14 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         addBuildSystemMetaData(component);
         if (task.getExternalReferences().isPresent()) {
             task.getExternalReferences().get().forEach(component::addExternalReference);
+        }
+        if (task.getLicenseChoice().isPresent()) {
+            component.setLicenses(task.getLicenseChoice().get());
+        }
+        if (task.getOrganizationalEntity().isPresent()
+                && !new OrganizationalEntity()
+                        .equals(task.getOrganizationalEntity().get())) {
+            component.setManufacturer(task.getOrganizationalEntity().get());
         }
         ExternalReferencesUtil.complementByEnvironment(component);
         return component;

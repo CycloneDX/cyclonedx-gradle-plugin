@@ -476,7 +476,7 @@ class PluginConfigurationSpec extends Specification {
         File jsonBom = new File(reportDir, "bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         //check Manufacture Data
-        OrganizationalEntity manufacturer = bom.getMetadata().getManufacturer()
+        OrganizationalEntity manufacturer = bom.getMetadata().getComponent().getManufacturer()
         assert manufacturer != null
         assert manufacturer.getName() == "Test"
         assert !manufacturer.getUrls().isEmpty()
@@ -487,7 +487,7 @@ class PluginConfigurationSpec extends Specification {
         }).isEmpty()
 
         //check Licenses Data
-        LicenseChoice licenseChoice = bom.getMetadata().getLicenses()
+        LicenseChoice licenseChoice = bom.getMetadata().getComponent().getLicenses()
         assert licenseChoice != null
         assert licenseChoice.getLicenses() != null
         assert !licenseChoice.getLicenses().findAll({
@@ -521,7 +521,7 @@ class PluginConfigurationSpec extends Specification {
         File jsonBom = new File(reportDir, "bom.json")
         Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         //check Manufacture Data
-        OrganizationalEntity manufacturer = bom.getMetadata().getManufacturer()
+        OrganizationalEntity manufacturer = bom.getMetadata().getComponent().getManufacturer()
         assert manufacturer != null
         assert manufacturer.getName() == "Test"
         assert !manufacturer.getUrls().isEmpty()
@@ -532,7 +532,7 @@ class PluginConfigurationSpec extends Specification {
         }).isEmpty()
 
         //check Licenses Data
-        LicenseChoice licenseChoice = bom.getMetadata().getLicenses()
+        LicenseChoice licenseChoice = bom.getMetadata().getComponent().getLicenses()
         assert licenseChoice != null
         assert licenseChoice.getLicenses() != null
         assert !licenseChoice.getLicenses().findAll({
