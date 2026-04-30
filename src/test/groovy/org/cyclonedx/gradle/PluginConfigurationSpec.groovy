@@ -5,6 +5,8 @@ import org.cyclonedx.gradle.utils.CyclonedxUtils
 import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
 import org.cyclonedx.model.ExternalReference
+import org.cyclonedx.model.LicenseChoice
+import org.cyclonedx.model.OrganizationalEntity
 import org.cyclonedx.model.Tool
 import org.gradle.api.JavaVersion
 import org.gradle.testkit.runner.GradleRunner
@@ -472,17 +474,26 @@ class PluginConfigurationSpec extends Specification {
         assert reportDir.exists()
         reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         //check Manufacture Data
-        assert jsonBom.text.contains("\"name\" : \"Test\"")
-        assert jsonBom.text.contains("\"url\"")
-        assert jsonBom.text.contains("\"name\" : \"Max_Mustermann\"")
-        assert jsonBom.text.contains("\"email\" : \"max.mustermann@test.org\"")
-        assert jsonBom.text.contains("\"phone\" : \"0000 99999999\"")
+        OrganizationalEntity manufacturer = bom.getMetadata().getManufacturer()
+        assert manufacturer != null
+        assert manufacturer.getName() == "Test"
+        assert !manufacturer.getUrls().isEmpty()
+        assert !manufacturer.getContacts().findAll({
+            it.name == "Max_Mustermann" &&
+                it.email == "max.mustermann@test.org" &&
+                it.phone == "0000 99999999"
+        }).isEmpty()
 
         //check Licenses Data
-        assert jsonBom.text.contains("\"licenses\"")
-        assert jsonBom.text.contains("\"content\" : \"This is a Licenses-Test\"")
-        assert jsonBom.text.contains("\"url\" : \"https://www.test-Url.org/\"")
+        LicenseChoice licenseChoice = bom.getMetadata().getLicenses()
+        assert licenseChoice != null
+        assert licenseChoice.getLicenses() != null
+        assert !licenseChoice.getLicenses().findAll({
+            it.getAttachmentText().getText() == "This is a Licenses-Test" &&
+            it.getUrl() == "https://www.test-Url.org/"
+        }).isEmpty()
 
         where:
         taskName             | reportLocation
@@ -508,17 +519,26 @@ class PluginConfigurationSpec extends Specification {
         assert reportDir.exists()
         reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
         File jsonBom = new File(reportDir, "bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
         //check Manufacture Data
-        assert jsonBom.text.contains("\"name\" : \"Test\"")
-        assert jsonBom.text.contains("\"url\"")
-        assert jsonBom.text.contains("\"name\" : \"Max_Mustermann\"")
-        assert jsonBom.text.contains("\"email\" : \"max.mustermann@test.org\"")
-        assert jsonBom.text.contains("\"phone\" : \"0000 99999999\"")
+        OrganizationalEntity manufacturer = bom.getMetadata().getManufacturer()
+        assert manufacturer != null
+        assert manufacturer.getName() == "Test"
+        assert !manufacturer.getUrls().isEmpty()
+        assert !manufacturer.getContacts().findAll({
+            it.name == "Max_Mustermann" &&
+                it.email == "max.mustermann@test.org" &&
+                it.phone == "0000 99999999"
+        }).isEmpty()
 
         //check Licenses Data
-        assert jsonBom.text.contains("\"licenses\"")
-        assert jsonBom.text.contains("\"content\" : \"This is a Licenses-Test\"")
-        assert jsonBom.text.contains("\"url\" : \"https://www.test-Url.org/\"")
+        LicenseChoice licenseChoice = bom.getMetadata().getLicenses()
+        assert licenseChoice != null
+        assert licenseChoice.getLicenses() != null
+        assert !licenseChoice.getLicenses().findAll({
+            it.getAttachmentText().getText() == "This is a Licenses-Test" &&
+            it.getUrl() == "https://www.test-Url.org/"
+        }).isEmpty()
 
         where:
         taskName             | reportLocation
