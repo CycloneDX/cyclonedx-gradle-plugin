@@ -1,0 +1,41 @@
+plugins {
+    id 'base'
+    id 'maven-publish'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+configurations {
+    sbom {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+}
+
+dependencies {
+    sbom project(path: ':app-a', configuration: 'sbom')
+    sbom project(path: ':app-b', configuration: 'sbom')
+}
+
+def zip = tasks.register("zip", Zip) {
+    from(configurations.sbom)
+}
+
+publishing {
+    publications {
+        register("zip", MavenPublication) {
+            artifact(zip)
+        }
+    }
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('repo')
+        }
+    }
+}

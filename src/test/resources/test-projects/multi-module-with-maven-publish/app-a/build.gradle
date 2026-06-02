@@ -1,0 +1,34 @@
+import org.cyclonedx.gradle.CyclonedxDirectTask
+
+plugins {
+    id 'java-library'
+    id 'org.cyclonedx.bom'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+configurations {
+    sbom {
+        canBeConsumed = true
+        canBeResolved = false
+    }
+}
+
+dependencies {
+    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version: '2.8.11'
+}
+
+tasks.cyclonedxDirectBom {
+    jsonOutput = layout.buildDirectory.file("cyclonedx/app-a-sbom.json")
+    xmlOutput.unsetConvention()
+}
+
+artifacts {
+    add(configurations.sbom.name, tasks.named("cyclonedxDirectBom", CyclonedxDirectTask).map { it.jsonOutput })
+}
