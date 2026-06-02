@@ -21,6 +21,7 @@ package org.cyclonedx.gradle;
 import com.google.common.collect.ImmutableMap;
 import java.util.stream.Stream;
 import javax.inject.Inject;
+import org.gradle.api.DefaultTask;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -30,6 +31,7 @@ import org.gradle.api.file.Directory;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskProvider;
 
 /**
@@ -104,49 +106,60 @@ public class CyclonedxPlugin implements Plugin<Project> {
                     final TaskProvider<CyclonedxDirectTask> directTask =
                             evaluatedProject.getTasks().named(cyclonedxDirectTaskName, CyclonedxDirectTask.class);
 
-                    // Deferred: only runs when the task is realized (i.e., when CycloneDX is requested)
-                    directTask.configure(task -> {
-                        if (!task.getEnabled()) {
-                            LOGGER.info(
-                                    "{} Project [{}] skipped because direct BOM task [{}] is disabled",
-                                    LOG_PREFIX,
-                                    evaluatedProject.getDisplayName(),
-                                    cyclonedxDirectTaskName);
-                            return;
-                        }
-                        // Wire output files as artifacts on the outgoing configuration
-                        if (task.getXmlOutput().isPresent()) {
-                            evaluatedProject
-                                    .getArtifacts()
-                                    .add(
-                                            cyclonedxDirectConfigurationName,
-                                            task.getXmlOutput().get().getAsFile(),
-                                            a -> a.builtBy(task));
-                        }
-                        if (task.getJsonOutput().isPresent()) {
-                            evaluatedProject
-                                    .getArtifacts()
-                                    .add(
-                                            cyclonedxDirectConfigurationName,
-                                            task.getJsonOutput().get().getAsFile(),
-                                            a -> a.builtBy(task));
-                        }
-                        // Add aggregate dependency only for enabled tasks
-                        project.getDependencies()
+                    // Skip tasks that aren't enabled
+                    if (!filterProvider(project, directTask, DefaultTask::isEnabled)
+                            .isPresent()) {
+                        LOGGER.info(
+                                "{} Project [{}] skipped because direct BOM task [{}] is disabled",
+                                LOG_PREFIX,
+                                evaluatedProject.getDisplayName(),
+                                cyclonedxDirectTaskName);
+                        return;
+                    }
+
+                    if (filterProvider(project, directTask, task -> task.getXmlOutput()
+                                    .isPresent())
+                            .isPresent()) {
+                        evaluatedProject
+                                .getArtifacts()
                                 .add(
-                                        cyclonedxAggregateConfigurationName,
-                                        project.getDependencies()
-                                                .project(ImmutableMap.of(
-                                                        "path",
-                                                        evaluatedProject.getPath(),
-                                                        "configuration",
-                                                        cyclonedxDirectConfigurationName)));
-                    });
+                                        cyclonedxDirectConfigurationName,
+                                        directTask.map(BaseCyclonedxTask::getXmlOutput),
+                                        a -> a.builtBy(directTask));
+                    }
+
+                    if (filterProvider(project, directTask, task -> task.getJsonOutput()
+                                    .isPresent())
+                            .isPresent()) {
+                        evaluatedProject
+                                .getArtifacts()
+                                .add(
+                                        cyclonedxDirectConfigurationName,
+                                        directTask.map(BaseCyclonedxTask::getJsonOutput),
+                                        a -> a.builtBy(directTask));
+                    }
+
+                    // Add aggregate dependency only for enabled tasks
+                    project.getDependencies()
+                            .add(
+                                    cyclonedxAggregateConfigurationName,
+                                    project.getDependencies()
+                                            .project(ImmutableMap.of(
+                                                    "path",
+                                                    evaluatedProject.getPath(),
+                                                    "configuration",
+                                                    cyclonedxDirectConfigurationName)));
                 }));
     }
 
     private static Stream<Project> getProjectAndSubprojects(final Project project) {
         return Stream.concat(Stream.of(project), project.getSubprojects().stream());
+    }
+
+    private static <T> Provider<T> filterProvider(
+            final Project project, final Provider<? extends T> provider, final Spec<? super T> spec) {
+        return provider.flatMap(
+                task -> spec.isSatisfiedBy(task) ? project.provider(() -> task) : project.provider(() -> null));
     }
 
     private void configureProject(final Project project) {
