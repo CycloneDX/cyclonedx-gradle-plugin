@@ -26,7 +26,7 @@ repositories {
 }
 
 dependencies {
-    api("org.cyclonedx:cyclonedx-core-java:11.0.1") {
+    api("org.cyclonedx:cyclonedx-core-java:12.1.0") {
         exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j-impl")
     }
     api("org.jspecify:jspecify:1.0.0")
