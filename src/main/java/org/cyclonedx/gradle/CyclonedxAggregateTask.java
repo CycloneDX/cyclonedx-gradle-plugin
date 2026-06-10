@@ -33,6 +33,7 @@ import org.cyclonedx.model.BomReference;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Dependency;
 import org.cyclonedx.parsers.BomParserFactory;
+import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
@@ -73,6 +74,9 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
         final Bom aggregateBom = getRootProjectBom();
         final Map<String, Component> componentsByBomRef = new TreeMap<>();
         final Map<String, Set<String>> dependenciesByBomRef = new TreeMap<>();
+
+        checkForMissingInputSboms(files);
+
         for (final File subProjectBomFile : files) {
             final Bom subProjectBom =
                     BomParserFactory.createParser(subProjectBomFile).parse(subProjectBomFile);
@@ -133,6 +137,28 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
                 })
                 .collect(Collectors.toList()));
         return aggregateBom;
+    }
+
+    private void checkForMissingInputSboms(final Set<File> files) {
+        final List<File> missing = new ArrayList<>();
+        for (final File file : files) {
+            if (!file.exists()) {
+                missing.add(file);
+            }
+        }
+        if (!missing.isEmpty()) {
+            StringBuilder message = new StringBuilder();
+            message.append(" The following input SBOMs of task '")
+                    .append(getPath())
+                    .append("' do not exist:\n\n");
+            for (final File file : missing) {
+                message.append("  - ").append(file.getPath()).append("\n");
+            }
+            message.append("\nAn input SBOM is missing when its producing task was skipped at execution time so the"
+                    + " SBOM was never generated. If the omission is intended, disable the producing task using"
+                    + " `enabled = false` to exclude its project from the aggregation.");
+            throw new GradleException(message.toString());
+        }
     }
 
     private Bom getRootProjectBom() {

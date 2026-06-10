@@ -1262,6 +1262,38 @@ class PluginConfigurationSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    def "aggregate task should fail when an input SBOM was not generated"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            tasks.named('cyclonedxDirectBom') {
+                onlyIf { false }
+            }
+            """, "rootProject.name = 'missing-sbom'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .buildAndFail()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SKIPPED
+        result.task(":cyclonedxBom").outcome == TaskOutcome.FAILED
+        result.output.contains("input SBOMs of task ':cyclonedxBom' do not exist")
+
+        where:
+        taskName = "cyclonedxBom"
+        javaVersion = JavaVersion.current()
+    }
+
     def "should resolve dependencies only once per project"() {
         given:
         File testDir = TestUtils.createFromString("""
