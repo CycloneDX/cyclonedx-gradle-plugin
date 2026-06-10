@@ -16,6 +16,9 @@ import spock.lang.Issue
 import spock.lang.Specification
 import spock.lang.Unroll
 
+import java.nio.file.Files
+import java.util.zip.ZipFile
+
 @IgnoreIf({ !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) })
 @Unroll("java version: #javaVersion")
 class DependencyResolutionSpec extends Specification {
@@ -608,6 +611,10 @@ class DependencyResolutionSpec extends Specification {
 
         then:
         result.task(":publish").outcome == TaskOutcome.SUCCESS
+        def zipFilePath = testDir.toPath().resolve("build/repo/com/example/multi-module-with-maven-publish/1.0.0/multi-module-with-maven-publish-1.0.0.zip")
+        def zipFile = new ZipFile(zipFilePath.toFile())
+        assert !zipFile.getInputStream(zipFile.getEntry("app-a-sbom.json")).text.isEmpty()
+        assert !zipFile.getInputStream(zipFile.getEntry("app-b-sbom.json")).text.isEmpty()
 
         where:
         javaVersion = JavaVersion.current()
