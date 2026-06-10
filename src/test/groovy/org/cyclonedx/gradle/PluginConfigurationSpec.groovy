@@ -1201,7 +1201,7 @@ class PluginConfigurationSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
-    def "should not realize cyclonedx tasks for unrelated builds"() {
+    def "should not run cyclonedx tasks for unrelated builds"() {
         given:
         File testDir = TestUtils.duplicate("multi-module")
 
