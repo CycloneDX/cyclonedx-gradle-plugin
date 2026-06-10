@@ -21,17 +21,13 @@ package org.cyclonedx.gradle;
 import com.google.common.collect.ImmutableMap;
 import java.util.stream.Stream;
 import javax.inject.Inject;
-import org.gradle.api.DefaultTask;
-import org.gradle.api.JavaVersion;
-import org.gradle.api.Plugin;
-import org.gradle.api.Project;
+import org.gradle.api.*;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskProvider;
 
 /**
@@ -106,49 +102,50 @@ public class CyclonedxPlugin implements Plugin<Project> {
                     final TaskProvider<CyclonedxDirectTask> directTask =
                             evaluatedProject.getTasks().named(cyclonedxDirectTaskName, CyclonedxDirectTask.class);
 
-                    // Skip tasks that aren't enabled
-                    if (!filterProvider(project, directTask, DefaultTask::isEnabled)
-                            .isPresent()) {
-                        LOGGER.info(
-                                "{} Project [{}] skipped because direct BOM task [{}] is disabled",
-                                LOG_PREFIX,
-                                evaluatedProject.getDisplayName(),
-                                cyclonedxDirectTaskName);
-                        return;
-                    }
+                    evaluatedProject
+                            .getConfigurations()
+                            .named(cyclonedxDirectConfigurationName)
+                            .configure(cyclonedxDirectConfiguration -> {
+                                final CyclonedxDirectTask task = directTask.get();
+                                if (!task.isEnabled()) {
+                                    LOGGER.info(
+                                            "{} Project [{}] skipped because direct BOM task [{}] is disabled",
+                                            LOG_PREFIX,
+                                            evaluatedProject.getDisplayName(),
+                                            cyclonedxDirectTaskName);
+                                    return;
+                                }
+                                if (task.getXmlOutput().isPresent()) {
+                                    cyclonedxDirectConfiguration.outgoing(
+                                            outgoingConfiguration -> outgoingConfiguration.artifact(
+                                                    task.getXmlOutput(),
+                                                    publishArtifact -> publishArtifact.builtBy(directTask)));
+                                }
+                                if (task.getJsonOutput().isPresent()) {
+                                    cyclonedxDirectConfiguration.outgoing(
+                                            outgoingConfiguration -> outgoingConfiguration.artifact(
+                                                    task.getJsonOutput(),
+                                                    publishArtifact -> publishArtifact.builtBy(directTask)));
+                                }
+                            });
 
-                    if (filterProvider(project, directTask, task -> task.getXmlOutput()
-                                    .isPresent())
-                            .isPresent()) {
-                        evaluatedProject
-                                .getArtifacts()
-                                .add(
-                                        cyclonedxDirectConfigurationName,
-                                        directTask.map(BaseCyclonedxTask::getXmlOutput),
-                                        a -> a.builtBy(directTask));
-                    }
-
-                    if (filterProvider(project, directTask, task -> task.getJsonOutput()
-                                    .isPresent())
-                            .isPresent()) {
-                        evaluatedProject
-                                .getArtifacts()
-                                .add(
-                                        cyclonedxDirectConfigurationName,
-                                        directTask.map(BaseCyclonedxTask::getJsonOutput),
-                                        a -> a.builtBy(directTask));
-                    }
-
-                    // Add aggregate dependency only for enabled tasks
-                    project.getDependencies()
-                            .add(
-                                    cyclonedxAggregateConfigurationName,
-                                    project.getDependencies()
-                                            .project(ImmutableMap.of(
-                                                    "path",
-                                                    evaluatedProject.getPath(),
-                                                    "configuration",
-                                                    cyclonedxDirectConfigurationName)));
+                    project.getConfigurations()
+                            .named(cyclonedxAggregateConfigurationName)
+                            .configure(cyclonedxAggregateConfiguration -> {
+                                // Add aggregate dependency only for enabled tasks
+                                final CyclonedxDirectTask task = directTask.get();
+                                if (!task.isEnabled()) {
+                                    return;
+                                }
+                                cyclonedxAggregateConfiguration
+                                        .getDependencies()
+                                        .add(project.getDependencies()
+                                                .project(ImmutableMap.of(
+                                                        "path",
+                                                        evaluatedProject.getPath(),
+                                                        "configuration",
+                                                        cyclonedxDirectConfigurationName)));
+                            });
                 }));
     }
 
@@ -156,18 +153,14 @@ public class CyclonedxPlugin implements Plugin<Project> {
         return Stream.concat(Stream.of(project), project.getSubprojects().stream());
     }
 
-    private static <T> Provider<T> filterProvider(
-            final Project project, final Provider<? extends T> provider, final Spec<? super T> spec) {
-        return provider.flatMap(
-                task -> spec.isSatisfiedBy(task) ? project.provider(() -> task) : project.provider(() -> null));
-    }
-
     private void configureProject(final Project project) {
         // Outgoing configuration to publish SBOMs as artifacts
-        final Configuration cyclonedxBomConfiguration =
-                project.getConfigurations().maybeCreate(cyclonedxDirectConfigurationName);
-        cyclonedxBomConfiguration.setCanBeConsumed(true);
-        cyclonedxBomConfiguration.setCanBeResolved(false);
+        if (!project.getConfigurations().getNames().contains(cyclonedxDirectConfigurationName)) {
+            project.getConfigurations().register(cyclonedxDirectConfigurationName, configuration -> {
+                configuration.setCanBeConsumed(true);
+                configuration.setCanBeResolved(false);
+            });
+        }
         registerCyclonedxDirectBomTask(project);
     }
 
