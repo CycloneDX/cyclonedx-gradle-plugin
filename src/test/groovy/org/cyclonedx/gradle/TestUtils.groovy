@@ -99,6 +99,10 @@ class TestUtils {
         arguments.add("--info")
         arguments.add("--configuration-cache")
         arguments.add("--parallel")
+        // Tests rewrite build scripts and immediately start the next build in a reused test-kit daemon.
+        // The daemon's file-system-watching VFS may not have seen the change yet, making the build
+        // falsely reuse the configuration cache. Re-hash from disk instead of trusting the watched VFS.
+        arguments.add("--no-watch-fs")
         return arguments.toArray(new String[0])
     }
 }
