@@ -7,7 +7,13 @@ plugins {
 version = '1.0.0'
 
 allprojects {p ->
+    apply plugin: "org.cyclonedx.bom"
     tasks.cyclonedxDirectBom {
         componentName = "${p.name}-component"
     }
+}
+
+dependencies {
+    cyclonedxAggregation project(':app-a')
+    cyclonedxAggregation project(':app-b')
 }

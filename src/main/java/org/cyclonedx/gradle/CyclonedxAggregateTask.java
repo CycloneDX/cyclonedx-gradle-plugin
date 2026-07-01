@@ -21,7 +21,13 @@ package org.cyclonedx.gradle;
 import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.gradle.model.SbomComponent;
@@ -33,29 +39,92 @@ import org.cyclonedx.model.BomReference;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Dependency;
 import org.cyclonedx.parsers.BomParserFactory;
+import org.gradle.api.GradleException;
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
+import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
-import org.gradle.api.provider.Provider;
-import org.gradle.api.tasks.*;
+import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Property;
+import org.gradle.api.provider.SetProperty;
+import org.gradle.api.tasks.CacheableTask;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
+import org.gradle.api.tasks.TaskAction;
 
 @CacheableTask
 public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
 
     private static final Logger LOGGER = Logging.getLogger(CyclonedxAggregateTask.class);
 
+    /**
+     * Resolved BOM files, contributed by declared aggregation members.
+     */
     @InputFiles
     @PathSensitive(PathSensitivity.RELATIVE)
-    abstract ConfigurableFileCollection getInputSboms();
+    public abstract ConfigurableFileCollection getInputSbomFiles();
 
-    protected final Provider<String> getProjectPath =
-            getProject().getProviders().provider(() -> getProject().getPath());
+    /**
+     * Resolved artifacts with their component identifiers.
+     */
+    @Internal
+    public abstract SetProperty<ResolvedArtifactResult> getResolvedMemberArtifacts();
+
+    /**
+     * Path of the project that owns this aggregate task. Used to build the root component of the
+     * aggregate BOM.
+     */
+    @Input
+    public abstract Property<String> getProjectPath();
+
+    /**
+     * Snapshot of the project paths declared on {@code cyclonedxAggregation}.
+     */
+    @Input
+    public abstract ListProperty<String> getDeclaredMemberPaths();
 
     @TaskAction
     public void aggregate() throws Exception {
         logParameters();
-        final Bom merged = mergeAll(getInputSboms().getFiles());
-        LOGGER.info("{} Writing BOM", LOG_PREFIX);
+
+        final Map<String, List<File>> filesByMember = new TreeMap<>();
+        for (final ResolvedArtifactResult a : getResolvedMemberArtifacts().get()) {
+            if (a.getId().getComponentIdentifier() instanceof ProjectComponentIdentifier) {
+                final String path = ((ProjectComponentIdentifier) a.getId().getComponentIdentifier()).getProjectPath();
+                filesByMember.computeIfAbsent(path, k -> new ArrayList<>()).add(a.getFile());
+            }
+        }
+
+        // any declared member that contributed zero files aborts the build to prevent silent (accidental)
+        // under-reporting
+        final List<String> declared = getDeclaredMemberPaths().get();
+        final List<String> missing = declared.stream()
+                .filter(p ->
+                        !filesByMember.containsKey(p) || filesByMember.get(p).isEmpty())
+                .collect(Collectors.toList());
+        if (!missing.isEmpty()) {
+            throw new GradleException(LOG_PREFIX + " Declared aggregation members produced no Direct BOM artifacts: "
+                    + missing + ". Each member must apply the cyclonedx plugin with an enabled cyclonedxDirectBom task "
+                    + "and publish at least one output format (xmlOutput or jsonOutput). "
+                    + "Aggregation aborted to avoid silent under-reporting of the SBOM.");
+        }
+
+        final Bom merged;
+        try {
+            merged = mergeAll(filesByMember);
+        } catch (ParseException e) {
+            throw new GradleException(
+                    LOG_PREFIX + " Failed to parse a member BOM. Aggregation aborted to avoid "
+                            + "silent under-reporting of the SBOM (a security-consumed artifact). "
+                            + "Declared members: " + declared,
+                    e);
+        }
+
+        LOGGER.info("{} Writing aggregate BOM (members: {})", LOG_PREFIX, declared);
         if (getJsonOutput().isPresent()) {
             CyclonedxUtils.writeJsonBom(
                     getSchemaVersion().get(),
@@ -68,61 +137,25 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
         }
     }
 
-    private Bom mergeAll(final Set<File> files) throws ParseException {
-        LOGGER.info("{} Received files: {}", LOG_PREFIX, files);
+    private Bom mergeAll(final Map<String, List<File>> filesByMember) throws ParseException {
+        LOGGER.info("{} Merging BOMs from members: {}", LOG_PREFIX, filesByMember.keySet());
         final Bom aggregateBom = getRootProjectBom();
+        final String rootRef = aggregateBom.getMetadata().getComponent().getBomRef();
         final Map<String, Component> componentsByBomRef = new TreeMap<>();
         final Map<String, Set<String>> dependenciesByBomRef = new TreeMap<>();
-        for (final File subProjectBomFile : files) {
-            final Bom subProjectBom =
-                    BomParserFactory.createParser(subProjectBomFile).parse(subProjectBomFile);
-            // merge components of all BOMs
-            if (!aggregateBom
-                    .getMetadata()
-                    .getComponent()
-                    .getBomRef()
-                    .equals(subProjectBom.getMetadata().getComponent().getBomRef())) {
-                // if the root project BOM main component is not the same as the sub-project BOM main component,
-                // add the sub-project main component to the map
-                // to avoid duplicating the root project component
-                LOGGER.info(
-                        "{} Adding sub-project component:[{}] {}",
-                        LOG_PREFIX,
-                        aggregateBom.getMetadata().getComponent().getBomRef(),
-                        subProjectBom.getMetadata().getComponent().getBomRef());
-                componentsByBomRef.putIfAbsent(
-                        subProjectBom.getMetadata().getComponent().getBomRef(),
-                        subProjectBom.getMetadata().getComponent());
+
+        final Set<String> rootEdges = dependenciesByBomRef.computeIfAbsent(rootRef, k -> new TreeSet<>());
+
+        for (final Map.Entry<String, List<File>> entry : filesByMember.entrySet()) {
+            final File chosen = pickPreferredFile(entry.getValue());
+            final Bom subProjectBom = BomParserFactory.createParser(chosen).parse(chosen);
+            final String memberRef = subProjectBom.getMetadata().getComponent().getBomRef();
+            if (!memberRef.equals(rootRef)) {
+                rootEdges.add(memberRef);
             }
-            if (subProjectBom.getComponents() == null) {
-                continue; // no components in this BOM
-            }
-            for (final Component component : subProjectBom.getComponents()) {
-                componentsByBomRef.putIfAbsent(component.getBomRef(), component);
-            }
-            // merge dependencies of all BOMs
-            if (subProjectBom.getDependencies() == null) {
-                continue; // no dependencies in this BOM
-            }
-            for (final Dependency dependency : subProjectBom.getDependencies()) {
-                final String bomRef = dependency.getRef();
-                if (dependency.getDependencies() == null || bomRef == null) {
-                    continue;
-                }
-                dependenciesByBomRef.compute(bomRef, (key, existingDeps) -> {
-                    final List<String> nextLevelDeps = dependency.getDependencies().stream()
-                            .map(BomReference::getRef)
-                            .filter(ref -> !ref.equals(key))
-                            .collect(Collectors.toList());
-                    if (existingDeps == null) {
-                        return new TreeSet<>(nextLevelDeps);
-                    } else {
-                        existingDeps.addAll(nextLevelDeps);
-                        return existingDeps;
-                    }
-                });
-            }
+            mergeInto(aggregateBom, subProjectBom, componentsByBomRef, dependenciesByBomRef);
         }
+
         aggregateBom.setComponents(new ArrayList<>(componentsByBomRef.values()));
         aggregateBom.setDependencies(dependenciesByBomRef.entrySet().stream()
                 .map(entry -> {
@@ -135,6 +168,63 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
         return aggregateBom;
     }
 
+    private static File pickPreferredFile(final List<File> files) {
+        return files.stream()
+                .filter(f -> f.getName().endsWith(".json"))
+                .findFirst()
+                .orElse(files.get(0));
+    }
+
+    private void mergeInto(
+            final Bom aggregateBom,
+            final Bom subProjectBom,
+            final Map<String, Component> componentsByBomRef,
+            final Map<String, Set<String>> dependenciesByBomRef) {
+
+        // Merge main component of sub-project unless it duplicates the aggregate root.
+        if (!aggregateBom
+                .getMetadata()
+                .getComponent()
+                .getBomRef()
+                .equals(subProjectBom.getMetadata().getComponent().getBomRef())) {
+            LOGGER.info(
+                    "{} Adding sub-project component: root=[{}] sub=[{}]",
+                    LOG_PREFIX,
+                    aggregateBom.getMetadata().getComponent().getBomRef(),
+                    subProjectBom.getMetadata().getComponent().getBomRef());
+            componentsByBomRef.putIfAbsent(
+                    subProjectBom.getMetadata().getComponent().getBomRef(),
+                    subProjectBom.getMetadata().getComponent());
+        }
+
+        if (subProjectBom.getComponents() != null) {
+            for (final Component component : subProjectBom.getComponents()) {
+                componentsByBomRef.putIfAbsent(component.getBomRef(), component);
+            }
+        }
+
+        if (subProjectBom.getDependencies() == null) {
+            return;
+        }
+        for (final Dependency dependency : subProjectBom.getDependencies()) {
+            final String bomRef = dependency.getRef();
+            if (dependency.getDependencies() == null || bomRef == null) {
+                continue;
+            }
+            dependenciesByBomRef.compute(bomRef, (key, existingDeps) -> {
+                final List<String> nextLevelDeps = dependency.getDependencies().stream()
+                        .map(BomReference::getRef)
+                        .filter(ref -> !ref.equals(key))
+                        .collect(Collectors.toList());
+                if (existingDeps == null) {
+                    return new TreeSet<>(nextLevelDeps);
+                }
+                existingDeps.addAll(nextLevelDeps);
+                return existingDeps;
+            });
+        }
+    }
+
     private Bom getRootProjectBom() {
         final SbomComponent updatedRootComponent = new SbomComponent.Builder()
                 .withId(new SbomComponentId(
@@ -142,7 +232,7 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
                         getComponentName().get(),
                         getComponentVersion().get(),
                         null,
-                        getProjectPath.get()))
+                        getProjectPath().get()))
                 .build();
         return new SbomBuilder<>(this).buildBom(new SbomGraph(Collections.emptyMap(), updatedRootComponent));
     }
@@ -163,6 +253,8 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
             LOGGER.info("componentName             : {}", getComponentName().get());
             LOGGER.info("componentVersion          : {}", getComponentVersion().get());
             LOGGER.info("projectType               : {}", getProjectType().get());
+            LOGGER.info(
+                    "declaredMembers           : {}", getDeclaredMemberPaths().get());
             LOGGER.info("------------------------------------------------------------------------");
         }
     }

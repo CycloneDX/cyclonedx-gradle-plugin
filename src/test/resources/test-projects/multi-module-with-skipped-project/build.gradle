@@ -2,3 +2,6 @@ plugins {
     id 'org.cyclonedx.bom'
     id 'base'
 }
+dependencies {
+    cyclonedxAggregation project(':app-a')
+}
