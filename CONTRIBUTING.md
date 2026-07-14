@@ -48,8 +48,8 @@ cd cyclonedx-gradle-plugin
 This project uses Gradle toolchains to ensure compatibility across different Java versions. The build is configured to:
 
 - **Target Java Version**: Java 8 (for maximum compatibility)
-- **Testing**: Multiple LTS Java versions (8, 11, 17, 21)
-- **Gradle**: Java 21
+- **Testing**: Multiple LTS Java versions (8, 11, 17, 21, 25)
+- **Gradle**: Java 25
 
 ### Testing with Multiple Java Versions
 
