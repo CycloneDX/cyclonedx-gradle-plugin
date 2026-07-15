@@ -13,7 +13,7 @@ plugins {
 
 val organization = "CycloneDX"
 group = "org.cyclonedx"
-version = "3.2.4"
+version = "3.3.0"
 
 java {
     toolchain {
