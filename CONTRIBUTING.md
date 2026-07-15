@@ -24,6 +24,8 @@ and documentation improvements to new features.
 Before contributing, please:
 
 - Read through this contributing guide
+- Review the project's [domain language](CONTEXT.md) and [architecture decisions](docs/adr/) before changing public
+  concepts or architectural boundaries
 - Check our [Code of Conduct](CODE_OF_CONDUCT.md)
 - Browse existing [issues](https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues) to see if your idea or bug has
   already been reported
