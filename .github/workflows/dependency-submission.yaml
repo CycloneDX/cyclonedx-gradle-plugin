@@ -20,6 +20,5 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 25
-          cache: "gradle"
       - name: Generate and submit dependency graph
         uses: gradle/actions/dependency-submission@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
