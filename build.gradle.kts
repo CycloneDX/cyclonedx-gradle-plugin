@@ -1,4 +1,3 @@
-import java.util.Properties
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 
@@ -44,11 +43,12 @@ dependencies {
     errorprone("com.google.errorprone:error_prone_core:2.50.0")
 }
 
+val localTestRepository = layout.buildDirectory.dir("local-repo")
+
 listOf(8, 11, 17, 21, 25).forEach { version ->
     tasks.register<Test>("testJava$version") {
         description = "Runs tests with Java $version"
         group = "verification"
-        inputs.files(tasks.test.get().inputs.files)
         javaLauncher.set(
             javaToolchains.launcherFor {
                 languageVersion.set(JavaLanguageVersion.of(version))
@@ -68,7 +68,7 @@ listOf(8, 11, 17, 21, 25).forEach { version ->
             events("passed", "skipped", "failed")
         }
         dependsOn("publishAllPublicationsToLocalTestRepository")
-        systemProperty("localRepoUrl", layout.buildDirectory.dir("local-repo").get().asFile.toURI().toString())
+        systemProperty("localRepoPath", project.relativePath(localTestRepository.get()))
         systemProperty("pluginVersion", project.version.toString())
     }
 }
@@ -108,16 +108,17 @@ tasks.withType<GroovyCompile>().configureEach {
     )
 }
 
+val generatePluginProperties = tasks.register<WriteProperties>("generatePluginProperties") {
+    destinationFile.set(layout.buildDirectory.file("generated-resources/plugin-properties/plugin.properties"))
+    comment = "Automatically populated by Gradle build."
+    property("name", project.name)
+    property("vendor", organization)
+    property("version", project.version)
+}
+
 tasks.named<ProcessResources>("processResources") {
-    val resourcesDirectory = project.layout.buildDirectory.dir("resources/main")
-    val pluginPropertiesFile = file("${resourcesDirectory.get()}/org/cyclonedx/gradle/plugin.properties")
-    outputs.file(pluginPropertiesFile)
-    val pluginProperties = Properties()
-    pluginProperties["name"] = project.name
-    pluginProperties["vendor"] = organization
-    pluginProperties["version"] = project.version
-    doLast {
-        pluginProperties.store(pluginPropertiesFile.writer(), "Automatically populated by Gradle build.")
+    from(generatePluginProperties) {
+        into("org/cyclonedx/gradle")
     }
 }
 
@@ -125,7 +126,7 @@ publishing {
     repositories {
         maven {
             name = "localTest"
-            url = uri(layout.buildDirectory.dir("local-repo"))
+            url = uri(localTestRepository)
         }
     }
 }
