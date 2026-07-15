@@ -1,0 +1,21 @@
+name: cyclonedx-gradle-plugin
+version: 1.0.0
+description: APM project for cyclonedx-gradle-plugin
+author: Sergey Khokhlov
+# Which agent platforms to deploy to.
+# Resolution order: --target flag > this field > auto-detect from filesystem.
+# Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, kiro, opencode, windsurf
+targets:
+  - claude
+  - codex
+  - copilot
+dependencies:
+  apm:
+    - git: mattpocock/skills
+      skills:
+        - domain-modeling
+        - grill-with-docs
+        - grilling
+  mcp: []
+includes: auto
+scripts: {}
