@@ -10,3 +10,7 @@ src/test/.gradle/
 **/*/.gradle/
 **/*/build/
 **/*/.DS_Store
+
+
+# APM dependencies
+apm_modules/
