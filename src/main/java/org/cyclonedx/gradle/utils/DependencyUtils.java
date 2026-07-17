@@ -20,10 +20,6 @@ package org.cyclonedx.gradle.utils;
 
 import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.gradle.model.SbomComponent;
@@ -33,6 +29,11 @@ import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.jspecify.annotations.Nullable;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 public class DependencyUtils {
 
