@@ -163,8 +163,10 @@ class OrganizationalEntityUtilTest extends Specification {
         if (specVersion.compareTo(Version.VERSION_16) >= 0) {
             assert jsonBom.getMetadata().getManufacture() == null
             assert xmlBom.getMetadata().getManufacture() == null
-            assert jsonBom.getMetadata().getManufacturer().getName() == "name"
-            assert xmlBom.getMetadata().getManufacturer().getName() == "name"
+            assert jsonBom.getMetadata().getManufacturer() == null
+            assert xmlBom.getMetadata().getManufacturer() == null
+            assert jsonBom.getMetadata().getComponent().getManufacturer().getName() == "name"
+            assert xmlBom.getMetadata().getComponent().getManufacturer().getName() == "name"
         } else {
             assert jsonBom.getMetadata().getManufacture().getName() == "name"
             assert xmlBom.getMetadata().getManufacture().getName() == "name"
