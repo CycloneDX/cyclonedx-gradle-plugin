@@ -186,6 +186,18 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
     @Input
     public abstract Property<Boolean> getIncludeLicenseText();
 
+    /**
+     * The hash algorithms to include in the SBOM components.
+     * Supported values depend on the CycloneDX schema version.
+     * Common values: "MD5", "SHA-1", "SHA-256", "SHA-512", "SHA3-256", "SHA3-512".
+     * If not set, all algorithms supported by the schema version are included.
+     *
+     * @return the list of hash algorithms to include
+     */
+    @Input
+    @Optional
+    public abstract ListProperty<String> getHashAlgorithms();
+
     public BaseCyclonedxTask() {
         super();
         getComponentGroup().convention(getProject().getProviders().provider(() -> getProject()
@@ -204,5 +216,6 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
         getOrganizationalEntity().convention(getProject().getObjects().property(OrganizationalEntity.class));
         getLicenseChoice().convention(getProject().getObjects().property(LicenseChoice.class));
         getExternalReferences().convention(getProject().getObjects().listProperty(ExternalReference.class));
+        getHashAlgorithms().convention(getProject().getObjects().listProperty(String.class));
     }
 }
