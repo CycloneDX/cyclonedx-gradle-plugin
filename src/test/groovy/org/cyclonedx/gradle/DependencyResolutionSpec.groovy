@@ -556,7 +556,7 @@ class DependencyResolutionSpec extends Specification {
         // withPluginClasspath()) to reproduce proper Gradle classloader isolation where
         // the thread context classloader during configuration phase does not include
         // plugin dependencies.
-        def localRepoUrl = System.getProperty("localRepoUrl")
+        def localRepoUrl = new File(System.getProperty("localRepoPath")).toURI().toString()
         def pluginVersion = System.getProperty("pluginVersion")
         File testDir = TestUtils.createFromString("""
             plugins {

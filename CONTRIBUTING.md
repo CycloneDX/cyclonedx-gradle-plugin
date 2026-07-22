@@ -24,6 +24,8 @@ and documentation improvements to new features.
 Before contributing, please:
 
 - Read through this contributing guide
+- Review the project's [domain language](CONTEXT.md) and [architecture decisions](docs/adr/) before changing public
+  concepts or architectural boundaries
 - Check our [Code of Conduct](CODE_OF_CONDUCT.md)
 - Browse existing [issues](https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues) to see if your idea or bug has
   already been reported
@@ -48,8 +50,8 @@ cd cyclonedx-gradle-plugin
 This project uses Gradle toolchains to ensure compatibility across different Java versions. The build is configured to:
 
 - **Target Java Version**: Java 8 (for maximum compatibility)
-- **Testing**: Multiple LTS Java versions (8, 11, 17, 21)
-- **Gradle**: Java 21
+- **Testing**: Multiple LTS Java versions (8, 11, 17, 21, 25)
+- **Gradle**: Java 25
 
 ### Testing with Multiple Java Versions
 

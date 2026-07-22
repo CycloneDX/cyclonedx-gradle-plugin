@@ -1222,6 +1222,78 @@ class PluginConfigurationSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    def "should publish direct bom artifacts before outgoing configuration is resolved"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+
+            configurations {
+                resolvedDirectBom {
+                    canBeResolved = true
+                    canBeConsumed = false
+                    extendsFrom cyclonedxDirectBom
+                }
+            }
+
+            tasks.register('resolveDirectBomConfiguration') {
+                doLast {
+                    configurations.resolvedDirectBom.files
+                    tasks.named('cyclonedxDirectBom').get()
+                }
+            }
+            """, "rootProject.name = 'direct-bom-resolution'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments("resolveDirectBomConfiguration", "--stacktrace", "--info", "--parallel")
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":resolveDirectBomConfiguration").outcome == TaskOutcome.SUCCESS
+        result.task(":cyclonedxDirectBom") == null
+
+        where:
+        taskName = "resolveDirectBomConfiguration"
+        javaVersion = JavaVersion.current()
+    }
+
+    def "aggregate task should fail when an input SBOM was not generated"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            tasks.named('cyclonedxDirectBom') {
+                onlyIf { false }
+            }
+            """, "rootProject.name = 'missing-sbom'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .buildAndFail()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SKIPPED
+        result.task(":cyclonedxBom").outcome == TaskOutcome.FAILED
+        result.output.contains("input SBOMs of task ':cyclonedxBom' do not exist")
+
+        where:
+        taskName = "cyclonedxBom"
+        javaVersion = JavaVersion.current()
+    }
+
     def "should resolve dependencies only once per project"() {
         given:
         File testDir = TestUtils.createFromString("""
