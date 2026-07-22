@@ -180,6 +180,7 @@ tasks.cyclonedxBom {
 |----------------------------------|---------------------------|---------------------------|------------------------------------------------------------------------------------|
 | `includeConfigs`                 | `List<String>`            | `[]` (all configurations) | Configurations to include in SBOM generation. Supports regex patterns              |
 | `skipConfigs`                    | `List<String>`            | `[]`                      | Configurations to exclude from SBOM generation. Supports regex patterns            |
+| `testConfigs`                    | `List<String>`            | `['^test.*']`             | Full-match regexes for Test Configurations (`cdx:maven:package:test`). All contributing configs must match; empty = none are test. |
 | `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
 | `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
 | `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
@@ -264,6 +265,10 @@ tasks.cyclonedxDirectBom {
 
     // Exclude all test-related configurations using regex
     skipConfigs = [".*test.*", ".*Test.*"]
+
+    // How configuration names are classified for cdx:maven:package:test
+    // Default is ['^test.*']; broaden for custom test source sets (e.g. e2eTest*)
+    testConfigs = ["(?i).*test.*"]
 
     // Set application metadata
     projectType = "application"
