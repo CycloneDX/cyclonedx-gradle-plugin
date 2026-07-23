@@ -99,19 +99,9 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
             }
         }
 
-        // any declared member that contributed zero files aborts the build to prevent silent (accidental)
-        // under-reporting
         final List<String> declared = getDeclaredMemberPaths().get();
-        final List<String> missing = declared.stream()
-                .filter(p ->
-                        !filesByMember.containsKey(p) || filesByMember.get(p).isEmpty())
-                .collect(Collectors.toList());
-        if (!missing.isEmpty()) {
-            throw new GradleException(LOG_PREFIX + " Declared aggregation members produced no Direct BOM artifacts: "
-                    + missing + ". Each member must apply the cyclonedx plugin with an enabled cyclonedxDirectBom task "
-                    + "and publish at least one output format (xmlOutput or jsonOutput). "
-                    + "Aggregation aborted to avoid silent under-reporting of the SBOM.");
-        }
+        checkDeclaredMembersPublishedArtifacts(declared, filesByMember);
+        checkForMissingInputSboms(filesByMember);
 
         final Bom merged;
         try {
@@ -135,6 +125,59 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
             CyclonedxUtils.writeXmlBom(
                     getSchemaVersion().get(), merged, getXmlOutput().getAsFile().get());
         }
+    }
+
+    private static void checkDeclaredMembersPublishedArtifacts(
+            final List<String> declared, final Map<String, List<File>> filesByMember) {
+        final List<String> membersWithoutArtifacts = declared.stream()
+                .filter(p ->
+                        !filesByMember.containsKey(p) || filesByMember.get(p).isEmpty())
+                .collect(Collectors.toList());
+        if (!membersWithoutArtifacts.isEmpty()) {
+            throw new GradleException(LOG_PREFIX + " Declared aggregation members produced no Direct BOM artifacts: "
+                    + membersWithoutArtifacts
+                    + ". Each member must apply the cyclonedx plugin with an enabled cyclonedxDirectBom task "
+                    + "and publish at least one output format (xmlOutput or jsonOutput). "
+                    + "Aggregation aborted to avoid silent under-reporting of the SBOM.");
+        }
+    }
+
+    private void checkForMissingInputSboms(final Map<String, List<File>> filesByMember) {
+        final Map<String, List<File>> missingByMember = new TreeMap<>();
+        for (final Map.Entry<String, List<File>> entry : filesByMember.entrySet()) {
+            for (final File file : entry.getValue()) {
+                if (!file.exists()) {
+                    missingByMember
+                            .computeIfAbsent(entry.getKey(), ignored -> new ArrayList<>())
+                            .add(file);
+                }
+            }
+        }
+
+        if (missingByMember.isEmpty()) {
+            return;
+        }
+
+        final StringBuilder message = new StringBuilder();
+        message.append(LOG_PREFIX)
+                .append(" Aggregate BOM task '")
+                .append(getPath())
+                .append("' expected Direct BOM files that do not exist:\n\n");
+        for (final Map.Entry<String, List<File>> entry : missingByMember.entrySet()) {
+            for (final File file : entry.getValue()) {
+                message.append("  - project '")
+                        .append(entry.getKey())
+                        .append("': ")
+                        .append(file.getPath())
+                        .append("\n");
+            }
+        }
+        message.append("\nA Direct BOM can be missing when its producing cyclonedxDirectBom task was skipped ")
+                .append("at execution time. Aggregation is aborted to avoid silent under-reporting of the SBOM. ")
+                .append("If this project should not contribute to the Aggregate BOM, ")
+                .append("disable its producing task with `enabled = false` or remove it from cyclonedxAggregation.");
+
+        throw new GradleException(message.toString());
     }
 
     private Bom mergeAll(final Map<String, List<File>> filesByMember) throws ParseException {

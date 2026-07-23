@@ -1287,7 +1287,8 @@ class PluginConfigurationSpec extends Specification {
         then:
         result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SKIPPED
         result.task(":cyclonedxBom").outcome == TaskOutcome.FAILED
-        result.output.contains("input SBOMs of task ':cyclonedxBom' do not exist")
+        result.output.contains("Aggregate BOM task ':cyclonedxBom' expected Direct BOM files that do not exist")
+        result.output.contains("A Direct BOM can be missing when its producing cyclonedxDirectBom task was skipped")
 
         where:
         taskName = "cyclonedxBom"

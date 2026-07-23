@@ -611,7 +611,7 @@ class DependencyResolutionSpec extends Specification {
             .buildAndFail()
 
         then:
-        result.output.contains("Could not resolve project :broken")
+        result.output.contains("Could not resolve project ':broken'")
         result.output.contains("no variant with that configuration name exists")
 
         where:

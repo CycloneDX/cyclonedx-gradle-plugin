@@ -106,9 +106,9 @@ public class CyclonedxPlugin implements Plugin<Project> {
         }
 
         // Per-project Direct BOM publishing
-        final Configuration outgoing = configureDirectBomPublishing(project);
+        configureDirectBomPublishing(project);
 
-        configureAggregator(project, outgoing);
+        configureAggregator(project);
     }
 
     /**
@@ -148,7 +148,7 @@ public class CyclonedxPlugin implements Plugin<Project> {
     /**
      * Sets up the resolvable {@code cyclonedxAggregation} configuration and the aggregate task.
      */
-    private void configureAggregator(final Project project, final Configuration ownOutgoing) {
+    private void configureAggregator(final Project project) {
         final Configuration aggregation =
                 project.getConfigurations().maybeCreate(cyclonedxAggregationConfigurationName);
         aggregation.setCanBeResolved(true);
@@ -220,9 +220,31 @@ public class CyclonedxPlugin implements Plugin<Project> {
                     .set(project.provider(() -> aggregationConfiguration.getAllDependencies().stream()
                             .filter(ProjectDependency.class::isInstance)
                             .map(ProjectDependency.class::cast)
-                            .map(ProjectDependency::getPath)
+                            .map(CyclonedxPlugin::getProjectPath)
                             .sorted()
                             .collect(Collectors.toList())));
         });
+    }
+
+    /**
+     * Unfortunately, getDependencyProject() is deprecated in Gradle 8.11 and removed in Gradle 9.
+     * While on the other hand org.gradle.api.artifacts.ProjectDependency.getPath() was introduced in Gradle 8.11
+     */
+    private static String getProjectPath(ProjectDependency dependency) {
+        try {
+            // Gradle 8.11+
+            return (String) ProjectDependency.class.getMethod("getPath").invoke(dependency);
+        } catch (ReflectiveOperationException ignored) {
+            try {
+                // Gradle < 8.11
+                Object project = ProjectDependency.class
+                        .getMethod("getDependencyProject")
+                        .invoke(dependency);
+
+                return (String) project.getClass().getMethod("getPath").invoke(project);
+            } catch (ReflectiveOperationException exception) {
+                throw new IllegalStateException("Unable to determine project dependency path", exception);
+            }
+        }
     }
 }
