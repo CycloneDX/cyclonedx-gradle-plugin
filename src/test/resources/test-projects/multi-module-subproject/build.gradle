@@ -2,5 +2,10 @@ plugins {
     id 'org.cyclonedx.bom'
 }
 
+dependencies {
+    cyclonedxAggregation project(':app-a')
+    cyclonedxAggregation project(':app-b')
+}
+
 group = 'com.example'
 version = '1.0.0'

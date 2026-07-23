@@ -594,6 +594,120 @@ class DependencyResolutionSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    def "aggregate task fails loudly when a declared member does not apply the plugin"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+        plugins { id 'org.cyclonedx.bom' }
+        dependencies { cyclonedxAggregation project(':broken') }
+    """, "rootProject.name = 'agg'\ninclude 'broken'")
+        def brokenDir = new File(testDir, "broken"); brokenDir.mkdirs()
+        new File(brokenDir, "build.gradle") << "// intentionally empty - plugin not applied\n"
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
+            .withPluginClasspath()
+            .buildAndFail()
+
+        then:
+        result.output.contains("Could not resolve project ':broken'")
+        result.output.contains("no variant with that configuration name exists")
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "aggregate task fails loudly when a declared member publishes no BOM artifacts"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+        plugins { id 'org.cyclonedx.bom' }
+        dependencies { cyclonedxAggregation project(':silent') }
+    """, "rootProject.name = 'agg'\ninclude 'silent'")
+        def silentDir = new File(testDir, "silent"); silentDir.mkdirs()
+        new File(silentDir, "build.gradle") << """
+        plugins { id 'org.cyclonedx.bom' }
+        group = 'com.example'; version = '1.0.0'
+        tasks.named('cyclonedxDirectBom') {
+            xmlOutput.unsetConvention()
+            jsonOutput.unsetConvention()
+        }
+    """
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
+            .withPluginClasspath()
+            .buildAndFail()
+
+        then:
+        result.output.contains("Declared aggregation members produced no Direct BOM artifacts")
+        result.output.contains(":silent")
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+
+    def "aggregate task fails loudly on unparseable member BOM"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+        plugins { id 'org.cyclonedx.bom' }
+        dependencies { cyclonedxAggregation project(':corrupt') }
+    """, "rootProject.name = 'agg'\ninclude 'corrupt'")
+        new File(testDir, "corrupt").mkdirs()
+        new File(testDir, "corrupt/build.gradle") << """
+        plugins { id 'org.cyclonedx.bom' }
+        group = 'com.example'; version = '1.0.0'
+        tasks.named('cyclonedxDirectBom') {
+            doLast {
+                xmlOutput.get().asFile.text  = 'not a valid bom'
+                jsonOutput.get().asFile.text = 'not a valid bom'
+            }
+        }
+    """
+
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
+            .withPluginClasspath()
+            .buildAndFail()
+
+        then:
+        result.output.contains("Failed to parse a member BOM")
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "cyclonedxAggregation rejects non-project dependencies"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+        plugins { id 'org.cyclonedx.bom' }
+        repositories { mavenCentral() }
+        dependencies {
+            cyclonedxAggregation 'org.apache.commons:commons-lang3:3.12.0'
+        }
+    """, "rootProject.name = 'agg'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("help"))
+            .withPluginClasspath()
+            .buildAndFail()
+
+        then:
+        result.output.contains("cyclonedxAggregation only accepts project(...) dependencies")
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+
     private static def loadJsonBom(File file) {
         return new JsonSlurper().parse(file)
     }

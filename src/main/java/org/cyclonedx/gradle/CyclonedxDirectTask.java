@@ -21,17 +21,13 @@ package org.cyclonedx.gradle;
 import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.CyclonedxUtils;
 import org.cyclonedx.model.Bom;
 import org.gradle.api.file.ConfigurableFileCollection;
-import org.gradle.api.file.RegularFile;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.ListProperty;
@@ -40,7 +36,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
-import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
@@ -159,14 +154,6 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
             CyclonedxUtils.writeXmlBom(
                     getSchemaVersion().get(), bom, getXmlOutput().getAsFile().get());
         }
-    }
-
-    @Internal("covered by jsonOutput and xmlOutput")
-    List<RegularFile> getOutputFiles() {
-        return Stream.of(getJsonOutput(), getXmlOutput())
-                .map(Provider::getOrNull)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
     }
 
     private void logParameters() {

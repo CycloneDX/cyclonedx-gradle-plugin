@@ -216,17 +216,22 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         final boolean include = shouldIncludeConfiguration(configuration);
         final boolean skip = shouldSkipConfiguration(configuration);
         final boolean resolvable = configuration.isCanBeResolved();
-        if (!include || skip || !resolvable) {
+        final boolean isAggregation = task.getAggregateConfigurationName().isPresent()
+                && configuration
+                        .getName()
+                        .equals(task.getAggregateConfigurationName().get());
+        if (!include || skip || !resolvable || isAggregation) {
             LOGGER.debug(
-                    "{}, Skipping configuration '{}' (project: {}, include: {}, skip: {}, canBeResolved: {})",
+                    "{}, Skipping configuration '{}' (project: {}, include: {}, skip: {}, canBeResolved: {}, isAggregation: {})",
                     LOG_PREFIX,
                     configuration.getName(),
                     projectName,
                     include,
                     skip,
-                    resolvable);
+                    resolvable,
+                    isAggregation);
         }
-        return include && !skip && resolvable;
+        return include && !skip && resolvable && !isAggregation;
     }
 
     private Stream<Configuration> getInScopeConfigurations() {
