@@ -280,13 +280,24 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
 
     private Property buildIsTestProperty(final SbomComponent component) {
 
-        boolean isTestComponent = component.getInScopeConfigurations().stream()
-                .allMatch(v -> v.getConfigName().startsWith("test"));
+        boolean isTestComponent =
+                component.getInScopeConfigurations().stream().allMatch(v -> isTestConfiguration(v.getConfigName()));
 
         Property property = new Property();
         property.setName("cdx:maven:package:test");
         property.setValue(Boolean.toString(isTestComponent));
         return property;
+    }
+
+    private boolean isTestConfiguration(final String configName) {
+        return getTestConfigsPatterns().stream().anyMatch(configName::matches);
+    }
+
+    private List<String> getTestConfigsPatterns() {
+        if (task instanceof CyclonedxDirectTask) {
+            return ((CyclonedxDirectTask) task).getTestConfigs().get();
+        }
+        return Collections.singletonList("^test.*");
     }
 
     private List<Hash> calculateHashes(final File artifactFile) {

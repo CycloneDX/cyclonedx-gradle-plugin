@@ -31,6 +31,12 @@ The public compatibility surface of produced **Direct SBOMs**, **Aggregate SBOMs
 versioned with the plugin according to [ADR 0004](docs/adr/0004-version-the-sbom-output-contract-with-the-plugin.md).
 _Avoid_: Internal output, report format
 
+**Test Configuration**:
+A Gradle configuration treated as test evidence when labeling a component in a **Direct SBOM**. A component is marked
+test only when every configuration that contributed it is a **Test Configuration**. Classification is by configurable
+name pattern per [ADR 0005](docs/adr/0005-classify-test-configurations-by-name-pattern.md).
+_Avoid_: Test dependency, test scope (unqualified), test source set
+
 ## Flagged ambiguities
 
 - Prefer **SBOM** in explanatory prose. **BOM** remains correct when referring to CycloneDX specification concepts or
@@ -39,6 +45,8 @@ _Avoid_: Internal output, report format
   Qualify the term when the distinction matters.
 - The **SBOM Output Contract** covers parsed CycloneDX meaning, not byte-for-byte serialization. Formatting and ordering
   are not part of the compatibility guarantee when the SBOM remains semantically equivalent.
+- **Test Configuration** is a labeling concern for components already in a **Direct SBOM**. It is distinct from
+  `includeConfigs` / `skipConfigs`, which decide which configurations are scanned into that document.
 
 ## Example dialogue
 

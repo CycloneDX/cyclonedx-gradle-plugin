@@ -21,6 +21,7 @@ package org.cyclonedx.gradle;
 import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -75,6 +76,18 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     public abstract ListProperty<String> getSkipConfigs();
 
     /**
+     * Patterns that identify Test Configurations when labeling components with
+     * {@code cdx:maven:package:test}. A configuration name is a Test Configuration when it fully
+     * matches any pattern ({@link String#matches(String)}). A component is marked test only when
+     * every configuration that contributed it is a Test Configuration. An empty list means no
+     * configuration is treated as a Test Configuration.
+     *
+     * @return the list of regex patterns for Test Configuration names
+     */
+    @Input
+    public abstract ListProperty<String> getTestConfigs();
+
+    /**
      * Whether to include metadata resolution in the BOM. For example, license information.
      * If not set, it defaults to true.
      *
@@ -109,6 +122,7 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     public CyclonedxDirectTask() {
         getIncludeConfigs().convention(new ArrayList<>());
         getSkipConfigs().convention(new ArrayList<>());
+        getTestConfigs().convention(new ArrayList<>(Collections.singletonList("^test.*")));
         getIncludeMetadataResolution().convention(true);
         getIncludeBuildEnvironment().convention(false);
         this.componentsProvider = getProject()
@@ -181,6 +195,7 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
                     getIncludeBomSerialNumber().get());
             LOGGER.info("includeConfigs            : {}", getIncludeConfigs().get());
             LOGGER.info("skipConfigs               : {}", getSkipConfigs().get());
+            LOGGER.info("testConfigs               : {}", getTestConfigs().get());
             LOGGER.info(
                     "includeMetadataResolution : {}",
                     getIncludeMetadataResolution().get());
