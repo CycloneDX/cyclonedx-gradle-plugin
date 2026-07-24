@@ -39,6 +39,8 @@ import org.cyclonedx.gradle.model.DependencyComparator;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomGraph;
+import org.cyclonedx.gradle.model.SchemaVersion;
+import org.cyclonedx.gradle.model.SchemaVersionMapper;
 import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.gradle.utils.EnvironmentUtils;
 import org.cyclonedx.gradle.utils.ExternalReferencesUtil;
@@ -70,10 +72,12 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
     private final List<Hash.Algorithm> hashAlgorithms;
     private final MavenHelper mavenHelper;
     private final Version version;
+    private final SchemaVersion schemaVersion;
     private final T task;
 
     SbomBuilder(final T task) {
         this.version = task.getSchemaVersion().get();
+        this.schemaVersion = SchemaVersionMapper.from(this.version);
         this.artifactHashes = new HashMap<>();
         this.hashAlgorithms = HashUtils.selectAlgorithms(this.version);
         this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get());
@@ -125,7 +129,7 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         if (task.getOrganizationalEntity().isPresent()
                 && !new OrganizationalEntity()
                         .equals(task.getOrganizationalEntity().get())) {
-            if (version.compareTo(Version.VERSION_16) >= 0) {
+            if (schemaVersion.usesManufacturer()) {
                 metadata.setManufacturer(task.getOrganizationalEntity().get());
             } else {
                 metadata.setManufacture(task.getOrganizationalEntity().get());
@@ -135,7 +139,7 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         final Properties pluginProperties = readPluginProperties();
         if (!pluginProperties.isEmpty()) {
             // if schema version is 1.5 or higher use tools instead of tool
-            if (version.compareTo(Version.VERSION_15) >= 0) {
+            if (schemaVersion.usesToolInformation()) {
                 final Component component = new Component();
                 component.setType(Component.Type.APPLICATION);
                 component.setAuthor(pluginProperties.getProperty("vendor"));
