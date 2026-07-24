@@ -44,6 +44,30 @@ dependencies {
     errorprone("com.google.errorprone:error_prone_core:2.50.0")
 }
 
+// Builds LegacyConsumerFixture (see legacy-fixture-build/) - a stand-in for a buildSrc/build-logic consumer
+// precompiled against the published cyclonedx-gradle-plugin:3.3.0 (Core 11.0.1) - so BinaryCompatibilitySpec can run
+// that precompiled bytecode against this build's own candidate plugin (Core 13.0.0) and catch binary-incompatible
+// Core upgrades that source-recompiled tests never see. It has to live in its own nested Gradle build, invoked here
+// via `--project-dir` rather than as a source set of this project: this project publishes itself under the exact
+// same GA (`org.cyclonedx:cyclonedx-gradle-plugin`) that the fixture needs to compile against at version 3.3.0, and
+// Gradle 9.x unconditionally substitutes a project for any module dependency whose group:name matches a project in
+// the same build - regardless of requested version, and not overridable via `resolutionStrategy` - which would
+// silently make the fixture compile against this project's own (candidate) classes instead of the real old release.
+val legacyFixtureBuildDir = "legacy-fixture-build"
+val legacyFixtureJarFile = layout.projectDirectory.file("$legacyFixtureBuildDir/build/libs/legacy-consumer-fixture.jar")
+
+val legacyFixtureJar = tasks.register<Exec>("legacyFixtureJar") {
+    description = "Builds the LegacyConsumerFixture jar in an isolated nested Gradle build (see legacy-fixture-build/)"
+    workingDir = rootDir
+    val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+    val gradlewName = if (isWindows) "gradlew.bat" else "./gradlew"
+    commandLine(gradlewName, "--project-dir", legacyFixtureBuildDir, "jar")
+    inputs.dir("$legacyFixtureBuildDir/src")
+    inputs.file("$legacyFixtureBuildDir/build.gradle.kts")
+    inputs.file("$legacyFixtureBuildDir/settings.gradle.kts")
+    outputs.file(legacyFixtureJarFile)
+}
+
 val localTestRepository = layout.buildDirectory.dir("local-repo")
 
 listOf(8, 11, 17, 21, 25).forEach { version ->
@@ -68,9 +92,16 @@ listOf(8, 11, 17, 21, 25).forEach { version ->
         testLogging {
             events("passed", "skipped", "failed")
         }
-        dependsOn("publishAllPublicationsToLocalTestRepository")
+        dependsOn("publishAllPublicationsToLocalTestRepository", legacyFixtureJar)
+        // The fixture jar is only referenced by absolute path via a system property below, which Gradle's
+        // up-to-date check treats as an opaque string - it would not notice the jar's *content* changing (e.g. a
+        // LegacyConsumerFixture.java edit that doesn't also touch BinaryCompatibilitySpec.groovy) and could report a
+        // stale PASSED result. Declaring it as an explicit input makes its content part of this task's up-to-date
+        // check.
+        inputs.files(legacyFixtureJar).withPropertyName("legacyFixtureJar").withPathSensitivity(PathSensitivity.NONE)
         systemProperty("localRepoPath", project.relativePath(localTestRepository.get()))
         systemProperty("pluginVersion", project.version.toString())
+        systemProperty("legacyFixtureJarPath", legacyFixtureJarFile.asFile.absolutePath)
     }
 }
 
