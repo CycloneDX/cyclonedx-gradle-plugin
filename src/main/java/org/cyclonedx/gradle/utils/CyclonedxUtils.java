@@ -64,6 +64,8 @@ public class CyclonedxUtils {
                 return Version.VERSION_15;
             case "1.6":
                 return Version.VERSION_16;
+            case "1.7":
+                return Version.VERSION_17;
             default:
                 return DEFAULT_SCHEMA_VERSION;
         }

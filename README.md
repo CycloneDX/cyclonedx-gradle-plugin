@@ -529,6 +529,10 @@ the CycloneDX version supported by the target system.
 | 1.1.x   | CycloneDX v1.1 | XML       |
 | 1.0x    | CycloneDX v1.0 | XML       |
 
+> [!NOTE]
+> `Version.VERSION_17` (CycloneDX 1.7) can be selected opt-in via `schemaVersion`. `Version.VERSION_16`
+> (CycloneDX 1.6) remains the default.
+
 ## Copyright & License
 
 CycloneDX Gradle Plugin is Copyright (c) OWASP Foundation. All Rights Reserved.
