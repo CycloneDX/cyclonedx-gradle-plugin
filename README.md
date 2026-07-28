@@ -194,6 +194,8 @@ tasks.cyclonedxBom {
 | `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts        |
 | `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers       |
 | `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component                                         |
+| `metadataProperty`               | `Action<PropertySpec>`    | -                         | Properties for the metadata struct                                                 |
+| `componentProperty`              | `Action<PropertySpec>`    | -                         | Properties for the main component                                                  |
 
 #### `cyclonedxBom`
 
@@ -211,6 +213,8 @@ tasks.cyclonedxBom {
 | `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts        |
 | `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers       |
 | `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component                                         |
+| `metadataProperty`               | `Action<PropertySpec>`    | -                         | Properties for the metadata struct                                                 |
+| `componentProperty`              | `Action<PropertySpec>`    | -                         | Properties for the main component                                                  |
 
 ### Output Configuration
 
@@ -450,6 +454,27 @@ tasks.cyclonedxDirectBom {
             name = "Apache-2.0"
             url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
         })
+    }
+}
+```
+
+#### Properties Example
+
+```kotlin
+plugins {
+    id("org.cyclonedx.bom") version "3.3.0"
+    id("java")
+}
+tasks.cyclonedxDirectBom {
+    // Specify property for metadata component, repeatable
+    metadataProperty {
+        name = "meta-property"
+        value = "meta-value"
+    }
+    // Specify property for main component, repeatable
+    componentProperty {
+        name = "component-property"
+        value = "component-value"
     }
 }
 ```
