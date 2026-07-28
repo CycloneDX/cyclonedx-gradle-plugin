@@ -19,6 +19,7 @@
 package org.cyclonedx.gradle.dsl.dto;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class PropertyDto implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -41,10 +42,7 @@ public class PropertyDto implements Serializable {
 
     @Override
     public String toString() {
-        return "PropertyDto{" +
-                "name='" + name + '\'' +
-                ", value='" + value + '\'' +
-                '}';
+        return "PropertyDto{name='" + name + "', value='" + value + "'}";
     }
 
     @Override
@@ -53,16 +51,17 @@ public class PropertyDto implements Serializable {
         if (o instanceof PropertyDto) {
             PropertyDto that = (PropertyDto) o;
 
-            if (!name.equals(that.name)) return false;
-            return value.equals(that.value);
+            return Objects.equals(this.name, that.name) && Objects.equals(this.value, that.value);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        int result = name.hashCode();
-        result = 31 * result + value.hashCode();
+        int result = 31 * (name == null ? 0 : name.hashCode());
+        if (value != null) {
+            result += value.hashCode();
+        }
         return result;
     }
 }
