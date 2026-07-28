@@ -38,4 +38,31 @@ public class PropertyDto implements Serializable {
     public String getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return "PropertyDto{" +
+                "name='" + name + '\'' +
+                ", value='" + value + '\'' +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o instanceof PropertyDto) {
+            PropertyDto that = (PropertyDto) o;
+
+            if (!name.equals(that.name)) return false;
+            return value.equals(that.value);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = name.hashCode();
+        result = 31 * result + value.hashCode();
+        return result;
+    }
 }
