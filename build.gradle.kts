@@ -6,7 +6,7 @@ plugins {
     id("com.gradle.plugin-publish")  version "2.1.1"
     id("org.cyclonedx.bom") version "3.3.0"
     id("groovy")
-    id("com.diffplug.spotless") version "8.8.0"
+    id("com.diffplug.spotless") version "8.9.0"
     id("net.ltgt.errorprone") version "5.1.0"
 }
 
