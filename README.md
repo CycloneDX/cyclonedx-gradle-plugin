@@ -194,9 +194,9 @@ tasks.cyclonedxBom {
 | `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts        |
 | `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers       |
 | `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component                                         |
-| `metadataProperty`               | `Action<PropertySpec>`    | -                         | Properties for the metadata struct                                                 |
-| `componentProperty`              | `Action<PropertySpec>`    | -                         | Properties for the main component                                                  |
-
+| `metadataProperty`               | `Action<PropertySpec>`    | -                         | User-declared properties added to the BOM metadata object                          |
+| `componentProperty`              | `Action<PropertySpec>`    | -                         | User-declared properties added to the main component                               |
+ 
 #### `cyclonedxBom`
 
 | Property                         | Type                      | Default                   | Description                                                                        |
@@ -213,9 +213,9 @@ tasks.cyclonedxBom {
 | `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts        |
 | `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers       |
 | `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component                                         |
-| `metadataProperty`               | `Action<PropertySpec>`    | -                         | Properties for the metadata struct                                                 |
-| `componentProperty`              | `Action<PropertySpec>`    | -                         | Properties for the main component                                                  |
-
+| `metadataProperty`               | `Action<PropertySpec>`    | -                         | User-declared properties added to the BOM metadata object                          |
+| `componentProperty`              | `Action<PropertySpec>`    | -                         | User-declared properties added to the main component                               |
+ 
 ### Output Configuration
 
 Configure output files using explicit properties for each task. The plugin supports both JSON and XML formats
