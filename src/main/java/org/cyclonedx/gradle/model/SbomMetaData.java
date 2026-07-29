@@ -22,7 +22,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import org.cyclonedx.model.Component;
-import org.cyclonedx.model.Property;
 import org.jspecify.annotations.Nullable;
 
 public class SbomMetaData implements Serializable {
@@ -33,7 +32,7 @@ public class SbomMetaData implements Serializable {
 
     private final List<ExternalReference> externalReferences = new ArrayList<>();
 
-    private final List<Property> properties = new ArrayList<>();
+    private final List<SerializableProperty> properties = new ArrayList<>();
 
     private SbomMetaData() {}
 
@@ -62,10 +61,10 @@ public class SbomMetaData implements Serializable {
     }
 
     public void addProperty(final String name, final String value) {
-        properties.add(new Property(name, value));
+        properties.add(new SerializableProperty(name, value));
     }
 
-    public List<Property> getProperties() {
+    public List<SerializableProperty> getProperties() {
         return properties;
     }
 
@@ -93,6 +92,13 @@ public class SbomMetaData implements Serializable {
             super();
             super.setType(org.cyclonedx.model.ExternalReference.Type.fromString(type));
             super.setUrl(url);
+        }
+    }
+
+    public static class SerializableProperty extends org.cyclonedx.model.Property implements Serializable {
+
+        public SerializableProperty(final String name, final String value) {
+            super(name, value);
         }
     }
 }
