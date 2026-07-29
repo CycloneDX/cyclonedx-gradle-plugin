@@ -180,6 +180,7 @@ tasks.cyclonedxBom {
 |----------------------------------|---------------------------|---------------------------|------------------------------------------------------------------------------------|
 | `includeConfigs`                 | `List<String>`            | `[]` (all configurations) | Configurations to include in SBOM generation. Supports regex patterns              |
 | `skipConfigs`                    | `List<String>`            | `[]`                      | Configurations to exclude from SBOM generation. Supports regex patterns            |
+| `excludeArtifacts`               | `List<String>`            | `[]`                      | Artifacts to exclude from SBOM generation. Format `group:name:version`, where each part is a full Java regular expression |
 | `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
 | `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
 | `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
@@ -199,6 +200,7 @@ tasks.cyclonedxBom {
 
 | Property                         | Type                      | Default                   | Description                                                                        |
 |----------------------------------|---------------------------|---------------------------|------------------------------------------------------------------------------------|
+| `excludeArtifacts`               | `List<String>`            | `[]`                      | Artifacts to exclude from SBOM generation. Format `group:name:version`, where each part is a full Java regular expression |
 | `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
 | `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
 | `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
