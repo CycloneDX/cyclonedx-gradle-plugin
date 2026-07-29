@@ -18,6 +18,9 @@
  */
 package org.cyclonedx.gradle.utils;
 
+import org.cyclonedx.gradle.dsl.dto.PropertyDto;
+import org.cyclonedx.model.Property;
+
 /**
  * Utility class for working with plugin configuration DSL
  */
@@ -29,7 +32,7 @@ public class DslUtils {
      * @param dto property DTO to convert
      * @return converted CycloneDX Property object
      */
-    public static org.cyclonedx.model.Property toCdxProperty(org.cyclonedx.gradle.dsl.dto.PropertyDto dto) {
-        return new org.cyclonedx.model.Property(dto.getName(), dto.getValue());
+    public static Property toCdxProperty(PropertyDto dto) {
+        return new Property(dto.getName(), dto.getValue());
     }
 }

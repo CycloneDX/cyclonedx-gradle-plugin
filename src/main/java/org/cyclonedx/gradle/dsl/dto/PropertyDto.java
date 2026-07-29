@@ -20,15 +20,17 @@ package org.cyclonedx.gradle.dsl.dto;
 
 import java.io.Serializable;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 public class PropertyDto implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final String name;
-    private final String value;
 
-    public PropertyDto(String name, String value) {
-        this.name = name;
+    @Nullable private final String value;
+
+    public PropertyDto(String name, @Nullable String value) {
+        this.name = Objects.requireNonNull(name, "name");
         this.value = value;
     }
 
@@ -36,7 +38,7 @@ public class PropertyDto implements Serializable {
         return name;
     }
 
-    public String getValue() {
+    public @Nullable String getValue() {
         return value;
     }
 
@@ -58,10 +60,6 @@ public class PropertyDto implements Serializable {
 
     @Override
     public int hashCode() {
-        int result = 31 * (name == null ? 0 : name.hashCode());
-        if (value != null) {
-            result += value.hashCode();
-        }
-        return result;
+        return 31 * Objects.hashCode(name) + Objects.hashCode(value);
     }
 }

@@ -18,6 +18,7 @@
  */
 package org.cyclonedx.gradle;
 
+import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.Version;
 import org.cyclonedx.gradle.dsl.dto.PropertyDto;
 import org.cyclonedx.gradle.dsl.spec.PropertySpec;
@@ -27,10 +28,10 @@ import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.OrganizationalEntity;
 import org.gradle.api.Action;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
@@ -226,7 +227,6 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
         getOrganizationalEntity().convention(getProject().getObjects().property(OrganizationalEntity.class));
         getLicenseChoice().convention(getProject().getObjects().property(LicenseChoice.class));
         getExternalReferences().convention(getProject().getObjects().listProperty(ExternalReference.class));
-        getComponentProperties().convention(getProject().getObjects().listProperty(PropertyDto.class));
     }
 
     /**
@@ -235,12 +235,7 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
      *  @param configure property specification lambda
      */
     public void componentProperty(Action<? super PropertySpec> configure) {
-        PropertySpec spec = getProject().getObjects().newInstance(PropertySpec.class);
-
-        configure.execute(spec);
-
-        Provider<PropertyDto> propertyProvider = spec.getName().zip(spec.getValue(), PropertyDto::new);
-        getComponentProperties().add(propertyProvider);
+        addProperty(getComponentProperties(), configure);
     }
 
     /**
@@ -249,11 +244,20 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
      *  @param configure property specification lambda
      */
     public void metadataProperty(Action<? super PropertySpec> configure) {
+        addProperty(getMetadataProperties(), configure);
+    }
+
+    private void addProperty(ListProperty<PropertyDto> list, Action<? super PropertySpec> configure) {
         PropertySpec spec = getProject().getObjects().newInstance(PropertySpec.class);
 
         configure.execute(spec);
 
-        Provider<PropertyDto> propertyProvider = spec.getName().zip(spec.getValue(), PropertyDto::new);
-        getMetadataProperties().add(propertyProvider);
+        // Per CycloneDX specification, property value is optional, name-only properties could exist.
+        // On other hand, missing or blank property name will amount to build failure.
+        if (!spec.getName().isPresent() || StringUtils.isBlank(spec.getName().get())) {
+            throw new InvalidUserDataException("Non-blank property name is required");
+        }
+        Property<String> valueProvider = spec.getValue();
+        list.add(spec.getName().map(name -> new PropertyDto(name, valueProvider.getOrNull())));
     }
 }
