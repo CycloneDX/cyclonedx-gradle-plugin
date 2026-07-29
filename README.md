@@ -460,21 +460,25 @@ tasks.cyclonedxDirectBom {
 
 #### Properties Example
 
+Both blocks are repeatable and may reuse the same name. `name` is required and must not be blank — a missing or blank
+name fails the build. `value` is optional; omitting it produces a name-only property, as permitted by the CycloneDX
+specification.
+
 ```kotlin
 plugins {
     id("org.cyclonedx.bom") version "3.3.0"
     id("java")
 }
 tasks.cyclonedxDirectBom {
-    // Specify property for metadata component, repeatable
+    // Add a property to the metadata object of the BOM, repeatable
     metadataProperty {
         name = "meta-property"
         value = "meta-value"
     }
-    // Specify property for main component, repeatable
+    // Add a property to the main component of the BOM, repeatable
     componentProperty {
         name = "component-property"
-        value = "component-value"
+        // value is optional; this produces a name-only property
     }
 }
 ```
