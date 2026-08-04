@@ -20,29 +20,31 @@ package org.cyclonedx.gradle.model;
 
 /**
  * Plugin-internal, Core-free stand-in for the CycloneDX schema selectors the plugin currently knows about (1.0
- * through 1.7). It exists solely to capture the two structural differences that {@code SbomBuilder} branches on when
- * building {@code Metadata}, so that class does not need to reason about {@code org.cyclonedx.Version} directly for
- * those decisions.
+ * through 1.7). It exists solely to capture the structural differences the plugin branches on when building a
+ * {@code Bom}, so those call sites do not need to reason about {@code org.cyclonedx.Version} directly.
  *
  * <p>This type deliberately does not import anything from {@code org.cyclonedx.*}. See {@link SchemaVersionMapper}
  * for the one-way translation from Core's {@code org.cyclonedx.Version}.
  */
 public enum SchemaVersion {
-    VERSION_10(false, false),
-    VERSION_11(false, false),
-    VERSION_12(false, false),
-    VERSION_13(false, false),
-    VERSION_14(false, false),
-    VERSION_15(true, false),
-    VERSION_16(true, true),
-    VERSION_17(true, true);
+    VERSION_10(false, false, false),
+    VERSION_11(false, false, false),
+    VERSION_12(false, false, true),
+    VERSION_13(false, false, true),
+    VERSION_14(false, false, true),
+    VERSION_15(true, false, true),
+    VERSION_16(true, true, true),
+    VERSION_17(true, true, true);
 
     private final boolean usesToolInformation;
     private final boolean usesManufacturer;
+    private final boolean includesExtendedHashes;
 
-    SchemaVersion(final boolean usesToolInformation, final boolean usesManufacturer) {
+    SchemaVersion(
+            final boolean usesToolInformation, final boolean usesManufacturer, final boolean includesExtendedHashes) {
         this.usesToolInformation = usesToolInformation;
         this.usesManufacturer = usesManufacturer;
+        this.includesExtendedHashes = includesExtendedHashes;
     }
 
     /**
@@ -59,5 +61,13 @@ public enum SchemaVersion {
      */
     public boolean usesManufacturer() {
         return usesManufacturer;
+    }
+
+    /**
+     * @return {@code true} for schema 1.2 and above, where an artifact carries SHA-384 and SHA3-384 hashes in addition
+     *     to the set every schema version carries. Core rejects SHA3-384 below 1.2 via its {@code VersionFilter}.
+     */
+    public boolean includesExtendedHashes() {
+        return includesExtendedHashes;
     }
 }

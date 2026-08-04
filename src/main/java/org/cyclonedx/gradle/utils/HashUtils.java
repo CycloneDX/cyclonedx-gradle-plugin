@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 import org.cyclonedx.Version;
+import org.cyclonedx.gradle.model.SchemaVersionMapper;
 import org.cyclonedx.model.Hash;
 
 /**
@@ -33,6 +34,9 @@ import org.cyclonedx.model.Hash;
  *
  * <p>The set is declared here rather than inherited from {@code BomUtils.calculateHashes(File, Version)} so that a
  * cyclonedx-core-java upgrade cannot silently move the SBOM Output Contract. See ADR 0007.
+ *
+ * <p>The schema-dependent part of the set is decided by {@code SchemaVersion} rather than by comparing Core's
+ * {@code Version} directly, per ADR 0006.
  *
  * <p>The SHA3 family is filtered by availability because Java 8 ships no SHA3 provider. Core 12.1.0 replaced the
  * defensive acquisition that used to skip those algorithms with one that throws, which aborts SBOM generation outright
@@ -82,7 +86,7 @@ public class HashUtils {
             final Version schemaVersion, final Predicate<Hash.Algorithm> available) {
 
         final List<Hash.Algorithm> candidates = new ArrayList<>(BASE_ALGORITHMS);
-        if (schemaVersion.getVersion() >= 1.2) {
+        if (SchemaVersionMapper.from(schemaVersion).includesExtendedHashes()) {
             candidates.addAll(EXTENDED_ALGORITHMS);
         }
 

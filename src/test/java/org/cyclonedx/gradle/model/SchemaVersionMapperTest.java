@@ -86,6 +86,18 @@ class SchemaVersionMapperTest {
         }
     }
 
+    @Test
+    void extendedHashesStartAt12() {
+        // SHA-384 and SHA3-384 join the artifact hash set at 1.2, and Core rejects SHA3-384 below that via its
+        // VersionFilter, so this threshold must hold for every constant Core defines.
+        for (final Version coreVersion : Version.values()) {
+            assertEquals(
+                    coreVersion.getVersion() >= 1.2,
+                    SchemaVersionMapper.from(coreVersion).includesExtendedHashes(),
+                    coreVersion.getVersionString());
+        }
+    }
+
     private void assertThresholds(
             final Version coreVersion,
             final SchemaVersion expected,
