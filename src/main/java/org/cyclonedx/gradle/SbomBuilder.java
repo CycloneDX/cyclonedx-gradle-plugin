@@ -24,15 +24,7 @@ import com.github.packageurl.MalformedPackageURLException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
+import java.util.*;
 import org.cyclonedx.Version;
 import org.cyclonedx.gradle.model.ComponentComparator;
 import org.cyclonedx.gradle.model.DependencyComparator;
@@ -115,18 +107,9 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
                     rootComponent.getId().getName(),
                     e);
         }
-        if (task.getLicenseChoice().isPresent()) {
-            metadata.setLicenses(task.getLicenseChoice().get());
-        }
-
-        if (task.getOrganizationalEntity().isPresent()
-                && !new OrganizationalEntity()
-                        .equals(task.getOrganizationalEntity().get())) {
-            if (version.compareTo(Version.VERSION_16) >= 0) {
-                metadata.setManufacturer(task.getOrganizationalEntity().get());
-            } else {
-                metadata.setManufacture(task.getOrganizationalEntity().get());
-            }
+        final Optional<OrganizationalEntity> configuredManufacturer = configuredManufacturer();
+        if (configuredManufacturer.isPresent() && version.compareTo(Version.VERSION_16) < 0) {
+            metadata.setManufacture(configuredManufacturer.get());
         }
 
         final Properties pluginProperties = readPluginProperties();
@@ -164,8 +147,23 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         if (task.getExternalReferences().isPresent()) {
             task.getExternalReferences().get().forEach(component::addExternalReference);
         }
+        if (task.getLicenseChoice().isPresent()) {
+            component.setLicenses(task.getLicenseChoice().get());
+        }
+        final Optional<OrganizationalEntity> configuredManufacturer = configuredManufacturer();
+        if (configuredManufacturer.isPresent() && version.compareTo(Version.VERSION_16) >= 0) {
+            component.setManufacturer(configuredManufacturer.get());
+        }
         ExternalReferencesUtil.complementByEnvironment(component);
         return component;
+    }
+
+    private Optional<OrganizationalEntity> configuredManufacturer() {
+        return task.getOrganizationalEntity()
+                .map(oe -> new OrganizationalEntity().equals(oe)
+                        ? Optional.<OrganizationalEntity>empty()
+                        : Optional.of(oe))
+                .getOrElse(Optional.empty());
     }
 
     private void addBuildSystemMetaData(final Component component) {
