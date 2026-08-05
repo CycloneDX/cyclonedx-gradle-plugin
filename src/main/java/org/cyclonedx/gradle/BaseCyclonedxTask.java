@@ -18,12 +18,17 @@
  */
 package org.cyclonedx.gradle;
 
+import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.Version;
+import org.cyclonedx.gradle.dsl.dto.PropertyDto;
+import org.cyclonedx.gradle.dsl.spec.PropertySpec;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.OrganizationalEntity;
+import org.gradle.api.Action;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
@@ -186,6 +191,24 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
     @Input
     public abstract Property<Boolean> getIncludeLicenseText();
 
+    /**
+     * The properties of the main component that will be used in the BOM.
+     * This can be used to add properties to the main component of the BOM.
+     * If not set, it defaults to an empty list.
+     *
+     * @return the properties
+     */
+    @Input
+    protected abstract ListProperty<PropertyDto> getComponentProperties();
+
+    /**
+     * The properties of the metadata that will be used in the BOM.
+     * This can be used to add properties to the metadata object of the BOM.
+     * If not set, it defaults to an empty list.
+     */
+    @Input
+    protected abstract ListProperty<PropertyDto> getMetadataProperties();
+
     public BaseCyclonedxTask() {
         super();
         getComponentGroup().convention(getProject().getProviders().provider(() -> getProject()
@@ -204,5 +227,37 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
         getOrganizationalEntity().convention(getProject().getObjects().property(OrganizationalEntity.class));
         getLicenseChoice().convention(getProject().getObjects().property(LicenseChoice.class));
         getExternalReferences().convention(getProject().getObjects().listProperty(ExternalReference.class));
+    }
+
+    /**
+     * Add a property to the main component of the resulting BOM.
+     *
+     *  @param configure property specification lambda
+     */
+    public void componentProperty(Action<? super PropertySpec> configure) {
+        addProperty(getComponentProperties(), configure);
+    }
+
+    /**
+     * Add a property to the metadata object of the resulting BOM.
+     *
+     *  @param configure property specification lambda
+     */
+    public void metadataProperty(Action<? super PropertySpec> configure) {
+        addProperty(getMetadataProperties(), configure);
+    }
+
+    private void addProperty(ListProperty<PropertyDto> list, Action<? super PropertySpec> configure) {
+        PropertySpec spec = getProject().getObjects().newInstance(PropertySpec.class);
+
+        configure.execute(spec);
+
+        // Per CycloneDX specification, property value is optional, name-only properties could exist.
+        // On other hand, missing or blank property name will amount to build failure.
+        if (!spec.getName().isPresent() || StringUtils.isBlank(spec.getName().get())) {
+            throw new InvalidUserDataException("Non-blank property name is required");
+        }
+        Property<String> valueProvider = spec.getValue();
+        list.add(spec.getName().map(name -> new PropertyDto(name, valueProvider.getOrNull())));
     }
 }

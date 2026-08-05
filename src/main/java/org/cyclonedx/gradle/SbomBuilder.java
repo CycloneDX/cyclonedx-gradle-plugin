@@ -40,6 +40,7 @@ import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.DependencyUtils;
+import org.cyclonedx.gradle.utils.DslUtils;
 import org.cyclonedx.gradle.utils.EnvironmentUtils;
 import org.cyclonedx.gradle.utils.ExternalReferencesUtil;
 import org.cyclonedx.model.Bom;
@@ -129,6 +130,10 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
             }
         }
 
+        if (task.getMetadataProperties().isPresent()) {
+            task.getMetadataProperties().get().forEach(dto -> metadata.addProperty(DslUtils.toCdxProperty(dto)));
+        }
+
         final Properties pluginProperties = readPluginProperties();
         if (!pluginProperties.isEmpty()) {
             // if schema version is 1.5 or higher use tools instead of tool
@@ -163,6 +168,9 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         addBuildSystemMetaData(component);
         if (task.getExternalReferences().isPresent()) {
             task.getExternalReferences().get().forEach(component::addExternalReference);
+        }
+        if (task.getComponentProperties().isPresent()) {
+            task.getComponentProperties().get().forEach(dto -> component.addProperty(DslUtils.toCdxProperty(dto)));
         }
         ExternalReferencesUtil.complementByEnvironment(component);
         return component;
@@ -255,6 +263,7 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
             resultComponent.setDescription(metaData.getDescription());
             resultComponent.setPublisher(metaData.getPublisher());
             metaData.getExternalReferences().forEach(resultComponent::addExternalReference);
+            metaData.getProperties().forEach(resultComponent::addProperty);
         });
 
         if (!component.getLicenses().isEmpty()) {

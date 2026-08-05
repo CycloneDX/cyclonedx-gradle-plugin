@@ -22,7 +22,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import org.cyclonedx.model.Component;
-import org.cyclonedx.model.ExternalReference;
 import org.jspecify.annotations.Nullable;
 
 public class SbomMetaData implements Serializable {
@@ -32,6 +31,8 @@ public class SbomMetaData implements Serializable {
     @Nullable private String description;
 
     private final List<ExternalReference> externalReferences = new ArrayList<>();
+
+    private final List<SerializableProperty> properties = new ArrayList<>();
 
     private SbomMetaData() {}
 
@@ -59,6 +60,14 @@ public class SbomMetaData implements Serializable {
         return externalReferences;
     }
 
+    public void addProperty(final String name, final String value) {
+        properties.add(new SerializableProperty(name, value));
+    }
+
+    public List<SerializableProperty> getProperties() {
+        return properties;
+    }
+
     public static SbomMetaData fromComponent(final Component component) {
 
         final SbomMetaData metaData = new SbomMetaData();
@@ -67,6 +76,11 @@ public class SbomMetaData implements Serializable {
         if (component.getExternalReferences() != null) {
             component.getExternalReferences().forEach(reference -> {
                 metaData.addExternalReference(reference.getType().getTypeName(), reference.getUrl());
+            });
+        }
+        if (component.getProperties() != null) {
+            component.getProperties().forEach(property -> {
+                metaData.addProperty(property.getName(), property.getValue());
             });
         }
         return metaData;
@@ -78,6 +92,13 @@ public class SbomMetaData implements Serializable {
             super();
             super.setType(org.cyclonedx.model.ExternalReference.Type.fromString(type));
             super.setUrl(url);
+        }
+    }
+
+    public static class SerializableProperty extends org.cyclonedx.model.Property implements Serializable {
+
+        public SerializableProperty(final String name, final String value) {
+            super(name, value);
         }
     }
 }

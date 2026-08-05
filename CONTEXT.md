@@ -22,8 +22,9 @@ unless that boundary is expanded deliberately.
 _Avoid_: Project dependency, application dependency
 
 **Metadata Enrichment**:
-Additional descriptive evidence, such as licenses and organizational details, attached to a component beyond its
-resolved identity and dependency relationships.
+Additional descriptive evidence attached to a component or to a document's metadata beyond its resolved identity and
+dependency relationships. It covers both evidence the plugin derives (such as licenses) and evidence the user declares
+(such as organizational details, and name/value properties).
 _Avoid_: Dependency resolution
 
 **SBOM Output Contract**:

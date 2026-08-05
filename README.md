@@ -195,7 +195,9 @@ tasks.cyclonedxBom {
 | `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts        |
 | `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers       |
 | `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component                                         |
-
+| `metadataProperty`               | `Action<PropertySpec>`    | -                         | User-declared properties added to the BOM metadata object                          |
+| `componentProperty`              | `Action<PropertySpec>`    | -                         | User-declared properties added to the main component                               |
+ 
 #### `cyclonedxBom`
 
 | Property                         | Type                      | Default                   | Description                                                                        |
@@ -212,7 +214,9 @@ tasks.cyclonedxBom {
 | `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts        |
 | `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers       |
 | `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component                                         |
-
+| `metadataProperty`               | `Action<PropertySpec>`    | -                         | User-declared properties added to the BOM metadata object                          |
+| `componentProperty`              | `Action<PropertySpec>`    | -                         | User-declared properties added to the main component                               |
+ 
 ### Output Configuration
 
 Configure output files using explicit properties for each task. The plugin supports both JSON and XML formats
@@ -455,6 +459,31 @@ tasks.cyclonedxDirectBom {
             name = "Apache-2.0"
             url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
         })
+    }
+}
+```
+
+#### Properties Example
+
+Both blocks are repeatable and may reuse the same name. `name` is required and must not be blank — a missing or blank
+name fails the build. `value` is optional; omitting it produces a name-only property, as permitted by the CycloneDX
+specification.
+
+```kotlin
+plugins {
+    id("org.cyclonedx.bom") version "3.3.0"
+    id("java")
+}
+tasks.cyclonedxDirectBom {
+    // Add a property to the metadata object of the BOM, repeatable
+    metadataProperty {
+        name = "meta-property"
+        value = "meta-value"
+    }
+    // Add a property to the main component of the BOM, repeatable
+    componentProperty {
+        name = "component-property"
+        // value is optional; this produces a name-only property
     }
 }
 ```
