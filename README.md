@@ -261,7 +261,7 @@ tasks.cyclonedxBom {
 ```kotlin
 tasks.cyclonedxDirectBom {
     // Include only runtime dependencies
-    includeConfigs = ["runtimeClasspath", "compileClasspath"]
+    includeConfigs = ["runtimeClasspath"]
 
     // Exclude all test-related configurations using regex
     skipConfigs = [".*test.*", ".*Test.*"]
