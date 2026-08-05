@@ -182,7 +182,7 @@ tasks.cyclonedxBom {
 | `skipConfigs`                    | `List<String>`            | `[]`                      | Configurations to exclude from SBOM generation. Supports regex patterns            |
 | `testConfigs`                    | `List<String>`            | `['^test.*']`             | Full-match regexes for Test Configurations (`cdx:maven:package:test`). All contributing configs must match; empty = none are test. |
 | `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
-| `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
+| `schemaVersion`                  | `Version`                 | `VERSION_16`              | CycloneDX schema version to use                                                    |
 | `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
 | `includeLicenseText`             | `boolean`                 | `false`                   | Include full license text in components                                            |
 | `includeMetadataResolution`      | `boolean`                 | `true`                    | Include complete metadata resolution for components                                |
@@ -201,7 +201,7 @@ tasks.cyclonedxBom {
 | Property                         | Type                      | Default                   | Description                                                                        |
 |----------------------------------|---------------------------|---------------------------|------------------------------------------------------------------------------------|
 | `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
-| `schemaVersion`                  | `SchemaVersion`           | `VERSION_16`              | CycloneDX schema version to use                                                    |
+| `schemaVersion`                  | `Version`                 | `VERSION_16`              | CycloneDX schema version to use                                                    |
 | `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
 | `includeLicenseText`             | `boolean`                 | `false`                   | Include full license text in components                                            |
 | `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                       |
@@ -276,7 +276,7 @@ tasks.cyclonedxDirectBom {
     componentVersion = "2.0.0-SNAPSHOT"
 
     // Schema configuration
-    schemaVersion = org.cyclonedx.model.schema.SchemaVersion.VERSION_16
+    schemaVersion = org.cyclonedx.Version.VERSION_16
 
     // Metadata options
     includeBomSerialNumber = true
@@ -379,7 +379,7 @@ tasks.cyclonedxDirectBom.enabled = false
 
 ```kotlin
 import org.cyclonedx.model.*
-import org.cyclonedx.model.schema.*
+import org.cyclonedx.Version
 
 plugins {
     id("org.cyclonedx.bom") version "3.3.0"
@@ -389,7 +389,7 @@ plugins {
 tasks.cyclonedxDirectBom {
     // Project configuration
     projectType = "application"
-    schemaVersion = SchemaVersion.VERSION_16
+    schemaVersion = Version.VERSION_16
 
     // Component details
     componentName = "acme-payment-service"

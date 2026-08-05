@@ -42,6 +42,7 @@ import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.gradle.utils.EnvironmentUtils;
 import org.cyclonedx.gradle.utils.ExternalReferencesUtil;
+import org.cyclonedx.gradle.utils.HashUtils;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Dependency;
@@ -66,6 +67,7 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
 
     private static final Logger LOGGER = Logging.getLogger(SbomBuilder.class);
     private final Map<File, List<Hash>> artifactHashes;
+    private final List<Hash.Algorithm> hashAlgorithms;
     private final MavenHelper mavenHelper;
     private final Version version;
     private final T task;
@@ -73,6 +75,7 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
     SbomBuilder(final T task) {
         this.version = task.getSchemaVersion().get();
         this.artifactHashes = new HashMap<>();
+        this.hashAlgorithms = HashUtils.selectAlgorithms(this.version);
         this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get());
         this.task = task;
     }
@@ -303,7 +306,7 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
     private List<Hash> calculateHashes(final File artifactFile) {
         return artifactHashes.computeIfAbsent(artifactFile, f -> {
             try {
-                return BomUtils.calculateHashes(f, version);
+                return BomUtils.calculateHashes(f, version, hashAlgorithms);
             } catch (IOException e) {
                 LOGGER.error("{} Error encountered calculating hashes", LOG_PREFIX, e);
             }
