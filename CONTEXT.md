@@ -45,6 +45,12 @@ _Avoid_: Test dependency, test scope (unqualified), test source set
   Qualify the term when the distinction matters.
 - The **SBOM Output Contract** covers parsed CycloneDX meaning, not byte-for-byte serialization. Formatting and ordering
   are not part of the compatibility guarantee when the SBOM remains semantically equivalent.
+- The **SBOM Output Contract** is conditioned on the JVM executing the build. Evidence that JVM cannot produce, such as
+  an artifact hash whose algorithm no installed security provider offers, is absent rather than fabricated or fatal. Two
+  SBOMs generated from identical inputs on different JVMs may therefore differ, and that difference is not a contract
+  violation.
+- Unqualified **Java 8** can mean the bytecode target of `src/main`, a cell of the test matrix, or the JVM a consumer's
+  Gradle build runs on. Say **build JVM** for the last of these; it is the one the **SBOM Output Contract** depends on.
 - **Test Configuration** is a labeling concern for components already in a **Direct SBOM**. It is distinct from
   `includeConfigs` / `skipConfigs`, which decide which configurations are scanned into that document.
 
