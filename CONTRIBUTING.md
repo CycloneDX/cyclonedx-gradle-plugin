@@ -13,7 +13,8 @@ process.
 5. [Building and Testing](#building-and-testing)
 6. [Publishing Plugin Locally](#publishing-plugin-locally)
 7. [Submitting Contributions](#submitting-contributions)
-8. [Community Guidelines](#community-guidelines)
+8. [Releasing](#releasing)
+9. [Community Guidelines](#community-guidelines)
 
 ## Getting Started
 
@@ -226,6 +227,40 @@ We follow [conventional commit format](https://www.conventionalcommits.org/en/v1
 - `refactor:` for code refactoring
 - `test:` for adding tests
 - `chore:` for maintenance tasks
+
+## Releasing
+
+Publishing a GitHub Release is the maintainer's release authorization. The `Publish CI` workflow validates and builds
+the tagged commit, generates and verifies its attestations, uploads the release SBOM, and publishes the plugin to the
+Gradle Plugin Portal.
+
+### Prepare and rehearse a release
+
+1. Update the project version in `build.gradle.kts` and the literal plugin versions in the README examples. Keep the
+   release-SBOM bootstrap plugin on the latest already-published version until after the release, and keep intentional
+   compatibility fixtures pinned to the releases they test.
+2. Merge the release-preparation change and wait for Build CI to pass on `master`.
+3. Before the first release after changing `Publish CI`, open **Actions > Release rehearsal**, select `master`, and
+   choose **Run workflow**.
+4. Confirm that the rehearsal succeeds for the intended version and commit. Its summary records the source ref and
+   SHA-256 digest of every release artifact; the same artifacts are also available as a workflow-run download.
+
+`Release rehearsal` calls the same build, SBOM, attestation, and verification implementation as `Publish CI`. Its
+caller grants read-only repository access, does not pass Gradle Plugin Portal secrets, and cannot execute the steps
+that upload or publish a release. Rehearsal attestations describe the selected branch commit; the production run
+creates new attestations for the immutable release tag.
+
+### Publish the release
+
+1. Open **Releases > Draft a new release** on GitHub.
+2. Create `cyclonedx-gradle-plugin-<version>` at the exact `master` commit that passed the required checks and any
+   rehearsal, then prepare the release notes.
+3. Publish the release as the latest release. This starts `Publish CI`; no separate manual publication command or
+   approval is required.
+4. Confirm that `Publish CI` succeeds, the release contains its versioned CycloneDX SBOM, and the new version is
+   available from the Gradle Plugin Portal.
+5. In a follow-up change, advance the release-SBOM bootstrap plugin and its release-artifact expectation to the newly
+   published version.
 
 ## Community Guidelines
 
