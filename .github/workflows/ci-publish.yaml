@@ -3,6 +3,12 @@ name: Publish CI
 on:
   release:
     types: [published]
+  workflow_call:
+    secrets:
+      GRADLE_PUBLISH_KEY:
+        required: false
+      GRADLE_PUBLISH_SECRET:
+        required: false
 
 permissions:
   contents: write
@@ -16,7 +22,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || github.sha }}
 
       - name: Set up JDK
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
@@ -32,21 +38,59 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
-      - name: Validate release tag
+      - name: Resolve and validate release version
         id: release
         env:
+          IS_RELEASE: ${{ github.event_name == 'release' }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           project_version="$(./gradlew -q properties --property version | sed -n 's/^version: //p')"
-          expected_tag="cyclonedx-gradle-plugin-${project_version}"
-          if [[ -z "${project_version}" || "${RELEASE_TAG}" != "${expected_tag}" ]]; then
-            echo "::error::Release tag '${RELEASE_TAG}' does not match project version '${project_version}' (expected '${expected_tag}')."
+          if [[ -z "${project_version}" ]]; then
+            echo "::error::Could not resolve the project version."
             exit 1
+          fi
+          if [[ "${IS_RELEASE}" == "true" ]]; then
+            expected_tag="cyclonedx-gradle-plugin-${project_version}"
+            if [[ "${RELEASE_TAG}" != "${expected_tag}" ]]; then
+              echo "::error::Release tag '${RELEASE_TAG}' does not match project version '${project_version}' (expected '${expected_tag}')."
+              exit 1
+            fi
           fi
           echo "version=${project_version}" >> "${GITHUB_OUTPUT}"
 
       - name: Build release artifacts with Gradle
         run: ./gradlew build -i
+
+      - name: Summarize release artifacts
+        env:
+          IS_RELEASE: ${{ github.event_name == 'release' }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if [[ "${IS_RELEASE}" == "true" ]]; then
+            mode="Production release"
+          else
+            mode="Non-publishing rehearsal"
+          fi
+          artifacts=(
+            "build/libs/cyclonedx-gradle-plugin-${RELEASE_VERSION}.jar"
+            "build/libs/cyclonedx-gradle-plugin-${RELEASE_VERSION}-sources.jar"
+            "build/libs/cyclonedx-gradle-plugin-${RELEASE_VERSION}-javadoc.jar"
+            "build/reports/cyclonedx-direct/cyclonedx-gradle-plugin-${RELEASE_VERSION}-cyclonedx.json"
+          )
+          {
+            echo "## ${mode}"
+            echo
+            echo "- Version: \`${RELEASE_VERSION}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Source ref: \`${GITHUB_REF}\`"
+            echo
+            echo "| Artifact | SHA-256 |"
+            echo "| --- | --- |"
+            for artifact in "${artifacts[@]}"; do
+              digest="$(sha256sum "${artifact}" | cut -d ' ' -f 1)"
+              echo "| \`${artifact}\` | \`${digest}\` |"
+            done
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Attest release provenance
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
@@ -92,7 +136,20 @@ jobs:
             --deny-self-hosted-runners \
             --predicate-type "https://cyclonedx.org/bom"
 
+      - name: Upload rehearsal artifacts
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-rehearsal-${{ steps.release.outputs.version }}-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            build/libs/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}.jar
+            build/libs/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}-sources.jar
+            build/libs/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}-javadoc.jar
+            build/reports/cyclonedx-direct/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}-cyclonedx.json
+
       - name: Publish SBOM to GitHub release
+        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
@@ -102,6 +159,7 @@ jobs:
           gh release upload "${RELEASE_TAG}" "${release_sbom}" --repo "${GITHUB_REPOSITORY}" --clobber
 
       - name: Publish to Gradle portal
+        if: github.event_name == 'release'
         env:
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
