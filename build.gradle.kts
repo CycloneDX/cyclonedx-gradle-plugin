@@ -1,9 +1,13 @@
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
+import org.cyclonedx.gradle.CyclonedxDirectTask
+import org.cyclonedx.model.License
+import org.cyclonedx.model.LicenseChoice
 
 plugins {
     id("java-gradle-plugin")
     id("com.gradle.plugin-publish")  version "2.1.1"
+    // Release SBOM bootstrap: generate with the latest already-published plugin, not the candidate implementation.
     id("org.cyclonedx.bom") version "3.3.0"
     id("groovy")
     id("com.diffplug.spotless") version "8.9.0"
@@ -69,6 +73,12 @@ val legacyFixtureJar = tasks.register<Exec>("legacyFixtureJar") {
 }
 
 val localTestRepository = layout.buildDirectory.dir("local-repo")
+val localPluginPublication = localTestRepository.map {
+    it.dir("org/cyclonedx/cyclonedx-gradle-plugin/$version")
+}
+val localPluginMarkerPublication = localTestRepository.map {
+    it.dir("org/cyclonedx/bom/org.cyclonedx.bom.gradle.plugin/$version")
+}
 
 listOf(8, 11, 17, 21, 25).forEach { version ->
     tasks.register<Test>("testJava$version") {
@@ -92,13 +102,17 @@ listOf(8, 11, 17, 21, 25).forEach { version ->
         testLogging {
             events("passed", "skipped", "failed")
         }
-        dependsOn("publishAllPublicationsToLocalTestRepository", legacyFixtureJar)
+        dependsOn("cyclonedxDirectBom", "publishAllPublicationsToLocalTestRepository", legacyFixtureJar)
         // The fixture jar is only referenced by absolute path via a system property below, which Gradle's
         // up-to-date check treats as an opaque string - it would not notice the jar's *content* changing (e.g. a
         // LegacyConsumerFixture.java edit that doesn't also touch BinaryCompatibilitySpec.groovy) and could report a
         // stale PASSED result. Declaring it as an explicit input makes its content part of this task's up-to-date
         // check.
         inputs.files(legacyFixtureJar).withPropertyName("legacyFixtureJar").withPathSensitivity(PathSensitivity.NONE)
+        inputs
+            .files(localPluginPublication, localPluginMarkerPublication)
+            .withPropertyName("localPluginPublications")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
         systemProperty("localRepoPath", project.relativePath(localTestRepository.get()))
         systemProperty("pluginVersion", project.version.toString())
         systemProperty("legacyFixtureJarPath", legacyFixtureJarFile.asFile.absolutePath)
@@ -152,6 +166,26 @@ tasks.named<ProcessResources>("processResources") {
     from(generatePluginProperties) {
         into("org/cyclonedx/gradle")
     }
+}
+
+val releaseSbom = layout.buildDirectory.file("reports/cyclonedx-direct/cyclonedx-gradle-plugin-$version-cyclonedx.json")
+
+tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
+    xmlOutput.unsetConvention()
+    jsonOutput.set(releaseSbom)
+    includeConfigs.set(listOf("compileClasspath", "runtimeClasspath"))
+    includeLicenseText.set(false)
+    licenseChoice.set(
+        LicenseChoice().apply {
+            addLicense(
+                License().apply {
+                    id = "Apache-2.0"
+                    url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                }
+            )
+        }
+    )
+    includeBuildSystem.set(true)
 }
 
 publishing {

@@ -5,7 +5,9 @@ on:
     types: [published]
 
 permissions:
-  contents: read
+  contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -31,6 +33,7 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
       - name: Validate release tag
+        id: release
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
@@ -40,9 +43,63 @@ jobs:
             echo "::error::Release tag '${RELEASE_TAG}' does not match project version '${project_version}' (expected '${expected_tag}')."
             exit 1
           fi
+          echo "version=${project_version}" >> "${GITHUB_OUTPUT}"
 
-      - name: Build with Gradle
+      - name: Build release artifacts with Gradle
         run: ./gradlew build -i
+
+      - name: Attest release provenance
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: |
+            build/libs/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}.jar
+            build/libs/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}-sources.jar
+            build/libs/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}-javadoc.jar
+            build/reports/cyclonedx-direct/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}-cyclonedx.json
+
+      - name: Attest implementation SBOM
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: build/libs/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}.jar
+          sbom-path: build/reports/cyclonedx-direct/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}-cyclonedx.json
+
+      - name: Verify release attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          implementation_jar="build/libs/cyclonedx-gradle-plugin-${RELEASE_VERSION}.jar"
+          release_sbom="build/reports/cyclonedx-direct/cyclonedx-gradle-plugin-${RELEASE_VERSION}-cyclonedx.json"
+          artifacts=(
+            "${implementation_jar}"
+            "build/libs/cyclonedx-gradle-plugin-${RELEASE_VERSION}-sources.jar"
+            "build/libs/cyclonedx-gradle-plugin-${RELEASE_VERSION}-javadoc.jar"
+            "${release_sbom}"
+          )
+          for artifact in "${artifacts[@]}"; do
+            gh attestation verify "${artifact}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/ci-publish.yaml" \
+              --source-ref "${GITHUB_REF}" \
+              --source-digest "${GITHUB_SHA}" \
+              --deny-self-hosted-runners
+          done
+          gh attestation verify "${implementation_jar}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/ci-publish.yaml" \
+            --source-ref "${GITHUB_REF}" \
+            --source-digest "${GITHUB_SHA}" \
+            --deny-self-hosted-runners \
+            --predicate-type "https://cyclonedx.org/bom"
+
+      - name: Publish SBOM to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          release_sbom="build/reports/cyclonedx-direct/cyclonedx-gradle-plugin-${RELEASE_VERSION}-cyclonedx.json"
+          gh release upload "${RELEASE_TAG}" "${release_sbom}" --repo "${GITHUB_REPOSITORY}" --clobber
 
       - name: Publish to Gradle portal
         env:

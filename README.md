@@ -35,6 +35,7 @@ up-to-date checks, and the build cache.
 - [Advanced recipes](#advanced-recipes)
   - [Set component and organizational metadata](#set-component-and-organizational-metadata)
   - [Apply the plugin from an initialization script](#apply-the-plugin-from-an-initialization-script)
+- [Using SBOMs with SLSA provenance](#using-sboms-with-slsa-provenance)
 - [Compatibility history](#compatibility-history)
 - [Community and contributing](#community-and-contributing)
 - [License](#license)
@@ -487,6 +488,133 @@ Run:
 ```shell
 ./gradlew cyclonedxBom --init-script init.gradle
 ```
+
+## Using SBOMs with SLSA provenance
+
+SLSA Build levels apply to an artifact's build provenance and build platform, not to its SBOM. This plugin generates
+the CycloneDX SBOM; a hosted build platform can separately generate signed SLSA provenance and bind that same artifact
+to the SBOM in an SBOM attestation. Applying this plugin alone does not establish a SLSA Build level, and there is no
+such thing as a “SLSA-compliant SBOM.”
+
+An artifact must be paired with an SBOM whose boundary describes it. A JAR from one Gradle project normally uses that
+project's `cyclonedxDirectBom`. Use `cyclonedxBom` only when the attested distribution represents the same set of
+Contributing Projects as the Aggregate SBOM.
+
+### Publishing the Direct SBOM
+
+A Direct SBOM can be published with the artifact it describes. For a normal Maven repository, the `cyclonedx`
+classifier follows the convention used by other CycloneDX JVM tooling:
+
+```kotlin
+import org.cyclonedx.gradle.CyclonedxDirectTask
+import org.gradle.api.publish.maven.MavenPublication
+
+plugins {
+    id("org.cyclonedx.bom") version "3.3.0"
+    id("maven-publish")
+    id("java")
+}
+
+val cyclonedxDirectBom = tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
+    xmlOutput.unsetConvention()
+    includeConfigs = listOf("compileClasspath", "runtimeClasspath")
+    jsonOutput.set(
+        layout.buildDirectory.file("reports/cyclonedx-direct/${project.name}-${project.version}-cyclonedx.json")
+    )
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+            artifact(cyclonedxDirectBom.flatMap { it.jsonOutput }) {
+                classifier = "cyclonedx"
+                extension = "json"
+                builtBy(cyclonedxDirectBom)
+            }
+        }
+    }
+}
+```
+
+This produces `<artifact>-<version>-cyclonedx.json`. Publication makes the SBOM available to consumers; it does not
+sign the document or create SLSA provenance. The Gradle Plugin Portal accepts JAR artifacts but not JSON classifiers,
+so projects that publish only there can distribute the same versioned file as a GitHub Release asset instead. This
+project uses that release-asset approach for its own SBOM.
+
+### GitHub Actions example
+
+The following release workflow builds one JAR, creates SLSA Build provenance and a CycloneDX SBOM attestation for that
+exact artifact, and publishes the versioned SBOM as a GitHub Release asset. Replace the example paths with the single
+release artifact described by your Direct SBOM.
+
+```yaml
+name: Build and attest
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build artifact and Direct SBOM
+        run: ./gradlew jar cyclonedxDirectBom
+
+      - name: Attest SLSA Build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: build/libs/my-app-1.0.0.jar
+
+      - name: Attest CycloneDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: build/libs/my-app-1.0.0.jar
+          sbom-path: build/reports/cyclonedx-direct/my-app-1.0.0-cyclonedx.json
+
+      - name: Publish SBOM with the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            build/reports/cyclonedx-direct/my-app-1.0.0-cyclonedx.json \
+            --clobber
+```
+
+GitHub documents its artifact provenance attestations as providing SLSA v1 Build Level 2 for supported workflows.
+Other hosted build platforms can implement the same two-attestation pattern. Choose action version pinning and release
+asset retry behavior that match your project's security policy. This project's own pinned, self-verifying
+implementation is in [the release workflow](.github/workflows/ci-publish.yaml).
+
+### Verifying the attestations
+
+Consumers can verify both claims against a downloaded artifact. Provenance is the default predicate; CycloneDX uses
+the `https://cyclonedx.org/bom` predicate:
+
+```bash
+gh attestation verify my-app-1.0.0.jar --repo owner/repository
+gh attestation verify my-app-1.0.0.jar \
+  --repo owner/repository \
+  --predicate-type https://cyclonedx.org/bom
+```
+
+See GitHub's documentation for [artifact attestations](https://docs.github.com/actions/concepts/security/artifact-attestations)
+and [`gh attestation verify`](https://cli.github.com/manual/gh_attestation_verify).
 
 ## Compatibility history
 

@@ -31,6 +31,17 @@ The public compatibility surface of produced **Direct SBOMs**, **Aggregate SBOMs
 versioned with the plugin according to [ADR 0004](docs/adr/0004-version-the-sbom-output-contract-with-the-plugin.md).
 _Avoid_: Internal output, report format
 
+**SBOM Attestation**:
+A signed statement that binds an artifact, identified by a cryptographic digest, to the **Direct SBOM** or **Aggregate
+SBOM** that describes it. The plugin produces the SBOM; a build platform or attestation service binds and signs it.
+_Avoid_: SLSA SBOM, signed SBOM file
+
+**Published SBOM**:
+A **Direct SBOM** or **Aggregate SBOM** distributed as a versioned release artifact for the component or distribution
+whose boundary it describes. Publication makes the document available to consumers but does not itself attest or sign
+it; the SBOM and component repositories may differ when their identities and version relationship remain unambiguous.
+_Avoid_: SBOM Attestation, embedded SBOM
+
 **Test Configuration**:
 A Gradle configuration treated as test evidence when labeling a component in a **Direct SBOM**. A component is marked
 test only when every configuration that contributed it is a **Test Configuration**. Classification is by configurable
@@ -53,6 +64,11 @@ _Avoid_: Test dependency, test scope (unqualified), test source set
   Gradle build runs on. Say **build JVM** for the last of these; it is the one the **SBOM Output Contract** depends on.
 - **Test Configuration** is a labeling concern for components already in a **Direct SBOM**. It is distinct from
   `includeConfigs` / `skipConfigs`, which decide which configurations are scanned into that document.
+- An **SBOM Attestation** must preserve the boundary of the SBOM it binds. A per-project artifact normally uses that
+  project's **Direct SBOM**; an **Aggregate SBOM** is appropriate only when the attested artifact represents the same
+  set of **Contributing Projects**.
+- A SLSA Build level applies to an artifact's build provenance and build platform, not to its SBOM. Say “an artifact
+  with SLSA Build provenance and an attested CycloneDX SBOM”; avoid “SLSA-compliant SBOM.”
 
 ## Example dialogue
 
