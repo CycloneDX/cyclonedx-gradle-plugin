@@ -240,15 +240,14 @@ Gradle Plugin Portal.
    release-SBOM bootstrap plugin on the latest already-published version until after the release, and keep intentional
    compatibility fixtures pinned to the releases they test.
 2. Merge the release-preparation change and wait for Build CI to pass on `master`.
-3. Before the first release after changing `Publish CI`, open **Actions > Release rehearsal**, select `master`, and
-   choose **Run workflow**.
+3. Before the first release after changing `Publish CI`, open **Actions > Publish CI**, select **Run workflow**, choose
+   `master`, and run it manually.
 4. Confirm that the rehearsal succeeds for the intended version and commit. Its summary records the source ref and
    SHA-256 digest of every release artifact; the same artifacts are also available as a workflow-run download.
 
-`Release rehearsal` calls the same build, SBOM, attestation, and verification implementation as `Publish CI`. Its
-caller grants read-only repository access, does not pass Gradle Plugin Portal secrets, and cannot execute the steps
-that upload or publish a release. Rehearsal attestations describe the selected branch commit; the production run
-creates new attestations for the immutable release tag.
+A manual `Publish CI` run uses a read-only build job and cannot execute the release-only jobs or steps that upload or
+publish a release. Gradle Plugin Portal secrets are referenced only by the production step. Rehearsal attestations
+describe the selected branch commit; the production run creates new attestations for the immutable release tag.
 
 ### Publish the release
 
