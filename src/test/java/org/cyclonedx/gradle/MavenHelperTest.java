@@ -18,23 +18,70 @@
  */
 package org.cyclonedx.gradle;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.Collections;
-import org.apache.maven.model.License;
+import org.cyclonedx.model.License;
 import org.cyclonedx.model.LicenseChoice;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Tests for {@link MavenHelper}, covering how a declared license name is reconciled with its url.
+ */
 class MavenHelperTest {
+
+    private final MavenHelper helper = new MavenHelper(false);
 
     @Test
     void retainsExpressionOnlyLicenseFromJavaxAnnotationApiPom() {
-        final License pomLicense = new License();
+        final org.apache.maven.model.License pomLicense = new org.apache.maven.model.License();
         pomLicense.setName("CDDL + GPLv2 with classpath exception");
 
         final LicenseChoice result = new MavenHelper(false).resolveMavenLicenses(Collections.singletonList(pomLicense));
 
         assertNotNull(result);
         assertNotNull(result.getExpression());
+    }
+
+    private License resolveSingle(final String name, final String url) {
+        final org.apache.maven.model.License declared = new org.apache.maven.model.License();
+        declared.setName(name);
+        declared.setUrl(url);
+        final LicenseChoice choice = helper.resolveMavenLicenses(Collections.singletonList(declared));
+        assertNotNull(choice);
+        assertEquals(1, choice.getLicenses().size());
+        return choice.getLicenses().get(0);
+    }
+
+    @Test
+    void urlWinsWhenItContradictsTheName() {
+        final License license = resolveSingle("BSD", "https://opensource.org/licenses/BSD-2-Clause");
+
+        assertEquals("BSD-2-Clause", license.getId());
+    }
+
+    @Test
+    void nameIsUsedWhenTheUrlResolvesToNothing() {
+        final License license = resolveSingle("Apache-2.0", "https://example.com/LICENSE");
+
+        assertEquals("Apache-2.0", license.getId());
+    }
+
+    @Test
+    void nameIsUsedWhenNoUrlIsDeclared() {
+        final License license = resolveSingle("The Apache Software License, Version 2.0", null);
+
+        assertEquals("Apache-2.0", license.getId());
+    }
+
+    @Test
+    void unresolvableDeclarationKeepsItsNameAndUrl() {
+        final License license = resolveSingle("Some Bespoke License", "https://example.com/LICENSE");
+
+        assertNull(license.getId());
+        assertEquals("Some Bespoke License", license.getName());
+        assertEquals("https://example.com/LICENSE", license.getUrl());
     }
 }
