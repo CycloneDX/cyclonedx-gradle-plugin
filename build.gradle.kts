@@ -16,7 +16,7 @@ plugins {
 
 val organization = "CycloneDX"
 group = "org.cyclonedx"
-version = "3.3.0"
+version = "3.4.0"
 
 java {
     toolchain {
@@ -49,11 +49,11 @@ dependencies {
 }
 
 // Builds LegacyConsumerFixture (see legacy-fixture-build/) - a stand-in for a buildSrc/build-logic consumer
-// precompiled against the published cyclonedx-gradle-plugin:3.3.0 (Core 11.0.1) - so BinaryCompatibilitySpec can run
+// precompiled against the published cyclonedx-gradle-plugin:3.4.0 (Core 11.0.1) - so BinaryCompatibilitySpec can run
 // that precompiled bytecode against this build's own candidate plugin (Core 13.0.0) and catch binary-incompatible
 // Core upgrades that source-recompiled tests never see. It has to live in its own nested Gradle build, invoked here
 // via `--project-dir` rather than as a source set of this project: this project publishes itself under the exact
-// same GA (`org.cyclonedx:cyclonedx-gradle-plugin`) that the fixture needs to compile against at version 3.3.0, and
+// same GA (`org.cyclonedx:cyclonedx-gradle-plugin`) that the fixture needs to compile against at version 3.4.0, and
 // Gradle 9.x unconditionally substitutes a project for any module dependency whose group:name matches a project in
 // the same build - regardless of requested version, and not overridable via `resolutionStrategy` - which would
 // silently make the fixture compile against this project's own (candidate) classes instead of the real old release.
