@@ -3,21 +3,20 @@ name: Publish CI
 on:
   release:
     types: [published]
-  workflow_call:
-    secrets:
-      GRADLE_PUBLISH_KEY:
-        required: false
-      GRADLE_PUBLISH_SECRET:
-        required: false
+  workflow_dispatch:
 
-permissions:
-  contents: write
-  id-token: write
-  attestations: write
+permissions: {}
 
 jobs:
   build:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     runs-on: ubuntu-latest
+    outputs:
+      artifact_name: ${{ steps.release.outputs.artifact_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,6 +55,7 @@ jobs:
               exit 1
             fi
           fi
+          echo "artifact_name=release-artifacts-${project_version}-${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
           echo "version=${project_version}" >> "${GITHUB_OUTPUT}"
 
       - name: Build release artifacts with Gradle
@@ -136,11 +136,10 @@ jobs:
             --deny-self-hosted-runners \
             --predicate-type "https://cyclonedx.org/bom"
 
-      - name: Upload rehearsal artifacts
-        if: github.event_name != 'release'
+      - name: Upload release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-rehearsal-${{ steps.release.outputs.version }}-${{ github.sha }}
+          name: ${{ steps.release.outputs.artifact_name }}
           if-no-files-found: error
           path: |
             build/libs/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}.jar
@@ -148,19 +147,38 @@ jobs:
             build/libs/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}-javadoc.jar
             build/reports/cyclonedx-direct/cyclonedx-gradle-plugin-${{ steps.release.outputs.version }}-cyclonedx.json
 
-      - name: Publish SBOM to GitHub release
-        if: github.event_name == 'release'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: |
-          release_sbom="build/reports/cyclonedx-direct/cyclonedx-gradle-plugin-${RELEASE_VERSION}-cyclonedx.json"
-          gh release upload "${RELEASE_TAG}" "${release_sbom}" --repo "${GITHUB_REPOSITORY}" --clobber
-
       - name: Publish to Gradle portal
         if: github.event_name == 'release'
         env:
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
         run: ./gradlew publishPlugins
+
+  publish-release-sbom:
+    if: github.event_name == 'release'
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: release-artifacts
+
+      - name: Publish SBOM to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          mapfile -t release_sboms < <(
+            find release-artifacts -type f \
+              -name "cyclonedx-gradle-plugin-${RELEASE_VERSION}-cyclonedx.json"
+          )
+          if [[ "${#release_sboms[@]}" -ne 1 ]]; then
+            echo "::error::Expected one release SBOM, found ${#release_sboms[@]}."
+            exit 1
+          fi
+          gh release upload "${RELEASE_TAG}" "${release_sboms[0]}" --repo "${GITHUB_REPOSITORY}" --clobber
