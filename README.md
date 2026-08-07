@@ -3,57 +3,60 @@
 [![Build Status](https://github.com/CycloneDX/cyclonedx-gradle-plugin/workflows/Build%20CI/badge.svg)](https://github.com/CycloneDX/cyclonedx-gradle-plugin/actions?workflow=Build+CI)
 [![Gradle Plugin](https://img.shields.io/maven-metadata/v?label=Gradle%20Plugin&metadataUrl=https%3A%2F%2Fplugins.gradle.org%2Fm2%2Forg%2Fcyclonedx%2Fbom%2Forg.cyclonedx.bom.gradle.plugin%2Fmaven-metadata.xml)](https://plugins.gradle.org/plugin/org.cyclonedx.bom)
 [![License](https://img.shields.io/badge/license-Apache%202.0-brightgreen.svg)](LICENSE)
-[![Website](https://img.shields.io/badge/https://-cyclonedx.org-blue.svg)](https://cyclonedx.org/)
-[![Slack Invite](https://img.shields.io/badge/Slack-Join-blue?logo=slack&labelColor=393939)](https://cyclonedx.org/slack/invite)
-[![Group Discussion](https://img.shields.io/badge/discussion-groups.io-blue.svg)](https://groups.io/g/CycloneDX)
-[![Twitter](https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Follow)](https://twitter.com/CycloneDX_Spec)
 
-The CycloneDX Gradle plugin creates an aggregate of all direct and transitive dependencies of a project
-and creates a valid CycloneDX SBOM. CycloneDX is a lightweight software bill of materials
-(SBOM) specification designed for use in application security contexts and supply chain component analysis.
+The CycloneDX Gradle plugin generates CycloneDX Software Bill of Materials (SBOM) documents from Gradle's resolved
+dependency graphs. It records the components and relationships Gradle selected after conflict resolution,
+substitution, constraints, and transitive dependency resolution.
 
-## Table of Contents
+Apply the plugin to the root project to generate:
 
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Usage](#usage)
-    - [Per-Project SBOM Generation](#per-project-sbom-generation)
-    - [Multi-Project Aggregation](#multi-project-aggregation)
-    - [Usage with Initialization Script](#usage-with-initialization-script)
-- [Configuration](#configuration)
-    - [Configuration Properties](#configuration-properties)
-    - [Output Configuration](#output-configuration)
-    - [Advanced Configuration](#advanced-configuration)
-- [Tasks](#tasks)
-- [Examples](#examples)
-- [Gradle Support](#gradle-support)
-- [CycloneDX Schema Support](#cyclonedx-schema-support)
-- [Copyright & License](#copyright--license)
+- a **Direct SBOM** for the root project and each subproject; and
+- one **Aggregate SBOM** that combines the enabled Direct SBOMs for the build.
 
-## Features
+The plugin writes both JSON and XML by default and supports configuration cache, parallel execution, Gradle
+up-to-date checks, and the build cache.
 
-- ✅ **Per-Project SBOMs**: Generate individual SBOM documents for each project
-- ✅ **Multi-Project Aggregation**: Create consolidated SBOMs for entire project hierarchies
-- ✅ **Multiple Output Formats**: JSON and XML format support with CycloneDX specification compliance
-- ✅ **Flexible Configuration**: Include/exclude specific dependencies, configurations, and projects
-- ✅ **Metadata Enrichment**: Include license information, build system details, and organizational data
-- ✅ **Gradle Integration**: Native Gradle task integration with proper incremental build support
-- ✅ **Dependency Analysis**: Analyzes all direct and transitive resolved dependencies (not just declared ones)
+> [!NOTE]
+> This README documents the code on the current branch. For an installed release, use the README from that release's
+> Git tag.
 
-## Installation
+## Contents
 
-Apply the plugin to your project:
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Choose an SBOM](#choose-an-sbom)
+- [Configure the tasks](#configure-the-tasks)
+  - [Configure every Direct SBOM](#configure-every-direct-sbom)
+  - [Select configurations](#select-configurations)
+  - [Exclude a project from aggregation](#exclude-a-project-from-aggregation)
+  - [Configure output files](#configure-output-files)
+  - [Add a CI build reference](#add-a-ci-build-reference)
+- [Configuration reference](#configuration-reference)
+- [Advanced recipes](#advanced-recipes)
+  - [Set component and organizational metadata](#set-component-and-organizational-metadata)
+  - [Apply the plugin from an initialization script](#apply-the-plugin-from-an-initialization-script)
+- [Compatibility history](#compatibility-history)
+- [Community and contributing](#community-and-contributing)
+- [License](#license)
 
-**Groovy DSL:**
+## Requirements
 
-```groovy
-plugins {
-    id 'org.cyclonedx.bom' version '3.3.0'
-}
-```
+| Requirement | Plugin 3.x |
+|-------------|------------|
+| Gradle | 8.4 or newer |
+| Build JVM | Java 8 or newer; support for versions before Java 17 is deprecated |
+| CycloneDX schema | 1.6 by default; 1.7 can be selected with `schemaVersion` |
+| Output formats | JSON and XML |
 
-**Kotlin DSL:**
+The JVM that can run a particular build also depends on the
+[Gradle Java compatibility matrix](https://docs.gradle.org/current/userguide/compatibility.html). The plugin is tested
+on Java 8, 11, 17, 21, and 25.
+
+## Quick start
+
+Apply the plugin to the root project. The version shown here matches the version declared by this branch.
+
+**Kotlin DSL (`build.gradle.kts`):**
 
 ```kotlin
 plugins {
@@ -61,75 +64,381 @@ plugins {
 }
 ```
 
-> [!IMPORTANT]
-> Plugin will register aggregate task `cyclonedxBom` only in the project where it is applied. This task
-> aggregates SBOMs from the project and all subprojects in multi-project builds.
+**Groovy DSL (`build.gradle`):**
 
-> [!IMPORTANT]
-> Although the plugin is compatible with Java versions starting from 8, support of all versions prior to 17 is
-> deprecated it will be removed in future releases.
+```groovy
+plugins {
+    id 'org.cyclonedx.bom' version '3.3.0'
+}
+```
 
-## Quick Start
+Generate the Aggregate SBOM:
 
-1. Apply the plugin to your root project
-2. Run the SBOM generation task:
-
-```bash
-# Generate per-project SBOMs
-./gradlew cyclonedxDirectBom
-
-# Generate aggregated SBOM (for multi-project builds)
+```shell
 ./gradlew cyclonedxBom
 ```
 
-3. Find your SBOM files:
-    - Per-project: `build/reports/cyclonedx-direct/bom.{json,xml}`
-    - Aggregated: `build/reports/cyclonedx/bom.{json,xml}`
+The task also generates the Direct SBOMs it consumes. With the default configuration, the outputs are:
 
-## Usage
+```text
+build/reports/cyclonedx/bom.json          # Aggregate SBOM
+build/reports/cyclonedx/bom.xml
+build/reports/cyclonedx-direct/bom.json   # Root project's Direct SBOM
+build/reports/cyclonedx-direct/bom.xml
+<subproject>/build/reports/cyclonedx-direct/bom.json
+<subproject>/build/reports/cyclonedx-direct/bom.xml
+```
 
-### Per-Project SBOM Generation
+## Choose an SBOM
 
-The `cyclonedxDirectBom` task generates individual SBOM documents for each project in your build. This is useful when
-you want
-to analyze dependencies at a granular level.
+| Task | Use it when | Default output |
+|------|-------------|----------------|
+| `cyclonedxBom` | You need one Aggregate SBOM for the build. This is the recommended starting point. | `build/reports/cyclonedx/bom.{json,xml}` |
+| `cyclonedxDirectBom` | You need the Direct SBOM for each project or for one specific project. | `<project>/build/reports/cyclonedx-direct/bom.{json,xml}` |
 
-```bash
-# Generate SBOMs for all projects
+In plugin 3.x, applying the plugin to a project registers `cyclonedxDirectBom` on that project and its subprojects.
+It registers `cyclonedxBom` only on the project where the plugin is applied. Applying the plugin to the root project
+therefore makes the Aggregate SBOM cover the root project and all contributing subprojects.
+
+Generate every Direct SBOM without creating the Aggregate SBOM:
+
+```shell
 ./gradlew cyclonedxDirectBom
+```
 
-# Generate with verbose logging
-./gradlew cyclonedxDirectBom --info
+Generate one subproject's Direct SBOM:
 
-# Generate for specific project only
+```shell
 ./gradlew :subproject:cyclonedxDirectBom
 ```
 
-**Output locations:**
+An Aggregate SBOM is composed from the Direct SBOMs of projects whose `cyclonedxDirectBom` tasks are enabled. If an
+expected Direct SBOM is missing, aggregation fails instead of silently producing an incomplete document.
 
-- JSON: `{project}/build/reports/cyclonedx-direct/bom.json`
-- XML: `{project}/build/reports/cyclonedx-direct/bom.xml`
+## Configure the tasks
 
-### Multi-Project Aggregation
+Configuration belongs directly to `cyclonedxDirectBom` and `cyclonedxBom`; the plugin does not add an extension.
+Configure a Direct SBOM in the project it describes, and configure the Aggregate SBOM in the project where the plugin
+is applied. Values are not copied between the tasks. For example, set `schemaVersion` on both when Direct and Aggregate
+SBOMs should use the same non-default schema.
 
-The `cyclonedxBom` task creates a single, consolidated SBOM containing dependencies from all projects in your
-build. This provides a complete view of your application's supply chain.
+### Configure Direct SBOMs in a multi-project build
 
-```bash
-# Generate aggregated SBOM
-./gradlew cyclonedxBom
+Configure each Direct SBOM in the project it describes. For example, in `subproject/build.gradle.kts`:
+
+**Kotlin DSL:**
+
+```kotlin
+import org.cyclonedx.gradle.CyclonedxDirectTask
+import org.cyclonedx.model.Component
+
+tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
+    projectType = Component.Type.APPLICATION
+    includeLicenseText = true
+}
 ```
 
-**Output locations:**
+Or in `subproject/build.gradle`:
 
-- JSON: `build/reports/cyclonedx/bom.json`
-- XML: `build/reports/cyclonedx/bom.xml`
+```groovy
+import org.cyclonedx.gradle.CyclonedxDirectTask
+import org.cyclonedx.model.Component
 
-### Usage with Initialization Script
+tasks.named('cyclonedxDirectBom', CyclonedxDirectTask) {
+    projectType = Component.Type.APPLICATION
+    includeLicenseText = true
+}
+```
 
-It is possible to use the plugin without modifying the project's build script. This is useful for CI/CD pipelines or when you want to generate an SBOM for a project that you do not own or cannot modify.
+When many projects share settings, put this configuration in a
+[convention plugin](https://docs.gradle.org/current/userguide/implementing_gradle_plugins_convention.html) and apply
+it explicitly to those projects. This avoids the cross-project coupling created by `allprojects` and `subprojects`.
 
-1. Create a file named `init.gradle.kts` with the following content:
+In the current 3.x plugin, `allprojects` remains available as a concise compatibility shortcut because applying the
+plugin to the root project registers a `cyclonedxDirectBom` task in every project:
+
+**Kotlin DSL:**
+
+```kotlin
+allprojects {
+    tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
+        includeLicenseText = true
+    }
+}
+```
+
+**Groovy DSL:**
+
+```groovy
+allprojects {
+    tasks.named('cyclonedxDirectBom', CyclonedxDirectTask) {
+        includeLicenseText = true
+    }
+}
+```
+
+This shortcut is not compatible with Gradle's Isolated Projects model. Configure the Aggregate SBOM separately
+because it exists only in the project where the plugin was applied.
+
+### Select configurations
+
+By default, a Direct SBOM scans every resolvable project configuration. `includeConfigs` and `skipConfigs` contain
+regular expressions matched against the whole configuration name, as with Java's `String.matches`. An empty
+`includeConfigs` includes every resolvable configuration; a matching `skipConfigs` entry always excludes a
+configuration.
+
+`testConfigs` does not select dependencies. It controls the `cdx:maven:package:test` label on components that are
+already in the Direct SBOM. A component is marked as test only when every configuration that contributed it matches a
+`testConfigs` pattern.
+
+**Kotlin DSL:**
+
+```kotlin
+tasks.cyclonedxDirectBom {
+    includeConfigs = listOf("runtimeClasspath", "compileClasspath")
+    skipConfigs = listOf("(?i).*test.*")
+    testConfigs = listOf("(?i).*test.*")
+}
+```
+
+**Groovy DSL:**
+
+```groovy
+tasks.cyclonedxDirectBom {
+    includeConfigs = ['runtimeClasspath', 'compileClasspath']
+    skipConfigs = ['(?i).*test.*']
+    testConfigs = ['(?i).*test.*']
+}
+```
+
+Set `testConfigs` to an empty list when no configuration should be classified as a Test Configuration.
+
+### Exclude a project from aggregation
+
+Disable its Direct SBOM task in that project's build script. For example, in `test-utils/build.gradle.kts`:
+
+```kotlin
+tasks.cyclonedxDirectBom {
+    enabled = false
+}
+```
+
+Or in `test-utils/build.gradle`:
+
+```groovy
+tasks.cyclonedxDirectBom {
+    enabled = false
+}
+```
+
+Use `enabled = false` rather than an execution-time condition such as `onlyIf`. A task skipped only at execution time
+is still an expected producer, so `cyclonedxBom` fails when its output is missing.
+
+### Configure output files
+
+Both tasks write JSON and XML by default. Assign a different file to move or rename an output. Clear an output's
+convention to disable that format. The explicit `RegularFile` cast keeps the example compatible with Gradle 8.4.
+
+**Kotlin DSL:**
+
+```kotlin
+import org.cyclonedx.gradle.CyclonedxDirectTask
+import org.gradle.api.file.RegularFile
+
+allprojects {
+    tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
+        jsonOutput = layout.buildDirectory.file("reports/sbom/${project.name}-bom.json")
+        xmlOutput.convention(null as RegularFile?)
+    }
+}
+
+tasks.cyclonedxBom {
+    jsonOutput = layout.buildDirectory.file("reports/sbom/bom.json")
+    xmlOutput.convention(null as RegularFile?)
+}
+```
+
+**Groovy DSL:**
+
+```groovy
+import org.cyclonedx.gradle.CyclonedxDirectTask
+import org.gradle.api.file.RegularFile
+
+allprojects {
+    tasks.named('cyclonedxDirectBom', CyclonedxDirectTask) {
+        jsonOutput = layout.buildDirectory.file("reports/sbom/${project.name}-bom.json")
+        xmlOutput.convention((RegularFile) null)
+    }
+}
+
+tasks.cyclonedxBom {
+    jsonOutput = layout.buildDirectory.file('reports/sbom/bom.json')
+    xmlOutput.convention((RegularFile) null)
+}
+```
+
+### Add a CI build reference
+
+When `includeBuildSystem` is `true`, the plugin automatically detects build URLs from GitHub Actions, GitLab CI,
+Jenkins, CircleCI, Travis CI, and Drone. Set `buildSystemEnvironmentVariable` to use another environment variable or
+to construct a URL from several variables.
+
+Every variable in a template must exist and have a non-blank value; otherwise no build-system reference is added.
+
+**Kotlin DSL:**
+
+```kotlin
+tasks.cyclonedxDirectBom {
+    buildSystemEnvironmentVariable = "\${CI_SERVER_URL}/jobs/\${CI_JOB_ID}"
+}
+```
+
+**Groovy DSL:**
+
+```groovy
+tasks.cyclonedxDirectBom {
+    buildSystemEnvironmentVariable = '${CI_SERVER_URL}/jobs/${CI_JOB_ID}'
+}
+```
+
+To read one variable directly, set the property to its name, for example `"BUILD_URL"` in Kotlin or `'BUILD_URL'` in
+Groovy.
+
+## Configuration reference
+
+### Properties shared by both tasks
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `componentGroup` | `String` | Project group | Group of the document's main component. |
+| `componentName` | `String` | Project name | Name of the document's main component. |
+| `componentVersion` | `String` | Project version | Version of the document's main component. |
+| `projectType` | `Component.Type` | `LIBRARY` | CycloneDX type of the main component. Kotlin requires an enum value such as `Component.Type.APPLICATION`; Groovy also accepts a type name such as `'application'`. |
+| `schemaVersion` | `Version` | `VERSION_16` | CycloneDX schema used for serialization. Set `Version.VERSION_17` to opt in to CycloneDX 1.7. |
+| `includeBomSerialNumber` | `Boolean` | `true` | Add a generated `urn:uuid:` serial number. |
+| `includeLicenseText` | `Boolean` | `false` | Include complete license text when it can be resolved. |
+| `includeBuildSystem` | `Boolean` | `true` | Add a `BUILD_SYSTEM` external reference when the build URL can be detected. |
+| `buildSystemEnvironmentVariable` | `String` | Not set | Environment-variable name or `${NAME}` template used instead of automatic CI detection. |
+| `organizationalEntity` | `OrganizationalEntity` | Not set | Manufacturer or organizational metadata for the SBOM. |
+| `licenseChoice` | `LicenseChoice` | Not set | License information placed in the SBOM metadata. |
+| `externalReferences` | `List<ExternalReference>` | Not set | External references added to the main component. A VCS reference is detected from CI or the Git remote when one was not supplied. |
+| `jsonOutput` | `RegularFileProperty` | Task-specific `bom.json` | JSON output. Clear its convention to disable JSON. |
+| `xmlOutput` | `RegularFileProperty` | Task-specific `bom.xml` | XML output. Clear its convention to disable XML. |
+
+### Properties specific to `cyclonedxDirectBom`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `includeConfigs` | `List<String>` | `[]` | Full-match regular expressions for configurations to scan. Empty means every resolvable configuration. |
+| `skipConfigs` | `List<String>` | `[]` | Full-match regular expressions for configurations to exclude. Exclusion takes precedence over inclusion. |
+| `testConfigs` | `List<String>` | `["^test.*"]` | Full-match regular expressions that classify Test Configurations for `cdx:maven:package:test`. Empty means no configuration is a Test Configuration. |
+| `includeMetadataResolution` | `Boolean` | `true` | Resolve additional dependency metadata such as descriptions, publishers, external references, and licenses. |
+| `includeBuildEnvironment` | `Boolean` | `false` | Also scan resolvable buildscript configurations. The include and skip patterns apply to them too. |
+
+`cyclonedxBom` has no additional user-configurable properties.
+
+## Advanced recipes
+
+### Set component and organizational metadata
+
+These properties use types from `cyclonedx-core-java`, which is exposed by the plugin.
+
+**Kotlin DSL:**
+
+```kotlin
+import org.cyclonedx.Version
+import org.cyclonedx.model.Component
+import org.cyclonedx.model.ExternalReference
+import org.cyclonedx.model.License
+import org.cyclonedx.model.LicenseChoice
+import org.cyclonedx.model.OrganizationalContact
+import org.cyclonedx.model.OrganizationalEntity
+
+tasks.cyclonedxDirectBom {
+    projectType = Component.Type.APPLICATION
+    schemaVersion = Version.VERSION_17
+    componentName = "payment-service"
+    componentVersion = "2.0.0"
+
+    organizationalEntity = OrganizationalEntity().apply {
+        name = "ACME Corporation"
+        urls = listOf("https://www.example.com")
+        addContact(OrganizationalContact().apply {
+            name = "Security Team"
+            email = "security@example.com"
+        })
+    }
+
+    externalReferences = listOf(
+        ExternalReference().apply {
+            type = ExternalReference.Type.WEBSITE
+            url = "https://www.example.com/payment-service"
+        }
+    )
+
+    licenseChoice = LicenseChoice().apply {
+        addLicense(License().apply {
+            name = "Apache-2.0"
+            url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        })
+    }
+}
+```
+
+**Groovy DSL:**
+
+```groovy
+import org.cyclonedx.Version
+import org.cyclonedx.model.Component
+import org.cyclonedx.model.ExternalReference
+import org.cyclonedx.model.License
+import org.cyclonedx.model.LicenseChoice
+import org.cyclonedx.model.OrganizationalContact
+import org.cyclonedx.model.OrganizationalEntity
+
+def organization = new OrganizationalEntity()
+organization.name = 'ACME Corporation'
+organization.urls = ['https://www.example.com']
+
+def contact = new OrganizationalContact()
+contact.name = 'Security Team'
+contact.email = 'security@example.com'
+organization.addContact(contact)
+
+def website = new ExternalReference()
+website.type = ExternalReference.Type.WEBSITE
+website.url = 'https://www.example.com/payment-service'
+
+def license = new License()
+license.name = 'Apache-2.0'
+license.url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+
+def licenses = new LicenseChoice()
+licenses.addLicense(license)
+
+tasks.cyclonedxDirectBom {
+    projectType = Component.Type.APPLICATION
+    schemaVersion = Version.VERSION_17
+    componentName = 'payment-service'
+    componentVersion = '2.0.0'
+    organizationalEntity = organization
+    externalReferences = [website]
+    licenseChoice = licenses
+}
+```
+
+An explicit VCS external reference suppresses automatic Git-remote detection. Other explicit reference types are
+combined with the automatically detected VCS reference when one is available.
+
+The example configures one Direct SBOM. Configure the same metadata properties on `cyclonedxBom` when they should
+describe the Aggregate SBOM's main component or metadata.
+
+### Apply the plugin from an initialization script
+
+An initialization script can generate an SBOM without changing a build's files. This is useful in CI or for a build
+you do not own.
+
+**Kotlin DSL (`init.gradle.kts`):**
 
 ```kotlin
 import org.cyclonedx.gradle.CyclonedxPlugin
@@ -148,396 +457,77 @@ rootProject {
 }
 ```
 
-2. Run the SBOM generation task using the `--init-script` parameter:
+Run:
 
-```bash
+```shell
 ./gradlew cyclonedxBom --init-script init.gradle.kts
 ```
 
-## Configuration
+**Groovy DSL (`init.gradle`):**
 
-To configure `cyclonedxDirectBom` task you have to configure it in each project individually. To configure
-`cyclonedxBom` task you have to configure it in the plugin placement project (usually root project).
+```groovy
+import org.cyclonedx.gradle.CyclonedxPlugin
 
-For multi-project builds, you can also set common configuration options for all projects by configuring the
-`cyclonedxDirectBom` task in the root project using `allprojects` or `subprojects` blocks.
-```kotlin
-allprojects {
-    tasks.cyclonedxDirectBom {
-        // Configuration properties here
+initscript {
+    repositories {
+        gradlePluginPortal()
     }
-}
-tasks.cyclonedxBom {
-    // Configuration properties here
-}
-```
-
-### Configuration Properties
-
-#### `cyclonedxDirectBom`
-
-| Property                         | Type                      | Default                   | Description                                                                        |
-|----------------------------------|---------------------------|---------------------------|------------------------------------------------------------------------------------|
-| `includeConfigs`                 | `List<String>`            | `[]` (all configurations) | Configurations to include in SBOM generation. Supports regex patterns              |
-| `skipConfigs`                    | `List<String>`            | `[]`                      | Configurations to exclude from SBOM generation. Supports regex patterns            |
-| `testConfigs`                    | `List<String>`            | `['^test.*']`             | Full-match regexes for Test Configurations (`cdx:maven:package:test`). All contributing configs must match; empty = none are test. |
-| `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
-| `schemaVersion`                  | `Version`                 | `VERSION_16`              | CycloneDX schema version to use                                                    |
-| `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
-| `includeLicenseText`             | `boolean`                 | `false`                   | Include full license text in components                                            |
-| `includeMetadataResolution`      | `boolean`                 | `true`                    | Include complete metadata resolution for components                                |
-| `includeBuildEnvironment`        | `boolean`                 | `false`                   | Include build environment dependencies (e.g. from buildscript)                     |
-| `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                       |
-| `buildSystemEnvironmentVariable` | `String`                  | -                         | Custom environment variable for build system URL                                   |
-| `componentVersion`               | `String`                  | Project version           | Override the main component version                                                |
-| `componentName`                  | `String`                  | Project name              | Override the main component name                                                   |
-| `componentGroup`                 | `String`                  | Project group             | Override the main component group                                                  |
-| `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts        |
-| `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers       |
-| `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component                                         |
-
-#### `cyclonedxBom`
-
-| Property                         | Type                      | Default                   | Description                                                                        |
-|----------------------------------|---------------------------|---------------------------|------------------------------------------------------------------------------------|
-| `projectType`                    | `Component.Type`          | `"library"`               | Type of project (`"application"`, `"library"`, `"framework"`, `"container"`, etc.) |
-| `schemaVersion`                  | `Version`                 | `VERSION_16`              | CycloneDX schema version to use                                                    |
-| `includeBomSerialNumber`         | `boolean`                 | `true`                    | Include unique BOM serial number                                                   |
-| `includeLicenseText`             | `boolean`                 | `false`                   | Include full license text in components                                            |
-| `includeBuildSystem`             | `boolean`                 | `true`                    | Include build system URL from CI environment                                       |
-| `buildSystemEnvironmentVariable` | `String`                  | -                         | Custom environment variable for build system URL                                   |
-| `componentVersion`               | `String`                  | Project version           | Override the main component version                                                |
-| `componentName`                  | `String`                  | Project name              | Override the main component name                                                   |
-| `componentGroup`                 | `String`                  | Project group             | Override the main component group                                                  |
-| `organizationalEntity`           | `OrganizationalEntity`    | -                         | Organizational metadata for the project, including name, URLs, and contacts        |
-| `externalReferences`             | `List<ExternalReference>` | Git remote URL            | External references for the project, such as documentation or issue trackers       |
-| `licenseChoice`                  | `LicenseChoice`           | -                         | License information for the main component                                         |
-
-### Output Configuration
-
-Configure output files using explicit properties for each task. The plugin supports both JSON and XML formats
-simultaneously or individually:
-
-```kotlin
-allprojects {
-    tasks.cyclonedxDirectBom {
-        // Configure JSON output (default: build/reports/cyclonedx/bom.json)
-        jsonOutput.set(file("build/reports/cyclonedx/${project.name}-bom.json"))
-        // Configure XML output (default: build/reports/cyclonedx/bom.xml)
-        xmlOutput.set(file("build/reports/cyclonedx/${project.name}-bom.xml"))
-    }
-    tasks.cyclonedxBom {
-        // Configure JSON output (default: build/reports/cyclonedx-aggregate/bom.json)
-        jsonOutput.set(file("build/reports/cyclonedx-aggregate/${project.name}-bom.json"))
-        // Configure XML output (default: build/reports/cyclonedx-aggregate/bom.xml)
-        xmlOutput.set(file("build/reports/cyclonedx-aggregate/${project.name}-bom.xml"))
-    }
-}
-```
-
-#### Disabling Output Formats
-
-To generate only one format, you can disable the other by unsetting its convention:
-
-```kotlin
-tasks.cyclonedxDirectBom {
-    // Generate only JSON format
-    xmlOutput.unsetConvention()
-    // Or generate only XML format
-    jsonOutput.unsetConvention()
-}
-tasks.cyclonedxBom {
-    // Generate only JSON format
-    xmlOutput.unsetConvention()
-    // Or generate only XML format
-    jsonOutput.unsetConvention()
-}
-```
-
-### Advanced Configuration
-
-#### Full Configuration Example
-
-```kotlin
-tasks.cyclonedxDirectBom {
-    // Include only runtime dependencies
-    includeConfigs = ["runtimeClasspath", "compileClasspath"]
-
-    // Exclude all test-related configurations using regex
-    skipConfigs = [".*test.*", ".*Test.*"]
-
-    // How configuration names are classified for cdx:maven:package:test
-    // Default is ['^test.*']; broaden for custom test source sets (e.g. e2eTest*)
-    testConfigs = ["(?i).*test.*"]
-
-    // Set application metadata
-    projectType = "application"
-    componentName = "my-microservice"
-    componentVersion = "2.0.0-SNAPSHOT"
-
-    // Schema configuration
-    schemaVersion = org.cyclonedx.Version.VERSION_16
-
-    // Metadata options
-    includeBomSerialNumber = true
-    includeLicenseText = true
-    includeMetadataResolution = true
-    includeBuildEnvironment = false
-    includeBuildSystem = true
-
-    // Custom build system URL template
-    buildSystemEnvironmentVariable = '${CI_PIPELINE_URL}/jobs/${CI_JOB_ID}'
-
-    // Custom output locations
-    jsonOutput = file("build/reports/sbom/${project.name}-sbom.json")
-    xmlOutput = file("build/reports/sbom/${project.name}-sbom.xml")
-}
-```
-
-#### Excluding Projects from Aggregation
-
-To exclude a specific project from SBOM generation (both direct and aggregate tasks), disable the task:
-
-```kotlin
-subprojects {
-    tasks.cyclonedxDirectBom.enabled = false // Skip SBOM generation for this project
-}
-// Or in a specific project's build.gradle.kts:
-tasks.cyclonedxDirectBom.enabled = false
-```
-
-## Tasks
-
-| Task                 | Description                                        | Scope                    | Type                     | Output Location                   |
-|----------------------|----------------------------------------------------|--------------------------|--------------------------|-----------------------------------|
-| `cyclonedxDirectBom` | Generates per-project SBOM documents               | Individual projects      | `CyclonedxDirectTask`    | `build/reports/cyclonedx-direct/` |
-| `cyclonedxBom`       | Generates aggregated SBOM for multi-project builds | Entire project hierarchy | `CyclonedxAggregateTask` | `build/reports/cyclonedx/`        |
-
-Both tasks support:
-
-- Incremental builds
-- Parallel execution
-- Configuration cache
-- Build cache
-
-## Examples
-
-#### Simple Java Application
-
-```kotlin
-plugins {
-    id("org.cyclonedx.bom") version "3.3.0"
-    id("application")
-}
-
-tasks.cyclonedxDirectBom {
-    projectType = "application"
-    includeConfigs = listOf("runtimeClasspath")
-}
-```
-
-#### Multi-Project with Filtering
-
-Root `/build.gradle.kts`:
-
-```kotlin
-plugins {
-    id("org.cyclonedx.bom") version "3.3.0"
-}
-
-allprojects {
-    tasks.cyclonedxDirectBom {
-        // Include only production dependencies
-        includeConfigs = listOf("runtimeClasspath", "compileClasspath")
-        skipConfigs = listOf("testRuntimeClasspath", "testCompileClasspath")
-
-        // Application metadata
-        projectType = "application"
-        componentGroup = "com.example"
-
-        // Enable build system tracking
-        includeBuildSystem = true
-    }
-}
-tasks.cyclonedxBom {
-    // Aggregated SBOM configuration
-    projectType = "application"
-    componentName = "my-enterprise-app"
-    componentVersion = "1.0.0"
-    includeBuildSystem = true
-}
-```
-
-Subproject `/test-utils/build.gradle.kts`:
-
-```kotlin
-// Disable SBOM generation for test utility projects
-tasks.cyclonedxDirectBom.enabled = false
-```
-
-#### Organizational Entity
-
-```kotlin
-import org.cyclonedx.model.*
-import org.cyclonedx.Version
-
-plugins {
-    id("org.cyclonedx.bom") version "3.3.0"
-    id("java")
-}
-
-tasks.cyclonedxDirectBom {
-    // Project configuration
-    projectType = "application"
-    schemaVersion = Version.VERSION_16
-
-    // Component details
-    componentName = "acme-payment-service"
-    componentVersion = "3.3.0"
-
-    // Dependency filtering
-    includeConfigs = listOf("runtimeClasspath", "compileClasspath")
-    skipConfigs = listOf(".*test.*", ".*benchmark.*")
-
-    // Metadata options
-    includeBomSerialNumber = true
-    includeLicenseText = true
-    includeMetadataResolution = true
-    includeBuildSystem = true
-    buildSystemEnvironmentVariable = "\${BUILD_URL}"
-
-    // Organizational metadata
-    organizationalEntity = OrganizationalEntity().apply {
-        name = "ACME Corporation"
-        urls = listOf("https://www.acme.com", "https://security.acme.com")
-        addContact(OrganizationalContact().apply {
-            name = "Security Team"
-            email = "security@acme.com"
-            phone = "+1-555-SECURITY"
-        })
-    }
-}
-```
-
-#### External Reference Example
-
-```kotlin
-import org.cyclonedx.model.*
-
-plugins {
-    id("org.cyclonedx.bom") version "3.3.0"
-    id("java")
-}
-
-tasks.cyclonedxDirectBom {
-    externalReferences = listOf(
-        ExternalReference().apply {
-            url = "https://cyclonedx.org/"
-            type = ExternalReference.Type.WEBSITE
-        }
-    )
-}
-```
-
-#### Licenses Example
-
-```kotlin
-import org.cyclonedx.model.*
-
-plugins {
-    id("org.cyclonedx.bom") version "3.3.0"
-    id("java")
-}
-tasks.cyclonedxDirectBom {
-    // Specify licenses for the main component
-    licenseChoice = LicenseChoice().apply {
-        addLicense(License().apply {
-            name = "Apache-2.0"
-            url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-        })
-    }
-}
-```
-
-#### CI Metadata Example
-
-```kotlin
-plugins {
-    id("org.cyclonedx.bom") version "3.3.0"
-    id("java")
-}
-
-tasks.cyclonedxDirectBom {
-    projectType = "application"
-
-    // Dynamic versioning for CI/CD
-    componentVersion = System.getenv("BUILD_VERSION") ?: project.version.toString()
-
-    // Build system integration
-    includeBuildSystem = true
-    buildSystemEnvironmentVariable = "\${BUILD_URL}"
-
-    // Conditional configuration based on environment
-    if (System.getenv("CI") == "true") {
-        // CI environment - include all runtime dependencies
-        includeConfigs = listOf("runtimeClasspath", "compileClasspath")
-        skipConfigs = listOf("testRuntimeClasspath")
-    } else {
-        // Local development - lighter analysis
-        includeConfigs = listOf("runtimeClasspath")
+    dependencies {
+        classpath 'org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.3.0'
     }
 }
 
-tasks.cyclonedxBom {
-    // Timestamped output artifacts (WARNING: will disable Gradle cache)
-    jsonOutput = file("build/artifacts/sbom-${Instant.now()}.json")
-    xmlOutput.unsetConvention()
+rootProject {
+    apply plugin: CyclonedxPlugin
 }
 ```
 
-For detailed metadata structure information, refer to
-the [CycloneDX specification](https://cyclonedx.org/docs/1.6/json/#metadata).
+Run:
 
-## Gradle Support
+```shell
+./gradlew cyclonedxBom --init-script init.gradle
+```
 
-The following table provides information on the version of this Gradle plugin, the Gradle version supported.
+## Compatibility history
 
-| Version | Gradle Version |
-|---------|----------------|
-| 3.0.x   | Gradle 8.4+    |
-| 2.x.x   | Gradle 8.0+    |
-| 1.x.x   | Gradle <8.0    |
+### Gradle support
 
-## CycloneDX Schema Support
+| Plugin version | Gradle version |
+|----------------|----------------|
+| 3.x | 8.4 or newer |
+| 2.x | 8.0 or newer |
+| 1.x | Earlier than 8.0 |
 
-The following table provides information on the version of this Gradle plugin, the CycloneDX schema version supported,
-as well as the output format options. Use the latest possible version of this plugin that is the compatible with
-the CycloneDX version supported by the target system.
+### CycloneDX schema support
 
-| Version | Schema Version | Format(s) |
-|---------|----------------|-----------|
-| 3.x.x   | CycloneDX v1.6 | XML/JSON  |
-| 2.x.x   | CycloneDX v1.6 | XML/JSON  |
-| 1.10.x  | CycloneDX v1.6 | XML/JSON  |
-| 1.9.x   | CycloneDX v1.6 | XML/JSON  |
-| 1.8.x   | CycloneDX v1.5 | XML/JSON  |
-| 1.7.x   | CycloneDX v1.4 | XML/JSON  |
-| 1.6.x   | CycloneDX v1.4 | XML/JSON  |
-| 1.5.x   | CycloneDX v1.3 | XML/JSON  |
-| 1.4.x   | CycloneDX v1.3 | XML/JSON  |
-| 1.2.x   | CycloneDX v1.2 | XML/JSON  |
-| 1.1.x   | CycloneDX v1.1 | XML       |
-| 1.0x    | CycloneDX v1.0 | XML       |
+The table records the newest schema supported by each plugin line. Use the newest plugin version compatible with the
+Gradle version and downstream CycloneDX consumer in your environment.
 
-> [!NOTE]
-> `Version.VERSION_17` (CycloneDX 1.7) can be selected opt-in via `schemaVersion`. `Version.VERSION_16`
-> (CycloneDX 1.6) remains the default.
+| Plugin version | Newest CycloneDX schema | Formats |
+|----------------|---------------------------|---------|
+| 3.x | 1.7 opt-in; 1.6 default | XML and JSON |
+| 2.x | 1.6 | XML and JSON |
+| 1.10.x | 1.6 | XML and JSON |
+| 1.9.x | 1.6 | XML and JSON |
+| 1.8.x | 1.5 | XML and JSON |
+| 1.7.x | 1.4 | XML and JSON |
+| 1.6.x | 1.4 | XML and JSON |
+| 1.5.x | 1.3 | XML and JSON |
+| 1.4.x | 1.3 | XML and JSON |
+| 1.2.x | 1.2 | XML and JSON |
+| 1.1.x | 1.1 | XML |
+| 1.0.x | 1.0 | XML |
 
-## Copyright & License
+## Community and contributing
 
-CycloneDX Gradle Plugin is Copyright (c) OWASP Foundation. All Rights Reserved.
+- Read the [CycloneDX specification](https://cyclonedx.org/docs/).
+- Ask questions in the [CycloneDX discussion group](https://groups.io/g/CycloneDX) or
+  [Slack](https://cyclonedx.org/slack/invite).
+- Report bugs and request features in [GitHub Issues](https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues).
+- See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change.
 
-Permission to modify and redistribute is granted under the terms of the Apache 2.0 license. See the [LICENSE] file for
-the full license.
+## License
 
-[License]: https://github.com/CycloneDX/cyclonedx-gradle-plugin/blob/master/LICENSE
+Copyright (c) OWASP Foundation. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
