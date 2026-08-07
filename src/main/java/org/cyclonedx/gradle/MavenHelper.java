@@ -27,6 +27,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Objects;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import org.apache.commons.lang3.StringUtils;
@@ -207,36 +208,25 @@ class MavenHelper {
     @Nullable LicenseChoice resolveMavenLicenses(final List<org.apache.maven.model.License> projectLicenses) {
         final LicenseChoice licenseChoice = new LicenseChoice();
         for (org.apache.maven.model.License artifactLicense : projectLicenses) {
-            boolean resolved = false;
-            if (artifactLicense.getName() != null) {
-                final LicenseChoice resolvedByName =
-                        LicenseResolver.resolve(artifactLicense.getName(), includeLicenseText);
-                if (resolvedByName != null) {
-                    if (resolvedByName.getLicenses() != null
-                            && !resolvedByName.getLicenses().isEmpty()) {
-                        resolved = true;
-                        licenseChoice.addLicense(resolvedByName.getLicenses().get(0));
-                    } else if (resolvedByName.getExpression() != null) {
-                        resolved = true;
-                        licenseChoice.setExpression(resolvedByName.getExpression());
-                    }
+            // A URL points at one specific licence document, whereas a name is free text matched against an alias
+            // table in which "BSD" and "The BSD License" both resolve to BSD-4-Clause. Where the two disagree the
+            // URL is the better evidence of what was declared, so it wins instead of being discarded.
+            final LicenseChoice resolvedByName = resolveLicense(artifactLicense.getName());
+            final LicenseChoice resolvedByUrl = resolveLicense(artifactLicense.getUrl());
+            final LicenseChoice resolved = resolvedByUrl != null ? resolvedByUrl : resolvedByName;
+
+            if (resolvedByName != null && resolvedByUrl != null) {
+                logIfConflicting(artifactLicense, resolvedByName, resolvedByUrl);
+            }
+
+            if (resolved != null) {
+                if (resolved.getLicenses() != null && !resolved.getLicenses().isEmpty()) {
+                    licenseChoice.addLicense(resolved.getLicenses().get(0));
+                } else {
+                    licenseChoice.setExpression(resolved.getExpression());
                 }
             }
-            if (artifactLicense.getUrl() != null && !resolved) {
-                final LicenseChoice resolvedByUrl =
-                        LicenseResolver.resolve(artifactLicense.getUrl(), includeLicenseText);
-                if (resolvedByUrl != null) {
-                    if (resolvedByUrl.getLicenses() != null
-                            && !resolvedByUrl.getLicenses().isEmpty()) {
-                        resolved = true;
-                        licenseChoice.addLicense(resolvedByUrl.getLicenses().get(0));
-                    } else if (resolvedByUrl.getExpression() != null) {
-                        resolved = true;
-                        licenseChoice.setExpression(resolvedByUrl.getExpression());
-                    }
-                }
-            }
-            if (artifactLicense.getName() != null && !resolved) {
+            if (artifactLicense.getName() != null && resolved == null) {
                 final org.cyclonedx.model.License license = new org.cyclonedx.model.License();
                 ;
                 license.setName(artifactLicense.getName().trim());
@@ -255,6 +245,47 @@ class MavenHelper {
             return null;
         }
         return licenseChoice;
+    }
+
+    /**
+     * Resolves a declared licence name or URL, returning null unless the resolver produced either a licence or an
+     * expression, so that callers can treat "resolved to nothing" and "not declared" alike.
+     */
+    @Nullable private LicenseChoice resolveLicense(final @Nullable String declared) {
+        if (StringUtils.isBlank(declared)) {
+            return null;
+        }
+        final LicenseChoice choice = LicenseResolver.resolve(declared, includeLicenseText);
+        if (choice == null) {
+            return null;
+        }
+        final boolean hasLicense =
+                choice.getLicenses() != null && !choice.getLicenses().isEmpty();
+        return hasLicense || choice.getExpression() != null ? choice : null;
+    }
+
+    private void logIfConflicting(
+            final org.apache.maven.model.License declared, final LicenseChoice byName, final LicenseChoice byUrl) {
+        final String fromName = describe(byName);
+        final String fromUrl = describe(byUrl);
+        if (!Objects.equals(fromName, fromUrl)) {
+            LOGGER.debug(
+                    "{} Declared license name '{}' resolves to {} but its url '{}' resolves to {}; using {}",
+                    LOG_PREFIX,
+                    declared.getName(),
+                    fromName,
+                    declared.getUrl(),
+                    fromUrl,
+                    fromUrl);
+        }
+    }
+
+    @Nullable private static String describe(final LicenseChoice choice) {
+        if (choice.getLicenses() != null && !choice.getLicenses().isEmpty()) {
+            final org.cyclonedx.model.License license = choice.getLicenses().get(0);
+            return license.getId() != null ? license.getId() : license.getName();
+        }
+        return choice.getExpression().getValue();
     }
 
     /**
