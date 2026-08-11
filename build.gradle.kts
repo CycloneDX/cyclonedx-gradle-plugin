@@ -8,7 +8,7 @@ plugins {
     id("java-gradle-plugin")
     id("com.gradle.plugin-publish")  version "2.1.1"
     // Release SBOM bootstrap: generate with the latest already-published plugin, not the candidate implementation.
-    id("org.cyclonedx.bom") version "3.3.0"
+    alias(libs.plugins.cyclonedx.bom)
     id("groovy")
     id("com.diffplug.spotless") version "8.9.0"
     id("net.ltgt.errorprone") version "5.1.0"
@@ -115,6 +115,7 @@ listOf(8, 11, 17, 21, 25).forEach { version ->
             .withPathSensitivity(PathSensitivity.RELATIVE)
         systemProperty("localRepoPath", project.relativePath(localTestRepository.get()))
         systemProperty("pluginVersion", project.version.toString())
+        systemProperty("releaseSbomGeneratorVersion", libs.versions.release.sbom.generator.get())
         systemProperty("legacyFixtureJarPath", legacyFixtureJarFile.asFile.absolutePath)
     }
 }

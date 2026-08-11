@@ -12,6 +12,7 @@ class ReleaseArtifactsSpec extends Specification {
     def "release artifacts contain the verified Direct SBOM"() {
         given:
         def version = System.getProperty("pluginVersion")
+        def releaseSbomGeneratorVersion = System.getProperty("releaseSbomGeneratorVersion")
         def localRepository = new File(System.getProperty("localRepoPath"))
         def implementationDirectory = new File(
             localRepository,
@@ -57,10 +58,10 @@ class ReleaseArtifactsSpec extends Specification {
         bom.metadata.component.version == version
         bom.metadata.licenses*.license*.id == ["Apache-2.0"]
 
-        and: "the generator is identified"
+        and: "the configured generator is identified"
         bom.metadata.tools.components.size() == 1
         bom.metadata.tools.components[0].name == "cyclonedx-gradle-plugin"
-        bom.metadata.tools.components[0].version == "3.3.0"
+        bom.metadata.tools.components[0].version == releaseSbomGeneratorVersion
 
         and: "the published dependency graph contains the plugin's direct runtime dependencies"
         def componentNames = bom.components*.name as Set

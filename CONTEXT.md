@@ -42,6 +42,11 @@ whose boundary it describes. Publication makes the document available to consume
 it; the SBOM and component repositories may differ when their identities and version relationship remain unambiguous.
 _Avoid_: SBOM Attestation, embedded SBOM
 
+**Release-SBOM Generator**:
+A previously released version of this plugin applied to the release build to produce its **Published SBOM**, rather than
+the unreleased candidate implementation. Its configured version identifies the generated SBOM's tool metadata.
+_Avoid_: Candidate plugin, bootstrap plugin
+
 **Test Configuration**:
 A Gradle configuration treated as test evidence when labeling a component in a **Direct SBOM**. A component is marked
 test only when every configuration that contributed it is a **Test Configuration**. Classification is by configurable

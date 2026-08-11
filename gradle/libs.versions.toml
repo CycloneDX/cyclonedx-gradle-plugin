@@ -1,0 +1,5 @@
+[versions]
+release-sbom-generator = "3.4.0"
+
+[plugins]
+cyclonedx-bom = { id = "org.cyclonedx.bom", version.ref = "release-sbom-generator" }
