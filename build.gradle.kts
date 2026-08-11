@@ -6,12 +6,12 @@ import org.cyclonedx.model.LicenseChoice
 
 plugins {
     id("java-gradle-plugin")
-    id("com.gradle.plugin-publish")  version "2.1.1"
+    alias(libs.plugins.plugin.publish)
     // Release SBOM bootstrap: generate with the latest already-published plugin, not the candidate implementation.
     alias(libs.plugins.cyclonedx.bom)
     id("groovy")
-    id("com.diffplug.spotless") version "8.9.0"
-    id("net.ltgt.errorprone") version "5.1.0"
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.errorprone)
 }
 
 val organization = "CycloneDX"
@@ -29,23 +29,23 @@ repositories {
 }
 
 dependencies {
-    api("org.cyclonedx:cyclonedx-core-java:13.1.0") {
+    api(libs.cyclonedx.core.java) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j-impl")
     }
-    api("org.jspecify:jspecify:1.0.1")
-    implementation("org.apache.maven:maven-core:3.9.16")
+    api(libs.jspecify)
+    implementation(libs.maven.core)
 
     testImplementation(gradleTestKit())
-    testImplementation("org.spockframework:spock-core:2.4-M6-groovy-4.0") {
+    testImplementation(libs.spock.core) {
         exclude(module = "groovy-all")
     }
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.13.4")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.13.4")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("com.github.stefanbirkner:system-lambda:1.2.1")
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.jupiter.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.system.lambda)
 
-    errorprone("com.uber.nullaway:nullaway:0.13.8")
-    errorprone("com.google.errorprone:error_prone_core:2.50.0")
+    errorprone(libs.nullaway)
+    errorprone(libs.errorprone.core)
 }
 
 // Builds LegacyConsumerFixture (see legacy-fixture-build/) - a stand-in for a buildSrc/build-logic consumer

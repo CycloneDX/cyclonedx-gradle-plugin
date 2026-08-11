@@ -1,5 +1,31 @@
 [versions]
 release-sbom-generator = "3.4.0"
+plugin-publish = "2.1.1"
+spotless = "8.9.0"
+errorprone-gradle-plugin = "5.1.0"
+cyclonedx-core-java = "13.1.0"
+jspecify = "1.0.1"
+maven-core = "3.9.16"
+spock = "2.4-M6-groovy-4.0"
+junit = "5.13.4"
+system-lambda = "1.2.1"
+nullaway = "0.13.8"
+errorprone-core = "2.50.0"
+
+[libraries]
+cyclonedx-core-java = { module = "org.cyclonedx:cyclonedx-core-java", version.ref = "cyclonedx-core-java" }
+jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+maven-core = { module = "org.apache.maven:maven-core", version.ref = "maven-core" }
+spock-core = { module = "org.spockframework:spock-core", version.ref = "spock" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+system-lambda = { module = "com.github.stefanbirkner:system-lambda", version.ref = "system-lambda" }
+nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
+errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone-core" }
 
 [plugins]
 cyclonedx-bom = { id = "org.cyclonedx.bom", version.ref = "release-sbom-generator" }
+plugin-publish = { id = "com.gradle.plugin-publish", version.ref = "plugin-publish" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone-gradle-plugin" }
