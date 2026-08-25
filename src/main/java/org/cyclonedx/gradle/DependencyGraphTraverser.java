@@ -37,6 +37,7 @@ import org.cyclonedx.gradle.model.ConfigurationScope;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomMetaData;
+import org.cyclonedx.gradle.model.UnresolvedMetadata;
 import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.model.Component;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
@@ -83,7 +84,6 @@ class DependencyGraphTraverser {
      */
     Map<SbomComponentId, SbomComponent> traverseGraph(
             final ResolvedComponentResult rootNode, final String projectName, final String configName) {
-
         final Map<GraphNode, Set<GraphNode>> graph = new HashMap<>();
         final Queue<GraphNode> queue = new ArrayDeque<>();
         final GraphNode rootGraphNode = new GraphNode(rootNode);
@@ -121,8 +121,9 @@ class DependencyGraphTraverser {
                         queue.add(dependencyNode);
                     } else if (dep instanceof UnresolvedDependencyResult) {
                         final UnresolvedDependencyResult unresolved = (UnresolvedDependencyResult) dep;
-                        LOGGER.info(
-                                "{} Unable to resolve artifact {} because {}",
+                        // The component never enters the graph, so this line is the only trace it leaves
+                        LOGGER.warn(
+                                "{} Unable to resolve artifact {}, it is absent from the SBOM, because {}",
                                 LOG_PREFIX,
                                 unresolved.getAttempted().getDisplayName(),
                                 unresolved.getFailure().toString());
@@ -146,11 +147,18 @@ class DependencyGraphTraverser {
 
         List<License> licenses = new ArrayList<>();
         SbomMetaData metaData = null;
+        UnresolvedMetadata unresolvedMetadata = null;
         if (includeMetaData && node.id instanceof ModuleComponentIdentifier) {
             LOGGER.debug("{}: Including meta data for node {}", LOG_PREFIX, node.id);
             final Component component = new Component();
             extractMetaDataFromArtifactPom(artifactFile, component, node.getResult());
-            licenses = extractMetaDataFromRepository(component, node.getResult());
+            final MavenMetadata metadata = mavenLookup.lookup(node.getResult());
+            final MavenProject mavenProject = metadata.getProject();
+            if (mavenProject != null) {
+                mavenHelper.extractMetadata(mavenProject, component);
+                licenses = mavenProject.getLicenses();
+            }
+            unresolvedMetadata = metadata.getUnresolved();
             metaData = SbomMetaData.fromComponent(component);
         }
 
@@ -161,32 +169,21 @@ class DependencyGraphTraverser {
                 .withArtifactFile(artifactFile)
                 .withMetaData(metaData)
                 .withLicenses(licenses)
+                .withUnresolvedMetadata(unresolvedMetadata)
                 .build();
     }
 
     private void extractMetaDataFromArtifactPom(
             @Nullable final File artifactFile, final Component component, final ResolvedComponentResult result) {
-
         if (artifactFile == null || result.getModuleVersion() == null) {
             return;
         }
 
-        @Nullable final MavenProject mavenProject = mavenHelper.extractPom(artifactFile, result.getModuleVersion());
+        final MavenProject mavenProject = mavenHelper.extractPom(artifactFile, result.getModuleVersion());
         if (mavenProject != null) {
             LOGGER.debug("{} Parse artifact pom file of component {}", LOG_PREFIX, result.getId());
             mavenHelper.getClosestMetadata(artifactFile, mavenProject, component, result.getModuleVersion());
         }
-    }
-
-    private List<License> extractMetaDataFromRepository(
-            final Component component, final ResolvedComponentResult result) {
-        final MavenProject mavenProject = mavenLookup.getResolvedMavenProject(result);
-        if (mavenProject != null) {
-            mavenHelper.extractMetadata(mavenProject, component);
-            return mavenProject.getLicenses();
-        }
-
-        return new ArrayList<>();
     }
 
     private Set<SbomComponentId> getSbomDependencies(final Set<GraphNode> dependencyNodes) {

@@ -40,19 +40,23 @@ public final class SbomComponent implements Serializable {
 
     private final List<License> licenses;
 
+    @Nullable private final UnresolvedMetadata unresolvedMetadata;
+
     private SbomComponent(
             final SbomComponentId id,
             final Set<ConfigurationScope> inScopeConfigurations,
             final Set<SbomComponentId> dependencyComponents,
             @Nullable final File artifactFile,
             @Nullable final SbomMetaData metaData,
-            final List<License> licenses) {
+            final List<License> licenses,
+            @Nullable final UnresolvedMetadata unresolvedMetadata) {
         this.id = id;
         this.inScopeConfigurations = inScopeConfigurations;
         this.dependencyComponents = dependencyComponents;
         this.artifactFile = artifactFile;
         this.metaData = metaData;
         this.licenses = licenses;
+        this.unresolvedMetadata = unresolvedMetadata;
     }
 
     public SbomComponentId getId() {
@@ -79,6 +83,14 @@ public final class SbomComponent implements Serializable {
         return licenses;
     }
 
+    /**
+     * Why this component carries no Maven metadata, when it carries none because it could not be read.
+     * Empty both for a component whose metadata was read and for one that was never looked up.
+     */
+    public Optional<UnresolvedMetadata> getUnresolvedMetadata() {
+        return Optional.ofNullable(unresolvedMetadata);
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (o == null || getClass() != o.getClass()) {
@@ -90,12 +102,14 @@ public final class SbomComponent implements Serializable {
                 && Objects.equals(dependencyComponents, that.dependencyComponents)
                 && Objects.equals(artifactFile, that.artifactFile)
                 && Objects.equals(metaData, that.metaData)
-                && Objects.equals(licenses, that.licenses);
+                && Objects.equals(licenses, that.licenses)
+                && unresolvedMetadata == that.unresolvedMetadata;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, inScopeConfigurations, dependencyComponents, artifactFile, metaData, licenses);
+        return Objects.hash(
+                id, inScopeConfigurations, dependencyComponents, artifactFile, metaData, licenses, unresolvedMetadata);
     }
 
     public static class Builder {
@@ -110,6 +124,8 @@ public final class SbomComponent implements Serializable {
         @Nullable private SbomMetaData metaData;
 
         private List<License> licenses = Collections.emptyList();
+
+        @Nullable private UnresolvedMetadata unresolvedMetadata;
 
         public Builder() {}
 
@@ -143,6 +159,11 @@ public final class SbomComponent implements Serializable {
             return this;
         }
 
+        public Builder withUnresolvedMetadata(@Nullable final UnresolvedMetadata unresolvedMetadata) {
+            this.unresolvedMetadata = unresolvedMetadata;
+            return this;
+        }
+
         public SbomComponent build() {
             return new SbomComponent(
                     Objects.requireNonNull(id),
@@ -150,7 +171,8 @@ public final class SbomComponent implements Serializable {
                     dependencyComponents,
                     artifactFile,
                     metaData,
-                    licenses);
+                    licenses,
+                    unresolvedMetadata);
         }
     }
 }

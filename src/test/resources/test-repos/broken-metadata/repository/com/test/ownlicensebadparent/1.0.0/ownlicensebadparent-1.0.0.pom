@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.test</groupId>
+        <artifactId>bad-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <groupId>com.test</groupId>
+    <artifactId>ownlicensebadparent</artifactId>
+    <version>1.0.0</version>
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+</project>

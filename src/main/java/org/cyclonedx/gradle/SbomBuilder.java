@@ -284,6 +284,14 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         final Property isTestProperty = buildIsTestProperty(component);
         final List<Property> resultProperties = new ArrayList<>();
         resultProperties.add(isTestProperty);
+        // Absent metadata and unreadable metadata produce the same empty component, so the document
+        // records which of the two it was, and only when the lookup failed
+        component.getUnresolvedMetadata().ifPresent(unresolved -> {
+            final Property property = new Property();
+            property.setName("cdx:maven:package:metadata-unresolved");
+            property.setValue(unresolved.getValue());
+            resultProperties.add(property);
+        });
 
         return resultProperties;
     }

@@ -26,6 +26,15 @@ Additional descriptive evidence, such as licenses and organizational details, at
 resolved identity and dependency relationships.
 _Avoid_: Dependency resolution
 
+**Unresolved Metadata**:
+A component whose **Metadata Enrichment** could not be performed, because the repositories returned no usable POM, the
+POM could not be read, or the effective model could not be completed. Distinct from a component that resolves and
+declares nothing, which the document would otherwise present identically. Recorded on the component, which still
+reports whatever its own POM declared, since Maven replaces the inherited values instead of merging into them; which input broke the
+effective model is not reported by Maven, so the parent is named only where the reported failure identifies it, and
+every other failure is recorded as an incomplete model.
+_Avoid_: Missing licenses, unresolved dependency
+
 **SBOM Output Contract**:
 The public compatibility surface of produced **Direct SBOMs**, **Aggregate SBOMs**, and their default delivery. It is
 versioned with the plugin according to [ADR 0004](docs/adr/0004-version-the-sbom-output-contract-with-the-plugin.md).
