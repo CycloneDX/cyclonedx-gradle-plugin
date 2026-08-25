@@ -9,7 +9,7 @@ maven-core = "3.9.16"
 spock = "2.4-M6-groovy-4.0"
 junit = "5.13.4"
 system-lambda = "1.2.1"
-nullaway = "0.13.8"
+nullaway = "0.14.0"
 errorprone-core = "2.50.0"
 
 [libraries]
