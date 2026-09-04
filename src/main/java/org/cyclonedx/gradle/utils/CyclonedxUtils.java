@@ -21,9 +21,10 @@ package org.cyclonedx.gradle.utils;
 import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.List;
-import org.apache.commons.io.FileUtils;
 import org.cyclonedx.Version;
 import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.generators.BomGeneratorFactory;
@@ -75,7 +76,7 @@ public class CyclonedxUtils {
         final BomJsonGenerator bomGenerator = BomGeneratorFactory.createJson(schemaVersion, bom);
         try {
             final String bomString = bomGenerator.toJsonString();
-            FileUtils.write(destination, bomString, StandardCharsets.UTF_8, false);
+            writeString(destination, bomString);
             LOGGER.info("{} Json BOM saved at {}", LOG_PREFIX, destination);
         } catch (Exception e) {
             throw new GradleException("Error writing json bom file", e);
@@ -88,7 +89,7 @@ public class CyclonedxUtils {
         final BomXmlGenerator bomGenerator = BomGeneratorFactory.createXml(schemaVersion, bom);
         try {
             final String bomString = bomGenerator.toXmlString();
-            FileUtils.write(destination, bomString, StandardCharsets.UTF_8, false);
+            writeString(destination, bomString);
             LOGGER.info("{} XML BOM saved at {}", LOG_PREFIX, destination);
         } catch (Exception e) {
             throw new GradleException("Error writing xml bom file", e);
@@ -106,5 +107,17 @@ public class CyclonedxUtils {
         } catch (Exception e) {
             throw new GradleException("Error whilst validating XML BOM", e);
         }
+    }
+
+    /**
+     * Writes the serialized BOM to its destination, replacing any existing content. The destination's parent
+     * directory is created by Gradle as part of preparing the task's declared output.
+     *
+     * @param destination the file to write to
+     * @param content the serialized BOM
+     * @throws IOException if the file cannot be written
+     */
+    private static void writeString(final File destination, final String content) throws IOException {
+        Files.write(destination.toPath(), content.getBytes(StandardCharsets.UTF_8));
     }
 }

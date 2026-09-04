@@ -29,7 +29,6 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.MailingList;
 import org.apache.maven.model.Model;
@@ -240,9 +239,10 @@ class MavenHelper {
                 final org.cyclonedx.model.License license = new org.cyclonedx.model.License();
                 ;
                 license.setName(artifactLicense.getName().trim());
-                if (StringUtils.isNotBlank(artifactLicense.getUrl())) {
+                final String licenseUrl = artifactLicense.getUrl();
+                if (licenseUrl != null && !licenseUrl.trim().isEmpty()) {
                     try {
-                        final URI uri = new URI(artifactLicense.getUrl().trim());
+                        final URI uri = new URI(licenseUrl.trim());
                         license.setUrl(uri.toString());
                     } catch (URISyntaxException e) {
                         // throw it away

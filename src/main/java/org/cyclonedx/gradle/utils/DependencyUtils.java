@@ -24,8 +24,6 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.gradle.api.artifacts.ArtifactView;
@@ -83,14 +81,13 @@ public class DependencyUtils {
         }
     }
 
-    private static String getType(final File file) {
+    static String getType(final File file) {
 
-        final String fileExtension = FilenameUtils.getExtension(file.getName());
-        if (StringUtils.isBlank(fileExtension)) {
-            return "pom";
-        }
+        final String fileName = file.getName();
+        final int extensionStart = fileName.lastIndexOf('.');
+        final String fileExtension = extensionStart < 0 ? "" : fileName.substring(extensionStart + 1);
 
-        return fileExtension;
+        return fileExtension.isEmpty() ? "pom" : fileExtension;
     }
 
     /**

@@ -21,7 +21,6 @@ package org.cyclonedx.gradle.utils;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -72,7 +71,7 @@ public class EnvironmentUtils {
      * @return the URI of the current build or null if it cannot be determined
      */
     @Nullable public static String getBuildURI(final String str) {
-        if (StringUtils.isBlank(str)) {
+        if (!hasValue(str)) {
             return null;
         }
         if (str.contains("${")) {
@@ -86,9 +85,7 @@ public class EnvironmentUtils {
         final String githubRepository = System.getenv("GITHUB_REPOSITORY");
         final String githubRunId = System.getenv("GITHUB_RUN_ID");
 
-        if (!StringUtils.isBlank(githubServerUrl)
-                && !StringUtils.isBlank(githubRepository)
-                && !StringUtils.isBlank(githubRunId)) {
+        if (hasValue(githubServerUrl) && hasValue(githubRepository) && hasValue(githubRunId)) {
             return String.format("%s/%s/actions/runs/%s", githubServerUrl, githubRepository, githubRunId);
         }
 
@@ -98,7 +95,7 @@ public class EnvironmentUtils {
     @Nullable private static String fromGitlabCI() {
         final String ciProjectUrl = System.getenv("CI_PROJECT_URL");
         final String ciJobId = System.getenv("CI_JOB_ID");
-        if (!StringUtils.isBlank(ciProjectUrl) && !StringUtils.isBlank(ciJobId)) {
+        if (hasValue(ciProjectUrl) && hasValue(ciJobId)) {
             return String.format("%s/-/jobs/%s", ciProjectUrl, ciJobId);
         }
         return null;
@@ -106,7 +103,7 @@ public class EnvironmentUtils {
 
     @Nullable private static String fromEnvironment(final String name) {
         final String url = System.getenv(name);
-        if (!StringUtils.isBlank(url)) {
+        if (hasValue(url)) {
             return url;
         }
         return null;
@@ -128,12 +125,12 @@ public class EnvironmentUtils {
 
         while (matcher.find()) {
             final String varName = matcher.group(1);
-            if (StringUtils.isBlank(varName)) {
+            if (!hasValue(varName)) {
                 return null;
             }
 
             final String value = System.getenv(varName);
-            if (StringUtils.isBlank(value)) {
+            if (!hasValue(value)) {
                 return null;
             }
 
@@ -143,5 +140,16 @@ public class EnvironmentUtils {
         }
 
         return result.toString();
+    }
+
+    /**
+     * Determines whether the build environment supplied a usable value for a variable. An exported but empty
+     * variable, or one padded only by shell whitespace, carries no value and is treated as absent.
+     *
+     * @param value the value read from the environment
+     * @return true if the value is present and not solely whitespace
+     */
+    private static boolean hasValue(final @Nullable String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }
