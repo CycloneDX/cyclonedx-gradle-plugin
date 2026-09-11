@@ -1,6 +1,6 @@
 [versions]
 release-sbom-generator = "3.4.1"
-plugin-publish = "2.1.1"
+plugin-publish = "2.2.0"
 spotless = "8.10.1"
 errorprone-gradle-plugin = "5.1.1"
 cyclonedx-core-java = "13.2.0"
