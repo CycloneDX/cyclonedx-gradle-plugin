@@ -167,6 +167,9 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         component.setGroup(task.getComponentGroup().get());
         component.setName(task.getComponentName().get());
         component.setVersion(task.getComponentVersion().get());
+        if (task.getComponentDescription().isPresent()) {
+            component.setDescription(task.getComponentDescription().get());
+        }
         addBuildSystemMetaData(component);
         if (task.getExternalReferences().isPresent()) {
             task.getExternalReferences().get().forEach(component::addExternalReference);
