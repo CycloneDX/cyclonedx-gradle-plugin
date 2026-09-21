@@ -378,6 +378,90 @@ class PluginConfigurationSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    def "should use configured componentDescription"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            description = 'project-description'
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
+                componentDescription = 'customized-description'
+            }
+            dependencies {
+                implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
+                implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+        then:
+        result.task(":" + taskName).outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, reportLocation)
+
+        assert reportDir.exists()
+        reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        assert bom.metadata.component.description == 'customized-description'
+
+        where:
+        taskName             | reportLocation
+        "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
+        "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = JavaVersion.current()
+    }
+
+    def "should not default to project description when componentDescription is unset"() {
+        given:
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+            description = 'project-description'
+            dependencies {
+                implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
+                implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
+            }""", "rootProject.name = 'hello-world'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+        then:
+        result.task(":" + taskName).outcome == TaskOutcome.SUCCESS
+        File reportDir = new File(testDir, reportLocation)
+
+        assert reportDir.exists()
+        reportDir.listFiles({ File file -> file.isFile() } as FileFilter).length == 2
+        File jsonBom = new File(reportDir, "bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+        assert bom.metadata.component.description == null
+        where:
+        taskName             | reportLocation
+        "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
+        "cyclonedxBom"       | "build/reports/cyclonedx"
+        javaVersion = JavaVersion.current()
+    }
+
     def "should use configured projectType"() {
         given:
         File testDir = TestUtils.createFromString("""
