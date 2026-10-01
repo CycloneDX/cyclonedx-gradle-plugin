@@ -106,6 +106,18 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     public abstract Property<Boolean> getIncludeBuildEnvironment();
 
     /**
+     * The hash algorithms to include in the SBOM components.
+     * Supported values depend on the CycloneDX schema version.
+     * Common values: "MD5", "SHA-1", "SHA-256", "SHA-512", "SHA3-256", "SHA3-512".
+     * If not set, all algorithms supported by the schema version are included.
+     *
+     * @return the list of hash algorithms to include
+     */
+    @Input
+    @org.gradle.api.tasks.Optional
+    public abstract ListProperty<String> getHashAlgorithms();
+
+    /**
      * The resolved dependency files from all in-scope configurations.
      * This is used for up-to-date checking and caching - when dependencies change
      * (new dependency, version change, or dynamic version resolution), the task
@@ -125,6 +137,7 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
         getTestConfigs().convention(new ArrayList<>(Collections.singletonList("^test.*")));
         getIncludeMetadataResolution().convention(true);
         getIncludeBuildEnvironment().convention(false);
+        getHashAlgorithms().convention(getProject().getObjects().listProperty(String.class));
         this.componentsProvider = getProject()
                 .getProviders()
                 .provider(new SbomGraphProvider(
@@ -210,6 +223,7 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
             LOGGER.info(
                     "componentDescription      : {}", getComponentDescription().getOrNull());
             LOGGER.info("projectType               : {}", getProjectType().get());
+            LOGGER.info("hashAlgorithms            : {}", getHashAlgorithms().get());
             LOGGER.info("------------------------------------------------------------------------");
         }
     }
