@@ -134,10 +134,10 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                     .withInScopeConfigurations(new HashSet<>())
                     .withLicenses(new ArrayList<>())
                     .build();
-            return new SbomGraph(graph, configurationBasedSbomComponent);
+            return new SbomGraph(graph, configurationBasedSbomComponent, mavenLookup.getPomFiles());
         } else {
             if (projectBasedRootComponentId.equals(configurationBasedRootComponentId)) {
-                return new SbomGraph(graph, sbomComponentFromGraph);
+                return new SbomGraph(graph, sbomComponentFromGraph, mavenLookup.getPomFiles());
             } else {
                 final SbomComponent configurationBasedSbomComponent = new SbomComponent.Builder()
                         .withId(configurationBasedRootComponentId)
@@ -155,7 +155,7 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                         configurationBasedRootComponentId);
                 graph.remove(projectBasedRootComponentId);
                 graph.put(configurationBasedRootComponentId, configurationBasedSbomComponent);
-                return new SbomGraph(graph, configurationBasedSbomComponent);
+                return new SbomGraph(graph, configurationBasedSbomComponent, mavenLookup.getPomFiles());
             }
         }
     }
