@@ -23,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.function.Consumer;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.Repository;
@@ -34,10 +35,20 @@ import org.jspecify.annotations.Nullable;
 
 public class GradleAssistedMavenModelResolverImpl implements ModelResolver {
     private final Project project;
+    private final Consumer<File> onPomRead;
 
     public GradleAssistedMavenModelResolverImpl(Project project) {
+        this(project, pomFile -> {});
+    }
+
+    /**
+     * @param onPomRead receives every POM file this resolver hands to Maven, so that the caller can declare it as
+     *                  evidence the SBOM was produced from
+     */
+    GradleAssistedMavenModelResolverImpl(Project project, Consumer<File> onPomRead) {
         super();
         this.project = project;
+        this.onPomRead = onPomRead;
     }
 
     @Override
@@ -48,6 +59,7 @@ public class GradleAssistedMavenModelResolverImpl implements ModelResolver {
         Configuration config = project.getConfigurations().detachedConfiguration(dependency);
 
         File pomXml = config.getSingleFile();
+        onPomRead.accept(pomXml);
         return new ModelSource2() {
             @Override
             public InputStream getInputStream() throws IOException {

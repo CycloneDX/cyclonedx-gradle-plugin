@@ -27,6 +27,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import org.apache.maven.artifact.Artifact;
@@ -61,9 +62,19 @@ class MavenHelper {
 
     private static final Logger LOGGER = Logging.getLogger(MavenHelper.class);
     private final Boolean includeLicenseText;
+    private final Consumer<File> onPomRead;
 
     public MavenHelper(final Boolean includeLicenseText) {
+        this(includeLicenseText, pomFile -> {});
+    }
+
+    /**
+     * @param onPomRead receives every POM file this helper reads from disk beyond the artifact itself, so that the
+     *                  caller can declare it as evidence the SBOM was produced from
+     */
+    MavenHelper(final Boolean includeLicenseText, final Consumer<File> onPomRead) {
         this.includeLicenseText = includeLicenseText;
+        this.onPomRead = onPomRead;
     }
 
     /**
@@ -288,7 +299,9 @@ class MavenHelper {
                             + parent.getVersion() + "/" + parent.getArtifactId() + "-" + parent.getVersion() + ".pom");
             if (parentFile.exists() && parentFile.isFile()) {
                 try {
-                    return readPom(parentFile.getCanonicalFile());
+                    final File canonicalParentFile = parentFile.getCanonicalFile();
+                    onPomRead.accept(canonicalParentFile);
+                    return readPom(canonicalParentFile);
                 } catch (Exception e) {
                     LOGGER.error("{} An error occurred retrieving an artifacts parent pom", LOG_PREFIX, e);
                 }
@@ -383,11 +396,14 @@ class MavenHelper {
      *            the dependency pomFile
      * @param gradleProject
      *            the current gradle project which gets used as the base resolver
+     * @param onPomRead
+     *            receives every parent and imported POM file resolved while building the model
      * @return model for effective pom
      */
-    static @Nullable Model resolveEffectivePom(final @Nullable File pomFile, final Project gradleProject) {
+    static @Nullable Model resolveEffectivePom(
+            final @Nullable File pomFile, final Project gradleProject, final Consumer<File> onPomRead) {
         // force the parent POMs and BOMs to be resolved
-        final ModelResolver modelResolver = new GradleAssistedMavenModelResolverImpl(gradleProject);
+        final ModelResolver modelResolver = new GradleAssistedMavenModelResolverImpl(gradleProject, onPomRead);
         final ModelBuildingRequest req = new DefaultModelBuildingRequest();
         req.setModelResolver(modelResolver);
         req.setPomFile(pomFile);

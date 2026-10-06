@@ -35,6 +35,13 @@ effective model is not reported by Maven, so the parent is named only where the 
 every other failure is recorded as an incomplete model.
 _Avoid_: Missing licenses, unresolved dependency
 
+**SBOM Evidence**:
+The files read while producing a **Direct SBOM**: the artifacts of the resolved dependency graph and every POM read for
+**Metadata Enrichment**. Distinct from the graph itself, which is the authority for component identity and
+relationships per [ADR 0001](docs/adr/0001-use-resolved-dependency-graphs-as-sbom-evidence.md); the files are where
+artifact hashes and enrichment come from, and a change to any of them can change the document.
+_Avoid_: Task inputs, resolved dependencies (unqualified), cache key
+
 **SBOM Output Contract**:
 The public compatibility surface of produced **Direct SBOMs**, **Aggregate SBOMs**, and their default delivery. It is
 versioned with the plugin according to [ADR 0004](docs/adr/0004-version-the-sbom-output-contract-with-the-plugin.md).

@@ -69,7 +69,7 @@ class DependencyGraphTraverser {
         this.resolvedArtifacts = resolvedArtifacts;
         this.mavenLookup = mavenLookup;
         this.includeMetaData = task.getIncludeMetadataResolution().get();
-        this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get());
+        this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get(), mavenLookup::recordPomFile);
     }
 
     /**

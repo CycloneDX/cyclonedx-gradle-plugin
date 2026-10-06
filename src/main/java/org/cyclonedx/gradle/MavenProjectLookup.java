@@ -23,7 +23,9 @@ import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
 import org.apache.maven.project.MavenProject;
@@ -50,10 +52,24 @@ class MavenProjectLookup {
     private static final Logger LOGGER = Logging.getLogger(MavenProjectLookup.class);
     private final Project project;
     private final Map<ComponentIdentifier, MavenMetadata> cache;
+    private final Set<File> pomFiles;
 
     MavenProjectLookup(final Project project) {
         this.project = project;
         this.cache = new HashMap<>();
+        this.pomFiles = new LinkedHashSet<>();
+    }
+
+    /**
+     * Every POM file read so far, whether by this lookup or by Maven while building an effective model, as a snapshot.
+     * A POM that was obtained and could not be parsed is included, since its content shaped the document.
+     */
+    Set<File> getPomFiles() {
+        return new LinkedHashSet<>(pomFiles);
+    }
+
+    void recordPomFile(final File pomFile) {
+        pomFiles.add(pomFile);
     }
 
     /**
@@ -83,6 +99,7 @@ class MavenProjectLookup {
         if (pomFile == null) {
             return MavenMetadata.unresolved(UnresolvedMetadata.POM_UNRESOLVED);
         }
+        recordPomFile(pomFile);
 
         final MavenProject mavenProject;
         try {
@@ -99,7 +116,7 @@ class MavenProjectLookup {
         LOGGER.debug("{} Parse queried pom file for component {}", LOG_PREFIX, result.getId());
         final Model model;
         try {
-            model = MavenHelper.resolveEffectivePom(pomFile, project);
+            model = MavenHelper.resolveEffectivePom(pomFile, project, this::recordPomFile);
         } catch (Exception err) {
             LOGGER.warn(
                     "{} Unable to build the effective model of component {}, reporting what its own POM declares",
