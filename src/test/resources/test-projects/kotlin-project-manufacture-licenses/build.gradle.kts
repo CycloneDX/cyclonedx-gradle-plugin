@@ -39,3 +39,7 @@ tasks.withType<org.cyclonedx.gradle.BaseCyclonedxTask> {
         }
     )
 }
+
+dependencies {
+    cyclonedxAggregation(project(":"))
+}

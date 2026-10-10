@@ -41,6 +41,7 @@ class CycloneDxSpec extends Specification {
             version = "1.3"
             description = "description"
             buildDir = "buildDir"
+            apply plugin: PLUGIN_ID
         }
         leafProject.version = "1.3.1"
 
