@@ -181,6 +181,25 @@ allprojects {
 This shortcut is not compatible with Gradle's Isolated Projects model. Configure the Aggregate SBOM separately
 because it exists only in the project where the plugin was applied.
 
+#### Hash Algorithm Filtering
+
+To reduce SBOM file size and generation time, you can limit the hash algorithms included in the SBOM:
+
+```kotlin
+tasks.cyclonedxDirectBom {
+    // Include only SHA-256
+    hashAlgorithms = listOf("SHA-256")
+}
+
+// Or include multiple algorithms
+tasks.cyclonedxDirectBom {
+    // Include both SHA-256 and SHA-512 for additional verification
+    hashAlgorithms = listOf("SHA-256", "SHA-512")
+}
+```
+
+By default (when `hashAlgorithms` is empty), all hash algorithms supported by the selected CycloneDX schema version are included.
+
 ### Select configurations
 
 By default, a Direct SBOM scans every resolvable project configuration. `includeConfigs` and `skipConfigs` contain
