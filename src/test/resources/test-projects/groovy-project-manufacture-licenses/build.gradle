@@ -45,3 +45,7 @@ tasks.withType(BaseCyclonedxTask) {
     organizationalEntity = oe
     licenseChoice = lc
 }
+
+dependencies {
+    cyclonedxAggregation project(':')
+}
