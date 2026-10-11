@@ -262,7 +262,7 @@ class MavenHelper {
                 licenseChoice.addLicense(license);
             }
         }
-        if (licenseChoice.getLicenses() == null) {
+        if (licenseChoice.getLicenses() == null && licenseChoice.getExpression() == null) {
             return null;
         }
         return licenseChoice;
