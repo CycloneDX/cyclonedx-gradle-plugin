@@ -8,13 +8,18 @@ The CycloneDX Gradle plugin generates CycloneDX Software Bill of Materials (SBOM
 dependency graphs. It records the components and relationships Gradle selected after conflict resolution,
 substitution, constraints, and transitive dependency resolution.
 
-Apply the plugin to the root project to generate:
+Apply the plugin to each project that should be described. Every such project gets:
 
-- a **Direct SBOM** for the root project and each subproject; and
-- one **Aggregate SBOM** that combines the enabled Direct SBOMs for the build.
+- a **Direct SBOM** of that project, from `cyclonedxDirectBom`; and
+- a `cyclonedxBom` task that produces an **Aggregate SBOM** of the projects it explicitly declares as members.
 
 The plugin writes both JSON and XML by default and supports configuration cache, parallel execution, Gradle
-up-to-date checks, and the build cache.
+up-to-date checks, the build cache, and Gradle's Project Isolation.
+
+> [!IMPORTANT]
+> Plugin 4.0 replaced root-driven aggregation with explicit membership. Applying the plugin only to the root project no
+> longer generates SBOMs for subprojects or includes them in the Aggregate SBOM. See the
+> [migration guide](docs/migrating-to-4.0.md).
 
 > [!NOTE]
 > This README documents the code on the current branch. For an installed release, use the README from that release's
@@ -25,10 +30,13 @@ up-to-date checks, and the build cache.
 - [Requirements](#requirements)
 - [Quick start](#quick-start)
 - [Choose an SBOM](#choose-an-sbom)
-- [Configure the tasks](#configure-the-tasks)
-  - [Configure every Direct SBOM](#configure-every-direct-sbom)
-  - [Select configurations](#select-configurations)
+- [Aggregate a multi-project build](#aggregate-a-multi-project-build)
+  - [Declare Contributing Projects](#declare-contributing-projects)
   - [Exclude a project from aggregation](#exclude-a-project-from-aggregation)
+  - [Project Isolation](#project-isolation)
+- [Configure the tasks](#configure-the-tasks)
+  - [Configure Direct SBOMs in a multi-project build](#configure-direct-sboms-in-a-multi-project-build)
+  - [Select configurations](#select-configurations)
   - [Configure output files](#configure-output-files)
   - [Add a CI build reference](#add-a-ci-build-reference)
 - [Configuration reference](#configuration-reference)
@@ -37,12 +45,13 @@ up-to-date checks, and the build cache.
   - [Apply the plugin from an initialization script](#apply-the-plugin-from-an-initialization-script)
 - [Using SBOMs with SLSA provenance](#using-sboms-with-slsa-provenance)
 - [Compatibility history](#compatibility-history)
+- [Migrating from 3.x](docs/migrating-to-4.0.md)
 - [Community and contributing](#community-and-contributing)
 - [License](#license)
 
 ## Requirements
 
-| Requirement | Plugin 3.x |
+| Requirement | Plugin 4.x |
 |-------------|------------|
 | Gradle | 8.4 or newer |
 | Build JVM | Java 8 or newer; support for versions before Java 17 is deprecated |
@@ -55,13 +64,13 @@ on Java 8, 11, 17, 21, and 25.
 
 ## Quick start
 
-Apply the plugin to the root project. The version shown here matches the version declared by this branch.
+Apply the plugin to the project. The version shown here matches the version declared by this branch.
 
 **Kotlin DSL (`build.gradle.kts`):**
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.5.1"
+    id("org.cyclonedx.bom") version "4.0.0"
 }
 ```
 
@@ -69,39 +78,61 @@ plugins {
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '3.5.1'
+    id 'org.cyclonedx.bom' version '4.0.0'
 }
 ```
 
-Generate the Aggregate SBOM:
+Generate the project's Direct SBOM:
+
+```shell
+./gradlew cyclonedxDirectBom
+```
+
+With the default configuration, the outputs are:
+
+```text
+build/reports/cyclonedx-direct/bom.json
+build/reports/cyclonedx-direct/bom.xml
+```
+
+To produce an Aggregate SBOM, declare which projects it contains. A single-project build declares itself:
+
+**Kotlin DSL:**
+
+```kotlin
+dependencies {
+    cyclonedxAggregation(project(":"))
+}
+```
+
+**Groovy DSL:**
+
+```groovy
+dependencies {
+    cyclonedxAggregation project(':')
+}
+```
 
 ```shell
 ./gradlew cyclonedxBom
 ```
 
-The task also generates the Direct SBOMs it consumes. With the default configuration, the outputs are:
-
-```text
-build/reports/cyclonedx/bom.json          # Aggregate SBOM
-build/reports/cyclonedx/bom.xml
-build/reports/cyclonedx-direct/bom.json   # Root project's Direct SBOM
-build/reports/cyclonedx-direct/bom.xml
-<subproject>/build/reports/cyclonedx-direct/bom.json
-<subproject>/build/reports/cyclonedx-direct/bom.xml
-```
+The Aggregate SBOM is written to `build/reports/cyclonedx/bom.{json,xml}`. Multi-project builds are covered in
+[Aggregate a multi-project build](#aggregate-a-multi-project-build).
 
 ## Choose an SBOM
 
 | Task | Use it when | Default output |
 |------|-------------|----------------|
-| `cyclonedxBom` | You need one Aggregate SBOM for the build. This is the recommended starting point. | `build/reports/cyclonedx/bom.{json,xml}` |
-| `cyclonedxDirectBom` | You need the Direct SBOM for each project or for one specific project. | `<project>/build/reports/cyclonedx-direct/bom.{json,xml}` |
+| `cyclonedxDirectBom` | You need the SBOM of one project, for example to publish or attest with that project's artifact. | `<project>/build/reports/cyclonedx-direct/bom.{json,xml}` |
+| `cyclonedxBom` | You need one SBOM combining several projects, for example for a distribution assembled from them. | `<project>/build/reports/cyclonedx/bom.{json,xml}` |
 
-In plugin 3.x, applying the plugin to a project registers `cyclonedxDirectBom` on that project and its subprojects.
-It registers `cyclonedxBom` only on the project where the plugin is applied. Applying the plugin to the root project
-therefore makes the Aggregate SBOM cover the root project and all contributing subprojects.
+Applying the plugin to a project registers both tasks on that project, and on that project only. `cyclonedxBom`
+aggregates exactly the projects declared on the same project's `cyclonedxAggregation` configuration. When none are
+declared it has nothing to aggregate and is skipped, so a project can apply the plugin purely to contribute its Direct
+SBOM.
 
-Generate every Direct SBOM without creating the Aggregate SBOM:
+Generate every Direct SBOM of the build:
 
 ```shell
 ./gradlew cyclonedxDirectBom
@@ -113,15 +144,105 @@ Generate one subproject's Direct SBOM:
 ./gradlew :subproject:cyclonedxDirectBom
 ```
 
-An Aggregate SBOM is composed from the Direct SBOMs of projects whose `cyclonedxDirectBom` tasks are enabled. If an
-expected Direct SBOM is missing, aggregation fails instead of silently producing an incomplete document.
+## Aggregate a multi-project build
+
+### Declare Contributing Projects
+
+Apply the plugin to every project whose Direct SBOM belongs to the Aggregate SBOM, and to the Aggregating Project that
+produces it. Then declare the members on the Aggregating Project's `cyclonedxAggregation` configuration, in the same way
+as Gradle's `jacocoAggregation` and `testReportAggregation`.
+
+In `app-a/build.gradle.kts` and `app-b/build.gradle.kts`:
+
+```kotlin
+plugins {
+    id("org.cyclonedx.bom") version "4.0.0"
+}
+```
+
+In the Aggregating Project's `build.gradle.kts`:
+
+```kotlin
+plugins {
+    id("org.cyclonedx.bom") version "4.0.0"
+}
+
+dependencies {
+    cyclonedxAggregation(project(":app-a"))
+    cyclonedxAggregation(project(":app-b"))
+}
+```
+
+Or, in Groovy DSL:
+
+```groovy
+dependencies {
+    cyclonedxAggregation project(':app-a')
+    cyclonedxAggregation project(':app-b')
+}
+```
+
+Run `./gradlew :cyclonedxBom`. Gradle builds each member's Direct SBOM first. The Aggregate SBOM contains every
+declared member with its components and relationships, plus a dependency from the Aggregate SBOM's main component to
+each member's main component. The leading `:` runs only the root's aggregation; an unqualified `./gradlew cyclonedxBom`
+also runs, and skips, the task in every project that declares no members.
+
+Membership is explicit only:
+
+- Nothing is discovered. A project that is not declared is not in the Aggregate SBOM, even if it applies the plugin.
+- The Aggregating Project's own Direct SBOM, with the dependencies declared in its build script, is included only when
+  it declares itself with `cyclonedxAggregation(project(":"))`, or with its own path when it is not the root.
+- `cyclonedxAggregation` accepts only project dependencies. A module dependency fails the build.
+
+Rather than leaving a declared member out of the document, `cyclonedxBom` fails when that member:
+
+- does not apply the plugin, so it has no `cyclonedxDirectBom` variant;
+- has a disabled `cyclonedxDirectBom` task, or unsets both outputs, so it publishes no Direct SBOM;
+- has no Direct SBOM on disk because the producing task was skipped at execution time, for example by `onlyIf`; or
+- has a Direct SBOM that cannot be parsed.
+
+Any project can be an Aggregating Project, and several can coexist, for example one Aggregate SBOM per distribution.
+
+### Exclude a project from aggregation
+
+Remove its `cyclonedxAggregation` declaration. Disabling a declared member's `cyclonedxDirectBom` task does not exclude
+it: the member then publishes no Direct SBOM and `cyclonedxBom` fails, even when a file from an earlier build is still
+on disk.
+
+To also stop generating a project's Direct SBOM, disable the task in that project once nothing declares it:
+
+**Kotlin DSL:**
+
+```kotlin
+tasks.cyclonedxDirectBom {
+    enabled = false
+}
+```
+
+**Groovy DSL:**
+
+```groovy
+tasks.cyclonedxDirectBom {
+    enabled = false
+}
+```
+
+### Project Isolation
+
+The per-project setup above is compatible with
+[Project Isolation](https://docs.gradle.org/current/userguide/isolated_projects.html): each project configures only
+itself, and the Aggregate SBOM consumes members through variant-aware dependency resolution. It is tested with
+`-Dorg.gradle.unsafe.isolated-projects=true` on Gradle 8.11 and newer. Project Isolation is an incubating Gradle feature.
+
+Anything that configures other projects from one build script, such as `allprojects`, `subprojects`, or the whole-tree
+[initialization script](#apply-the-plugin-from-an-initialization-script), requires Project Isolation to be disabled.
 
 ## Configure the tasks
 
 Configuration belongs directly to `cyclonedxDirectBom` and `cyclonedxBom`; the plugin does not add an extension.
-Configure a Direct SBOM in the project it describes, and configure the Aggregate SBOM in the project where the plugin
-is applied. Values are not copied between the tasks. For example, set `schemaVersion` on both when Direct and Aggregate
-SBOMs should use the same non-default schema.
+Configure a Direct SBOM in the project it describes, and configure an Aggregate SBOM in its Aggregating Project. Values
+are not copied between the tasks. For example, set `schemaVersion` on both when Direct and Aggregate SBOMs should use
+the same non-default schema.
 
 ### Configure Direct SBOMs in a multi-project build
 
@@ -151,35 +272,10 @@ tasks.named('cyclonedxDirectBom', CyclonedxDirectTask) {
 }
 ```
 
-When many projects share settings, put this configuration in a
+When many projects share settings, put the plugin and this configuration in a
 [convention plugin](https://docs.gradle.org/current/userguide/implementing_gradle_plugins_convention.html) and apply
-it explicitly to those projects. This avoids the cross-project coupling created by `allprojects` and `subprojects`.
-
-In the current 3.x plugin, `allprojects` remains available as a concise compatibility shortcut because applying the
-plugin to the root project registers a `cyclonedxDirectBom` task in every project:
-
-**Kotlin DSL:**
-
-```kotlin
-allprojects {
-    tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
-        includeLicenseText = true
-    }
-}
-```
-
-**Groovy DSL:**
-
-```groovy
-allprojects {
-    tasks.named('cyclonedxDirectBom', CyclonedxDirectTask) {
-        includeLicenseText = true
-    }
-}
-```
-
-This shortcut is not compatible with Gradle's Isolated Projects model. Configure the Aggregate SBOM separately
-because it exists only in the project where the plugin was applied.
+it to those projects. Unlike `allprojects` and `subprojects`, a convention plugin keeps each project's configuration
+local to it and remains compatible with Project Isolation.
 
 ### Select configurations
 
@@ -214,43 +310,20 @@ tasks.cyclonedxDirectBom {
 
 Set `testConfigs` to an empty list when no configuration should be classified as a Test Configuration.
 
-### Exclude a project from aggregation
-
-Disable its Direct SBOM task in that project's build script. For example, in `test-utils/build.gradle.kts`:
-
-```kotlin
-tasks.cyclonedxDirectBom {
-    enabled = false
-}
-```
-
-Or in `test-utils/build.gradle`:
-
-```groovy
-tasks.cyclonedxDirectBom {
-    enabled = false
-}
-```
-
-Use `enabled = false` rather than an execution-time condition such as `onlyIf`. A task skipped only at execution time
-is still an expected producer, so `cyclonedxBom` fails when its output is missing.
-
 ### Configure output files
 
 Both tasks write JSON and XML by default. Assign a different file to move or rename an output. Clear an output's
 convention to disable that format. The explicit `RegularFile` cast keeps the example compatible with Gradle 8.4.
+Configure each project's tasks in that project, or in a convention plugin it applies.
 
 **Kotlin DSL:**
 
 ```kotlin
-import org.cyclonedx.gradle.CyclonedxDirectTask
 import org.gradle.api.file.RegularFile
 
-allprojects {
-    tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
-        jsonOutput = layout.buildDirectory.file("reports/sbom/${project.name}-bom.json")
-        xmlOutput.convention(null as RegularFile?)
-    }
+tasks.cyclonedxDirectBom {
+    jsonOutput = layout.buildDirectory.file("reports/sbom/${project.name}-bom.json")
+    xmlOutput.convention(null as RegularFile?)
 }
 
 tasks.cyclonedxBom {
@@ -262,14 +335,11 @@ tasks.cyclonedxBom {
 **Groovy DSL:**
 
 ```groovy
-import org.cyclonedx.gradle.CyclonedxDirectTask
 import org.gradle.api.file.RegularFile
 
-allprojects {
-    tasks.named('cyclonedxDirectBom', CyclonedxDirectTask) {
-        jsonOutput = layout.buildDirectory.file("reports/sbom/${project.name}-bom.json")
-        xmlOutput.convention((RegularFile) null)
-    }
+tasks.cyclonedxDirectBom {
+    jsonOutput = layout.buildDirectory.file("reports/sbom/${project.name}-bom.json")
+    xmlOutput.convention((RegularFile) null)
 }
 
 tasks.cyclonedxBom {
@@ -277,6 +347,9 @@ tasks.cyclonedxBom {
     xmlOutput.convention((RegularFile) null)
 }
 ```
+
+A member that disables one format still contributes the other. A member that disables both publishes no Direct SBOM,
+so declaring it fails aggregation.
 
 ### Add a CI build reference
 
@@ -437,8 +510,14 @@ describe the Aggregate SBOM's main component or metadata.
 
 ### Apply the plugin from an initialization script
 
-An initialization script can generate an SBOM without changing a build's files. This is useful in CI or for a build
-you do not own.
+An initialization script can generate SBOMs without changing a build's files. This is useful in CI or for a build you
+do not own. The following script restores the zero-wiring, whole-tree aggregation of plugin 3.x: it applies the plugin
+to every project and declares every project, including the root, as a member of the root's Aggregate SBOM.
+
+> [!WARNING]
+> This script configures every project from the root, which is cross-project configuration. It works only with
+> [Project Isolation](#project-isolation) disabled. With Project Isolation enabled, apply the plugin and declare
+> members in each build script instead.
 
 **Kotlin DSL (`init.gradle.kts`):**
 
@@ -450,19 +529,23 @@ initscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath("org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.5.1")
+        classpath("org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:4.0.0")
     }
 }
 
 rootProject {
-    apply<CyclonedxPlugin>()
+    val aggregator = this
+    allprojects {
+        apply<CyclonedxPlugin>()
+        aggregator.dependencies.add("cyclonedxAggregation", aggregator.dependencies.project(mapOf("path" to path)))
+    }
 }
 ```
 
 Run:
 
 ```shell
-./gradlew cyclonedxBom --init-script init.gradle.kts
+./gradlew :cyclonedxBom --init-script init.gradle.kts
 ```
 
 **Groovy DSL (`init.gradle`):**
@@ -475,20 +558,26 @@ initscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath 'org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.5.1'
+        classpath 'org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:4.0.0'
     }
 }
 
-rootProject {
-    apply plugin: CyclonedxPlugin
+rootProject { aggregator ->
+    aggregator.allprojects { member ->
+        member.apply plugin: CyclonedxPlugin
+        aggregator.dependencies.add('cyclonedxAggregation', aggregator.dependencies.project(path: member.path))
+    }
 }
 ```
 
 Run:
 
 ```shell
-./gradlew cyclonedxBom --init-script init.gradle
+./gradlew :cyclonedxBom --init-script init.gradle
 ```
+
+`allprojects` visits the root first, so the root applies the plugin before any member is declared on it. To leave a
+project out, skip it in the `allprojects` block instead of disabling its task.
 
 ## Using SBOMs with SLSA provenance
 
@@ -511,7 +600,7 @@ import org.cyclonedx.gradle.CyclonedxDirectTask
 import org.gradle.api.publish.maven.MavenPublication
 
 plugins {
-    id("org.cyclonedx.bom") version "3.5.1"
+    id("org.cyclonedx.bom") version "4.0.0"
     id("maven-publish")
     id("java")
 }
@@ -623,6 +712,7 @@ and [`gh attestation verify`](https://cli.github.com/manual/gh_attestation_verif
 
 | Plugin version | Gradle version |
 |----------------|----------------|
+| 4.x | 8.4 or newer; Project Isolation tested on 8.11 or newer |
 | 3.x | 8.4 or newer |
 | 2.x | 8.0 or newer |
 | 1.x | Earlier than 8.0 |
@@ -634,6 +724,7 @@ Gradle version and downstream CycloneDX consumer in your environment.
 
 | Plugin version | Newest CycloneDX schema | Formats |
 |----------------|---------------------------|---------|
+| 4.x | 1.7 opt-in; 1.6 default | XML and JSON |
 | 3.x | 1.7 opt-in; 1.6 default | XML and JSON |
 | 2.x | 1.6 | XML and JSON |
 | 1.10.x | 1.6 | XML and JSON |

@@ -130,6 +130,7 @@ class ImplicitDependencySpec extends Specification {
             repositories {
                 mavenCentral()
             }
+            dependencies { cyclonedxAggregation project(":plugin-sub") }
             group = 'com.example'
             version = '1.0.0'
         """

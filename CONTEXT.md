@@ -13,8 +13,16 @@ An SBOM that combines the **Direct SBOMs** of its **Contributing Projects** unde
 _Avoid_: Fat BOM, merged report
 
 **Contributing Project**:
-A Gradle project whose **Direct SBOM** belongs to a particular **Aggregate SBOM**.
-_Avoid_: Every subproject, discovered project
+A Gradle project whose **Direct SBOM** belongs to a particular **Aggregate SBOM** because the **Aggregating Project**
+declared it on its `cyclonedxAggregation` configuration. Membership is never discovered or implied, including for the
+**Aggregating Project** itself, per [ADR 0011](docs/adr/0011-aggregate-only-explicitly-declared-members.md).
+_Avoid_: Every subproject, discovered project, member (unqualified)
+
+**Aggregating Project**:
+The Gradle project whose `cyclonedxBom` task produces a particular **Aggregate SBOM** and which declares that
+document's **Contributing Projects**. It supplies the Aggregate SBOM's main component, and contributes its own
+**Direct SBOM** only when it declares itself.
+_Avoid_: Root project, aggregator root
 
 **Build Environment Dependency**:
 A dependency of the build logic rather than of the software being described. It is excluded from a **Direct SBOM**
@@ -95,7 +103,12 @@ _Avoid_: Test dependency, test scope (unqualified), test source set
 
 > **Developer:** Does every project in the build belong to the Aggregate SBOM?
 >
-> **Domain expert:** Only a Contributing Project does. Its Direct SBOM is the document consumed during aggregation.
+> **Domain expert:** Only a Contributing Project does, and only because the Aggregating Project declared it. Its
+> Direct SBOM is the document consumed during aggregation.
+>
+> **Developer:** Is the Aggregating Project's own Direct SBOM included automatically?
+>
+> **Domain expert:** No. It is a Contributing Project only when it declares itself.
 >
 > **Developer:** Are build-script libraries included in that Direct SBOM by default?
 >

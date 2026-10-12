@@ -23,3 +23,7 @@ wrapper {
     gradleVersion = '9.0'
     distributionType = 'BIN'
 }
+
+dependencies {
+    cyclonedxAggregation project(':')
+}
