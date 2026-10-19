@@ -37,6 +37,7 @@ public class SbomGraph implements Serializable {
     private final Map<SbomComponentId, SbomComponent> graph;
     private final SbomComponent rootComponent;
     private final Set<File> pomFiles;
+    private final UnresolvedDependencies unresolvedDependencies;
 
     public SbomGraph(final Map<SbomComponentId, SbomComponent> graph, final SbomComponent rootComponent) {
         this(graph, rootComponent, Collections.emptySet());
@@ -46,9 +47,18 @@ public class SbomGraph implements Serializable {
             final Map<SbomComponentId, SbomComponent> graph,
             final SbomComponent rootComponent,
             final Set<File> pomFiles) {
+        this(graph, rootComponent, pomFiles, new UnresolvedDependencies());
+    }
+
+    public SbomGraph(
+            final Map<SbomComponentId, SbomComponent> graph,
+            final SbomComponent rootComponent,
+            final Set<File> pomFiles,
+            final UnresolvedDependencies unresolvedDependencies) {
         this.graph = graph;
         this.rootComponent = rootComponent;
         this.pomFiles = Collections.unmodifiableSet(pomFiles);
+        this.unresolvedDependencies = unresolvedDependencies;
     }
 
     public Map<SbomComponentId, SbomComponent> getGraph() {
@@ -66,6 +76,15 @@ public class SbomGraph implements Serializable {
      */
     public Set<File> getPomFiles() {
         return pomFiles;
+    }
+
+    /**
+     * Every dependency or artifact of the scanned configurations that Gradle could not resolve, which this graph
+     * therefore cannot describe: the component is absent, or present without its artifact. Always collected, so the
+     * task can fail on them when configured to.
+     */
+    public UnresolvedDependencies getUnresolvedDependencies() {
+        return unresolvedDependencies;
     }
 
     /**

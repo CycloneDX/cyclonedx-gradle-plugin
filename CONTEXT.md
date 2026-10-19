@@ -29,11 +29,17 @@ _Avoid_: Dependency resolution
 **Unresolved Metadata**:
 A component whose **Metadata Enrichment** could not be performed, because the repositories returned no usable POM, the
 POM could not be read, or the effective model could not be completed. Distinct from a component that resolves and
-declares nothing, which the document would otherwise present identically. Recorded on the component, which still
-reports whatever its own POM declared, since Maven replaces the inherited values instead of merging into them; which input broke the
-effective model is not reported by Maven, so the parent is named only where the reported failure identifies it, and
-every other failure is recorded as an incomplete model.
-_Avoid_: Missing licenses, unresolved dependency
+declares nothing, which the document would otherwise present identically, and from an **Unresolved Dependency**.
+Recorded on the component, which still reports whatever its own POM declared, since Maven replaces the inherited values
+instead of merging into them; which input broke the effective model is not reported by Maven, so the parent is named
+only where the reported failure identifies it, and every other failure is recorded as an incomplete model.
+_Avoid_: Missing licenses
+
+**Unresolved Dependency**:
+A dependency in a scanned configuration whose module or artifact Gradle could not resolve, so the **Direct SBOM**
+either omits the component or lists it without its artifact. Distinct from **Unresolved Metadata**, where the module
+and artifact resolved and only the enrichment failed.
+_Avoid_: Resolution failure, missing dependency, incomplete SBOM
 
 **SBOM Evidence**:
 The files read while producing a **Direct SBOM**: the artifacts of the resolved dependency graph and every POM read for

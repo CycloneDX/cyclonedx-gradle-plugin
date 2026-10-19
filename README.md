@@ -28,6 +28,7 @@ up-to-date checks, and the build cache.
 - [Configure the tasks](#configure-the-tasks)
   - [Configure every Direct SBOM](#configure-every-direct-sbom)
   - [Select configurations](#select-configurations)
+  - [Fail on unresolved dependencies](#fail-on-unresolved-dependencies)
   - [Exclude a project from aggregation](#exclude-a-project-from-aggregation)
   - [Configure output files](#configure-output-files)
   - [Add a CI build reference](#add-a-ci-build-reference)
@@ -214,6 +215,46 @@ tasks.cyclonedxDirectBom {
 
 Set `testConfigs` to an empty list when no configuration should be classified as a Test Configuration.
 
+### Fail on unresolved dependencies
+
+A Direct SBOM is produced leniently. A dependency Gradle could not resolve is absent from the document, and a module
+whose artifact could not be fetched is listed as a `pom` component without hashes; each is logged as a warning
+whenever the task runs. In a full build the compile task fails on the same dependency first; in a job where the SBOM
+task is the only consumer of a configuration, the build is green and the document is wrong. Set
+`failOnUnresolvedDependencies` to make the task fail instead, naming every dependency and artifact that did not
+resolve with Gradle's message, the reason it reported and the configurations it occurred in.
+
+**Kotlin DSL:**
+
+```kotlin
+tasks.cyclonedxDirectBom {
+    failOnUnresolvedDependencies = true
+}
+```
+
+**Groovy DSL:**
+
+```groovy
+tasks.cyclonedxDirectBom {
+    failOnUnresolvedDependencies = true
+}
+```
+
+The property belongs to each Direct SBOM task. In a multi-project build set it in every project, as described in
+[Configure Direct SBOMs in a multi-project build](#configure-direct-sboms-in-a-multi-project-build); set on the root
+project alone, a subproject whose dependency stops resolving stays lenient and the Aggregate SBOM is built from its
+incomplete document.
+
+Three things to know. A component whose POM is missing or unreadable is not an unresolved dependency: it is reported
+on the component with `cdx:maven:package:metadata-unresolved` and never fails the task, and a configuration that is
+not meant to resolve belongs in `skipConfigs`. Whichever way a run of `cyclonedxDirectBom` ends, it deletes the
+Direct SBOM of an earlier run first, so a failed task leaves no stale document; an Aggregate SBOM of an earlier run
+is not touched, because `cyclonedxBom` does not run when a Direct SBOM failed, so publish SBOMs from successful
+builds only. The configuration cache replays the resolution it stored, a failure as much as a healthy result after a
+repository lost a module, and Gradle remembers a missing artifact in its dependency cache; run with
+`--refresh-dependencies` to make either notice a change. The reasoning behind these choices is in
+[ADR 0011](docs/adr/0011-let-a-build-opt-into-failing-on-unresolved-dependencies.md).
+
 ### Exclude a project from aggregation
 
 Disable its Direct SBOM task in that project's build script. For example, in `test-utils/build.gradle.kts`:
@@ -336,6 +377,7 @@ Groovy.
 | `testConfigs` | `List<String>` | `["^test.*"]` | Full-match regular expressions that classify Test Configurations for `cdx:maven:package:test`. Empty means no configuration is a Test Configuration. |
 | `includeMetadataResolution` | `Boolean` | `true` | Resolve additional dependency metadata such as descriptions, publishers, external references, and licenses. |
 | `includeBuildEnvironment` | `Boolean` | `false` | Also scan resolvable buildscript configurations. The include and skip patterns apply to them too. |
+| `failOnUnresolvedDependencies` | `Boolean` | `false` | Fail the task when a dependency or artifact of a scanned configuration did not resolve, instead of writing a document that omits it. Unresolved metadata never fails the task. |
 
 `cyclonedxBom` has no additional user-configurable properties.
 
