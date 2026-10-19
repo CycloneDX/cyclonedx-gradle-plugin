@@ -45,7 +45,6 @@ import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.result.DependencyResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
-import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.jspecify.annotations.Nullable;
@@ -119,15 +118,8 @@ class DependencyGraphTraverser {
                         dependencyNode.inScopeConfiguration(projectName, configName);
                         graph.get(graphNode).add(dependencyNode);
                         queue.add(dependencyNode);
-                    } else if (dep instanceof UnresolvedDependencyResult) {
-                        final UnresolvedDependencyResult unresolved = (UnresolvedDependencyResult) dep;
-                        // The component never enters the graph, so this line is the only trace it leaves
-                        LOGGER.warn(
-                                "{} Unable to resolve artifact {}, it is absent from the SBOM, because {}",
-                                LOG_PREFIX,
-                                unresolved.getAttempted().getDisplayName(),
-                                unresolved.getFailure().toString());
                     }
+                    // An unresolved dependency never enters the graph; the lenient artifact view reports it
                 }
             }
         }

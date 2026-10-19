@@ -113,29 +113,272 @@ class UnresolvedMetadataSpec extends Specification {
         and: "the component is missing from the document, and the log is the only place that says so"
         Bom bom = parseDirectBom(testDir)
         bom.components == null || bom.components.every { it.name != 'orphanpom' }
-        result.output.contains("it is absent from the SBOM")
+        result.output.count("The SBOM cannot describe a dependency of compileClasspath, runtimeClasspath, " +
+            "testCompileClasspath, testRuntimeClasspath: Could not resolve com.test:orphanpom:1.0.0.") == 1
 
         where:
         javaVersion = JavaVersion.current()
+    }
+
+    def "with failOnUnresolvedDependencies, a dependency that did not resolve fails the build and is named once"() {
+        given: "default metadata sources, so a component with no pom in the repository cannot be resolved at all"
+        File testDir = projectReadingMetadata('fail-on-unresolved-module', """
+                implementation("com.test:jaronly:1.0.0")""", "failOnUnresolvedDependencies = true")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .withPluginClasspath()
+            .buildAndFail()
+
+        then: "the task fails, not the configuration of the build"
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.FAILED
+
+        and: "one failure names the module once, with every configuration it failed in"
+        String failure = whatWentWrong(result.output)
+        failure.contains("these dependencies did not resolve:")
+        failure.count("- Could not find com.test:jaronly:1.0.0.") == 1
+        failure.contains("(compileClasspath, runtimeClasspath, testCompileClasspath, testRuntimeClasspath)")
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "an artifact that did not resolve leaves a component without its artifact, and the log says so"() {
+        given: "default metadata sources, and a component whose pom resolves but whose jar is not in the repository"
+        File testDir = projectReadingMetadata('unresolved-artifact', """
+                implementation("com.test:nojar:1.0.0")""")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+
+        and: "the component is listed as a pom without hashes, since no artifact was resolved for it"
+        Component nojar = component(parseDirectBom(testDir), 'nojar')
+        nojar.purl.endsWith('?type=pom')
+        nojar.hashes == null || nojar.hashes.isEmpty()
+
+        and: "the log names the failure once, with the configurations it occurred in"
+        result.output.count("The SBOM cannot describe a dependency of compileClasspath, runtimeClasspath, " +
+            "testCompileClasspath, testRuntimeClasspath: Could not find nojar-1.0.0.jar (com.test:nojar:1.0.0).") == 1
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "the warning is logged whenever the task runs, from a reused configuration cache entry included"() {
+        given: "a build whose jar did not resolve, run once so that its configuration is cached"
+        File testDir = projectReadingMetadata('unresolved-artifact-cached', """
+                implementation("com.test:nojar:1.0.0")""")
+        def first = runner(testDir).build()
+        assert first.output.contains("The SBOM cannot describe a dependency of")
+        new File(testDir, "build/reports/cyclonedx-direct").deleteDir()
+
+        when: "the task runs again from the cached configuration"
+        def result = runner(testDir).build()
+
+        then:
+        result.output.contains("Reusing configuration cache.")
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+
+        and: "the warning is there again, since the document still cannot carry the fact"
+        result.output.count("The SBOM cannot describe a dependency of compileClasspath, runtimeClasspath, " +
+            "testCompileClasspath, testRuntimeClasspath: Could not find nojar-1.0.0.jar (com.test:nojar:1.0.0).") == 1
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "with failOnUnresolvedDependencies, a dependency that stops resolving fails a build that was up to date"() {
+        given: "a build that succeeded, with its documents in place"
+        File testDir = projectReadingMetadata('fail-on-unresolved-later', """
+                implementation("com.test:child-ok:1.0.0")""", "failOnUnresolvedDependencies = true")
+        GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .withPluginClasspath()
+            .build()
+        File jsonBom = new File(testDir, "build/reports/cyclonedx-direct/bom.json")
+        File xmlBom = new File(testDir, "build/reports/cyclonedx-direct/bom.xml")
+        assert jsonBom.exists() && xmlBom.exists()
+
+        and: "a dependency added that cannot be resolved, which changes no artifact or pom the task reads"
+        File buildFile = new File(testDir, "build.gradle")
+        buildFile.text = buildFile.text.replace('implementation("com.test:child-ok:1.0.0")',
+            'implementation("com.test:child-ok:1.0.0")\n                implementation("com.test:jaronly:1.0.0")')
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .withPluginClasspath()
+            .buildAndFail()
+
+        then: "the task runs again instead of being up to date, and fails"
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.FAILED
+        whatWentWrong(result.output).contains("- Could not find com.test:jaronly:1.0.0.")
+
+        and: "the documents of the earlier run are gone"
+        !jsonBom.exists()
+        !xmlBom.exists()
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "with failOnUnresolvedDependencies, the failure carries the reason Gradle reported"() {
+        given: "a repository nothing listens on"
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                maven {
+                    url 'http://127.0.0.1:9/'
+                    allowInsecureProtocol = true
+                }
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            dependencies {
+                implementation("com.test:unreachable:1.0.0")
+            }
+
+            tasks.named('cyclonedxDirectBom') {
+                failOnUnresolvedDependencies = true
+            }""", "rootProject.name = 'fail-on-unreachable-repository'")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .withPluginClasspath()
+            .buildAndFail()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.FAILED
+
+        and: "the reason lives in the causes of Gradle's failure, not in its message, and is listed beneath it"
+        String failure = whatWentWrong(result.output)
+        failure.count("- Could not resolve com.test:unreachable:1.0.0.") == 1
+        failure.contains("Could not GET 'http://127.0.0.1:9/")
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "with failOnUnresolvedDependencies, an artifact that did not resolve fails the build and is named"() {
+        given: "default metadata sources, and a component whose pom resolves but whose jar is not in the repository"
+        File testDir = projectReadingMetadata('fail-on-unresolved-artifact', """
+                implementation("com.test:nojar:1.0.0")""", "failOnUnresolvedDependencies = true")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .withPluginClasspath()
+            .buildAndFail()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.FAILED
+
+        and: "the failure names the jar, which the document would otherwise list as a pom component without hashes"
+        String failure = whatWentWrong(result.output)
+        failure.contains("these dependencies did not resolve:")
+        failure.count("- Could not find nojar-1.0.0.jar (com.test:nojar:1.0.0).") == 1
+        failure.contains("(compileClasspath, runtimeClasspath, testCompileClasspath, testRuntimeClasspath)")
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "with failOnUnresolvedDependencies, a build whose dependencies all resolve is unchanged"() {
+        given:
+        File testDir = projectReadingMetadata('fail-on-unresolved-healthy', """
+                implementation("com.test:child-ok:1.0.0")""", "failOnUnresolvedDependencies = true")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+
+        and:
+        Bom bom = parseDirectBom(testDir)
+        licenseIds(component(bom, 'child-ok')) == ['Apache-2.0']
+        unresolvedMetadata(component(bom, 'child-ok')) == null
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    def "with failOnUnresolvedDependencies, unresolved metadata still does not fail the build"() {
+        given: "a component that resolves from its jar alone, so only its metadata is missing"
+        File testDir = projectResolvingFromJars('fail-on-unresolved-metadata', """
+                implementation("com.test:jaronly:1.0.0")""", "failOnUnresolvedDependencies = true")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .withPluginClasspath()
+            .build()
+
+        then: "a missing pom is not a defect of the build, so it is reported on the component as before"
+        result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
+        unresolvedMetadata(component(parseDirectBom(testDir), 'jaronly')) == 'pom-unresolved'
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
+    private static GradleRunner runner(File testDir) {
+        return GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxDirectBom"))
+            .withPluginClasspath()
+    }
+
+    /**
+     * The failure Gradle reported for the build, without the stack trace TestKit appends after it.
+     */
+    private static String whatWentWrong(String output) {
+        def match = output =~ /(?s)\* What went wrong:(.*?)\* Try:/
+        assert match.find(): "no failure in the build output"
+        return match.group(1)
     }
 
     /**
      * A build resolving from the jars alone, so a component resolves even when its pom is absent or
      * unusable, which is what leaves metadata resolution to fail on its own.
      */
-    private static File projectResolvingFromJars(String rootName, String dependencies) {
-        return project(rootName, dependencies, "metadataSources { artifact() }")
+    private static File projectResolvingFromJars(String rootName, String dependencies, String taskConfiguration = "") {
+        return project(rootName, dependencies, "metadataSources { artifact() }", taskConfiguration)
     }
 
     /**
      * A build resolving as Gradle normally does, where a component whose pom cannot be read does not
      * resolve at all and never reaches the document.
      */
-    private static File projectReadingMetadata(String rootName, String dependencies) {
-        return project(rootName, dependencies, "")
+    private static File projectReadingMetadata(String rootName, String dependencies, String taskConfiguration = "") {
+        return project(rootName, dependencies, "", taskConfiguration)
     }
 
-    private static File project(String rootName, String dependencies, String repositoryOptions) {
+    private static File project(
+        String rootName, String dependencies, String repositoryOptions, String taskConfiguration = "") {
         String localRepoUri = TestUtils.duplicateRepo("broken-metadata")
 
         return TestUtils.createFromString("""
@@ -153,6 +396,10 @@ class UnresolvedMetadataSpec extends Specification {
             version = '1.0.0'
 
             dependencies {$dependencies
+            }
+
+            tasks.named('cyclonedxDirectBom') {
+                $taskConfiguration
             }""", "rootProject.name = '$rootName'")
     }
 
