@@ -19,3 +19,7 @@ dependencies {
 tasks.withType<org.cyclonedx.gradle.BaseCyclonedxTask> {
     includeBomSerialNumber = false
 }
+
+dependencies {
+    cyclonedxAggregation(project(":"))
+}

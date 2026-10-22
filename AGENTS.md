@@ -65,16 +65,20 @@ mechanically, but adherence is unanimous, so a non-conforming subject stands out
 
 ## Architecture
 
-`CyclonedxPlugin.apply` registers, for the project it is applied to and every subproject, a **`cyclonedxDirectBom`**
-task (`CyclonedxDirectTask`, output `build/reports/cyclonedx-direct/`) producing that project's *Direct SBOM*. On the
-applied project only, it registers **`cyclonedxBom`** (`CyclonedxAggregateTask`, output `build/reports/cyclonedx/`),
-which merges those documents into an *Aggregate SBOM*.
+`CyclonedxPlugin.apply` configures only the project it is applied to, never other projects (a prerequisite for
+Project Isolation, see ADR 0011). It registers a **`cyclonedxDirectBom`** task (`CyclonedxDirectTask`, output
+`build/reports/cyclonedx-direct/`) producing that project's *Direct SBOM*, and a **`cyclonedxBom`** task
+(`CyclonedxAggregateTask`, output `build/reports/cyclonedx/`) merging the Direct SBOMs of the project's explicitly
+declared members into an *Aggregate SBOM*.
 
 The two are wired through Gradle configurations rather than direct task coupling: each project exposes a consumable
-`cyclonedxDirectBom` configuration carrying its SBOM as an artifact, and the aggregate project resolves a
-`cyclonedxBom` configuration whose dependencies are added lazily (`addAllLater`) so that projects whose direct task is
-disabled are excluded at resolution time. `CyclonedxAggregateTask` treats a *missing* expected input SBOM as an error
-rather than silently emitting an incomplete document.
+`cyclonedxDirectBom` configuration carrying its SBOM as an artifact (added lazily with `addAllLater`, and empty when
+the direct task is disabled or both outputs are unset), and the aggregating project resolves its
+`cyclonedxAggregation` configuration, on which users declare members with `project(...)`. Membership is explicit
+only: the aggregating project is a member only when it declares itself, and `cyclonedxBom` is skipped when nothing is
+declared. `CyclonedxAggregateTask` fails on a declared member that publishes no artifact, a missing expected input SBOM,
+or an unparseable one rather than silently emitting an incomplete document, and synthesizes the edges from the
+aggregate's main component to each member's.
 
 The generation pipeline inside `CyclonedxDirectTask`:
 

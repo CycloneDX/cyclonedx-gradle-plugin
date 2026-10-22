@@ -24,6 +24,7 @@ class GradleVersionsSpec extends Specification {
             group = 'com.example'
             version = '1.0.0'
             dependencies {
+                cyclonedxAggregation project(':')
                 implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version:'2.8.11'
                 implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version:'1.5.18.RELEASE'
             }""", "rootProject.name = 'hello-world'")
