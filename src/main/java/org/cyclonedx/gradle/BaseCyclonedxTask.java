@@ -177,11 +177,12 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
     public abstract Property<LicenseChoice> getLicenseChoice();
 
     /**
-     * The external reference that will be used in the BOM.
-     * This can be used to link to external resources related to the project.
-     * If not set, it defaults to resolution of git remote URL, if available.
+     * The external references that will be used in the BOM.
+     * These can be used to link to external resources related to the project.
+     * If left unset, a VCS external reference is resolved from CI environment variables or the git remote URL, if available.
+     * Assign an empty list (e.g. {@code externalReferences = []}) to explicitly opt out of that default.
      *
-     * @return the external reference
+     * @return the external references
      */
     @Internal
     public abstract ListProperty<ExternalReference> getExternalReferences();
@@ -212,6 +213,13 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
         getIncludeBuildSystem().convention(true);
         getOrganizationalEntity().convention(getProject().getObjects().property(OrganizationalEntity.class));
         getLicenseChoice().convention(getProject().getObjects().property(LicenseChoice.class));
-        getExternalReferences().convention(getProject().getObjects().listProperty(ExternalReference.class));
+        // The convention is a provider over an unset property, so it is never present by itself: the
+        // property stays unassigned until the user assigns a value (including an empty list), letting
+        // SbomBuilder distinguish an explicit empty list from the default (git-derived VCS reference).
+        getExternalReferences()
+                .convention(getProject()
+                        .getObjects()
+                        .property(ExternalReference.class)
+                        .map(unused -> new java.util.ArrayList<>()));
     }
 }
