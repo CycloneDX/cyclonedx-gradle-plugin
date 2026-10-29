@@ -27,12 +27,14 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.cyclonedx.Version;
 import org.cyclonedx.gradle.model.ComponentComparator;
 import org.cyclonedx.gradle.model.DependencyComparator;
@@ -79,9 +81,54 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         this.version = task.getSchemaVersion().get();
         this.schemaVersion = SchemaVersionMapper.from(this.version);
         this.artifactHashes = new HashMap<>();
-        this.hashAlgorithms = HashUtils.selectAlgorithms(this.version);
+        this.hashAlgorithms = selectHashAlgorithms(task);
         this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get());
         this.task = task;
+    }
+
+    // Narrows the schema/JVM-eligible defaults from HashUtils to the task's hashAlgorithms configuration, when set.
+    // Only CyclonedxDirectTask has hashAlgorithms; CyclonedxAggregateTask uses defaults.
+    private List<Hash.Algorithm> selectHashAlgorithms(final T task) {
+        final List<Hash.Algorithm> defaults = HashUtils.selectAlgorithms(this.version);
+
+        // Only CyclonedxDirectTask supports hash algorithm configuration
+        if (!(task instanceof CyclonedxDirectTask)) {
+            return defaults;
+        }
+
+        final List<String> configured =
+                ((CyclonedxDirectTask) task).getHashAlgorithms().get();
+        if (configured.isEmpty()) {
+            return defaults;
+        }
+
+        // Validate that all configured algorithms are supported by the schema version
+        final Set<Hash.Algorithm> supported = new LinkedHashSet<>(defaults);
+        final Set<Hash.Algorithm> requested = new LinkedHashSet<>();
+
+        for (final String algorithm : configured) {
+            // First validate the algorithm spec is valid
+            final Hash.Algorithm hashAlgorithm;
+            try {
+                hashAlgorithm = Hash.Algorithm.fromSpec(algorithm);
+            } catch (final IllegalArgumentException e) {
+                throw new IllegalArgumentException(String.format("Invalid hash algorithm '%s'", algorithm), e);
+            }
+
+            // Then validate it's supported by the schema version
+            if (!supported.contains(hashAlgorithm)) {
+                throw new IllegalArgumentException(String.format(
+                        "Configured hash algorithm '%s' is not supported by schema version %s. Supported algorithms: %s",
+                        algorithm,
+                        version.getVersionString(),
+                        supported.stream().map(Hash.Algorithm::getSpec).collect(Collectors.toList())));
+            }
+
+            requested.add(hashAlgorithm);
+        }
+
+        // Return configured algorithms in the order they appear in defaults
+        return defaults.stream().filter(requested::contains).collect(Collectors.toList());
     }
 
     /**
