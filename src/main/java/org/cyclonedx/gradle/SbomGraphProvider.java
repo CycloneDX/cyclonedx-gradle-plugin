@@ -34,7 +34,10 @@ import java.util.stream.Stream;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomGraph;
+import org.cyclonedx.gradle.model.UnresolvedDependencies;
 import org.cyclonedx.gradle.utils.DependencyUtils;
+import org.cyclonedx.gradle.utils.FailureDescriptions;
+import org.gradle.api.artifacts.ArtifactCollection;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
@@ -60,6 +63,8 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     private final Iterable<Configuration> buildScriptConfigurations;
     private final CyclonedxDirectTask task;
     private final MavenProjectLookup mavenLookup;
+
+    private final UnresolvedDependencies unresolvedDependencies = new UnresolvedDependencies();
 
     @Nullable private SbomGraph cachedResult;
 
@@ -134,10 +139,11 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                     .withInScopeConfigurations(new HashSet<>())
                     .withLicenses(new ArrayList<>())
                     .build();
-            return new SbomGraph(graph, configurationBasedSbomComponent, mavenLookup.getPomFiles());
+            return new SbomGraph(
+                    graph, configurationBasedSbomComponent, mavenLookup.getPomFiles(), unresolvedDependencies);
         } else {
             if (projectBasedRootComponentId.equals(configurationBasedRootComponentId)) {
-                return new SbomGraph(graph, sbomComponentFromGraph, mavenLookup.getPomFiles());
+                return new SbomGraph(graph, sbomComponentFromGraph, mavenLookup.getPomFiles(), unresolvedDependencies);
             } else {
                 final SbomComponent configurationBasedSbomComponent = new SbomComponent.Builder()
                         .withId(configurationBasedRootComponentId)
@@ -155,7 +161,8 @@ class SbomGraphProvider implements Callable<SbomGraph> {
                         configurationBasedRootComponentId);
                 graph.remove(projectBasedRootComponentId);
                 graph.put(configurationBasedRootComponentId, configurationBasedSbomComponent);
-                return new SbomGraph(graph, configurationBasedSbomComponent, mavenLookup.getPomFiles());
+                return new SbomGraph(
+                        graph, configurationBasedSbomComponent, mavenLookup.getPomFiles(), unresolvedDependencies);
             }
         }
     }
@@ -181,11 +188,16 @@ class SbomGraphProvider implements Callable<SbomGraph> {
     private Map<ComponentIdentifier, File> getArtifacts() {
         return getInScopeConfigurations()
                 .flatMap(config -> {
-                    final ResolvedArtifactResult[] resolvedArtifacts = config.getIncoming()
+                    final ArtifactCollection artifacts = config.getIncoming()
                             .artifactView(DependencyUtils::configureExternalArtifactView)
-                            .getArtifacts()
-                            .getArtifacts()
-                            .toArray(ARTIFACT_TYPE);
+                            .getArtifacts();
+                    // The view is lenient, so this is where every dependency or artifact that did not resolve is
+                    // reported, with the reason in the causes of the failure
+                    for (final Throwable failure : artifacts.getFailures()) {
+                        unresolvedDependencies.record(FailureDescriptions.describe(failure), config.getName());
+                    }
+                    final ResolvedArtifactResult[] resolvedArtifacts =
+                            artifacts.getArtifacts().toArray(ARTIFACT_TYPE);
                     LOGGER.debug(
                             "{} For project {} following artifacts have been resolved: {}",
                             LOG_PREFIX,

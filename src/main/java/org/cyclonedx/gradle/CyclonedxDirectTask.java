@@ -20,6 +20,8 @@ package org.cyclonedx.gradle;
 
 import static org.cyclonedx.gradle.CyclonedxPlugin.LOG_PREFIX;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -29,8 +31,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomGraph;
+import org.cyclonedx.gradle.model.UnresolvedDependencies;
 import org.cyclonedx.gradle.utils.CyclonedxUtils;
 import org.cyclonedx.model.Bom;
+import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.logging.Logger;
@@ -107,6 +111,16 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     public abstract Property<Boolean> getIncludeBuildEnvironment();
 
     /**
+     * Whether a dependency or artifact of a scanned configuration that Gradle could not resolve fails the task,
+     * instead of being left out of the document or listed without its artifact, with a warning. Off by default.
+     * Unresolved metadata never fails the task; it is reported on the component instead. See ADR 0011.
+     *
+     * @return true if the task should fail on a dependency or artifact that did not resolve, false otherwise
+     */
+    @Input
+    public abstract Property<Boolean> getFailOnUnresolvedDependencies();
+
+    /**
      * The resolved dependency files from all in-scope configurations.
      * This is used for up-to-date checking and caching - when dependencies change
      * (new dependency, version change, or dynamic version resolution), the task
@@ -143,7 +157,21 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     @Input
     public abstract MapProperty<String, String> getMetadataEnrichment();
 
+    /**
+     * Every dependency or artifact of the scanned configurations that did not resolve: one entry each, naming its
+     * configurations and the first line of Gradle's description, which names what did not resolve and nothing
+     * machine-specific. Declared as an input because the files the task reads do not change when a module is simply
+     * not there: without it a dependency that stops resolving leaves the task up to date, or served from the build
+     * cache, and the check behind {@link #getFailOnUnresolvedDependencies()} never runs. Empty for a build whose
+     * dependencies all resolve.
+     *
+     * @return one entry per unresolved dependency
+     */
+    @Input
+    public abstract ListProperty<String> getUnresolvedDependencies();
+
     private final Provider<SbomGraph> componentsProvider;
+    private final String projectPath;
 
     public CyclonedxDirectTask() {
         getIncludeConfigs().convention(new ArrayList<>());
@@ -151,6 +179,8 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
         getTestConfigs().convention(new ArrayList<>(Collections.singletonList("^test.*")));
         getIncludeMetadataResolution().convention(true);
         getIncludeBuildEnvironment().convention(false);
+        getFailOnUnresolvedDependencies().convention(false);
+        this.projectPath = getProject().getPath();
         this.componentsProvider = getProject()
                 .getProviders()
                 .provider(new SbomGraphProvider(
@@ -174,10 +204,15 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
                 .collect(Collectors.toSet())));
         getResolvedPoms().from(componentsProvider.map(SbomGraph::getPomFiles));
         getMetadataEnrichment().set(componentsProvider.map(SbomGraph::getMetadataEnrichment));
-        // Both describe what the task reads and writes; a build script that replaced them would reopen the hole
+        getUnresolvedDependencies()
+                .set(componentsProvider.map(graph -> graph.getUnresolvedDependencies().getFailures().stream()
+                        .map(failure -> failure.configurationNames() + ": " + failure.getSummary())
+                        .collect(Collectors.toList())));
+        // All three describe what the task reads and writes; a build script that replaced them would reopen the hole
         // they close for every other machine sharing the build cache
         getResolvedPoms().disallowChanges();
         getMetadataEnrichment().disallowChanges();
+        getUnresolvedDependencies().disallowChanges();
     }
 
     /**
@@ -195,7 +230,33 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     @TaskAction
     public void createBom() {
         logParameters();
-        final Bom bom = new SbomBuilder<>(this).buildBom(componentsProvider.get());
+        final SbomGraph graph = componentsProvider.get();
+        // Gradle removes outputs it does not know about, but keeps those of an earlier run of this task. They are
+        // deleted here first, so that no document of an earlier run outlives this one, whichever way it ends
+        final List<IOException> undeleted = deleteOutputFiles();
+        for (final IOException e : undeleted) {
+            LOGGER.warn("{} Could not delete the output of an earlier run: {}", LOG_PREFIX, e.toString());
+        }
+        final UnresolvedDependencies unresolved = graph.getUnresolvedDependencies();
+        if (getFailOnUnresolvedDependencies().get() && !unresolved.isEmpty()) {
+            final GradleException failure = new GradleException(LOG_PREFIX + " " + unresolved.describe(projectPath));
+            undeleted.forEach(failure::addSuppressed);
+            throw failure;
+        }
+        // The document cannot carry the fact, so the log does, from here rather than from the provider: a reused
+        // configuration cache entry replays the graph without computing it again, and this is what still runs
+        for (final UnresolvedDependencies.Failure failure : unresolved.getFailures()) {
+            final List<String> lines = failure.lines();
+            final StringBuilder text = new StringBuilder("The SBOM cannot describe a dependency of ")
+                    .append(failure.configurationNames())
+                    .append(": ")
+                    .append(lines.get(0));
+            for (int i = 1; i < lines.size(); i++) {
+                text.append("\n  ").append(lines.get(i));
+            }
+            LOGGER.warn("{} {}", LOG_PREFIX, text);
+        }
+        final Bom bom = new SbomBuilder<>(this).buildBom(graph);
         LOGGER.info("{} Writing BOM", LOG_PREFIX);
         if (getJsonOutput().isPresent()) {
             CyclonedxUtils.writeJsonBom(
@@ -213,6 +274,18 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
                 .map(Provider::getOrNull)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    private List<IOException> deleteOutputFiles() {
+        final List<IOException> failures = new ArrayList<>();
+        for (final RegularFile output : getOutputFiles()) {
+            try {
+                Files.deleteIfExists(output.getAsFile().toPath());
+            } catch (final IOException e) {
+                failures.add(e);
+            }
+        }
+        return failures;
     }
 
     private void logParameters() {
@@ -234,6 +307,9 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
             LOGGER.info(
                     "includeBuildEnvironment   : {}",
                     getIncludeBuildEnvironment().get());
+            LOGGER.info(
+                    "failOnUnresolvedDependencies: {}",
+                    getFailOnUnresolvedDependencies().get());
             LOGGER.info("jsonOutput                : {}", getJsonOutput().getOrNull());
             LOGGER.info("xmlOutput                 : {}", getXmlOutput().getOrNull());
             LOGGER.info("componentGroup            : {}", getComponentGroup().get());
