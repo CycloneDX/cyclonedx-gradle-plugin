@@ -26,6 +26,7 @@ class OrganizationalEntityUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -75,6 +76,7 @@ class OrganizationalEntityUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -126,6 +128,7 @@ class OrganizationalEntityUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }

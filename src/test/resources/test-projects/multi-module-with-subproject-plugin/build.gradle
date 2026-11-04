@@ -13,5 +13,8 @@ repositories {
         url 'https://oss.sonatype.org/content/repositories/snapshots'
     }
 }
-
+dependencies {
+    cyclonedxAggregation project(':app-a')
+    cyclonedxAggregation project(':app-b')
+}
 

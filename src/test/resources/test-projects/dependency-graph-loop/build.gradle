@@ -19,3 +19,7 @@ version = '1.0.0'
 dependencies {
     implementation group: 'org.apache.xmlgraphics', name: 'batik-svg-dom', version:'1.7'
 }
+
+dependencies {
+    cyclonedxAggregation project(':')
+}

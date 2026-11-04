@@ -23,6 +23,7 @@ class ExternalReferencesUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -69,6 +70,7 @@ class ExternalReferencesUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -112,6 +114,7 @@ class ExternalReferencesUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -152,6 +155,7 @@ class ExternalReferencesUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -193,6 +197,7 @@ class ExternalReferencesUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -253,6 +258,7 @@ class ExternalReferencesUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -311,6 +317,7 @@ class ExternalReferencesUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -360,6 +367,7 @@ class ExternalReferencesUtilTest extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }

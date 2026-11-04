@@ -51,6 +51,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -122,6 +123,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -165,6 +167,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -208,6 +211,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -252,6 +256,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -298,6 +303,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -341,6 +347,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -385,6 +392,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -429,6 +437,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -469,6 +478,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -511,6 +521,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -661,6 +672,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -702,6 +714,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -743,6 +756,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -788,6 +802,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -840,6 +855,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -1061,6 +1077,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -1103,6 +1120,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -1146,6 +1164,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             repositories {
                 mavenCentral()
             }
@@ -1186,6 +1205,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'java'
                 id 'org.cyclonedx.bom'
             }
+            dependencies { cyclonedxAggregation project(':') }
 
             group = 'com.example'
             version = '0.0.1-SNAPSHOT'
@@ -1276,7 +1296,7 @@ class PluginConfigurationSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
-    def "should skip sub-project when task is disabled"() {
+    def "should skip sub-project that is not declared as a member"() {
         given:
         File testDir = TestUtils.duplicate("multi-module-with-skipped-project")
 
@@ -1290,14 +1310,17 @@ class PluginConfigurationSpec extends Specification {
         then:
         result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
         result.task(":app-a:cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
-        result.task(":app-b:cyclonedxDirectBom").outcome == TaskOutcome.SKIPPED
+        result.task(":app-b:cyclonedxDirectBom") == null
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        result.task(":app-a:cyclonedxBom").outcome == TaskOutcome.SKIPPED
+        result.task(":app-b:cyclonedxBom").outcome == TaskOutcome.SKIPPED
 
         def objectMapper = new ObjectMapper()
-        def rootProjectBomFile = new File(testDir, "build/reports/cyclonedx-direct/bom.json")
-        assert rootProjectBomFile.exists()
-        def rootProjectBom = objectMapper.readValue(rootProjectBomFile, Bom.class)
-        assert rootProjectBom.getComponents().findAll { it.name == 'app-b' }.empty
+        def aggregateBomFile = new File(testDir, "build/reports/cyclonedx/bom.json")
+        assert aggregateBomFile.exists()
+        def aggregateBom = objectMapper.readValue(aggregateBomFile, Bom.class)
+        assert aggregateBom.getComponents().findAll { it.name == 'app-b' }.empty
+        assert !aggregateBom.getComponents().findAll { it.name == 'app-a' }.empty
         def appAProjectBomFile = new File(testDir, "app-a/build/reports/cyclonedx-direct/bom.json")
         assert appAProjectBomFile.exists()
         assert !new File(testDir, "app-b/build/reports/cyclonedx-direct/bom.json").exists()
@@ -1321,7 +1344,9 @@ class PluginConfigurationSpec extends Specification {
         then:
         result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
         result.task(":app-a:cyclonedxBom").outcome == TaskOutcome.SUCCESS
-        result.task(":app-b:cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        result.task(":app-b:cyclonedxBom").outcome == TaskOutcome.SKIPPED
+        new File(testDir, "app-a/build/reports/cyclonedx/bom.json").exists()
+        !new File(testDir, "app-b/build/reports/cyclonedx/bom.json").exists()
 
         where:
         taskName = "cyclonedxBom"
@@ -1396,6 +1421,7 @@ class PluginConfigurationSpec extends Specification {
                 id 'org.cyclonedx.bom'
                 id 'java'
             }
+            dependencies { cyclonedxAggregation project(':') }
             group = 'com.example'
             version = '1.0.0'
 
@@ -1414,7 +1440,10 @@ class PluginConfigurationSpec extends Specification {
         then:
         result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SKIPPED
         result.task(":cyclonedxBom").outcome == TaskOutcome.FAILED
-        result.output.contains("input SBOMs of task ':cyclonedxBom' do not exist")
+        result.output.contains("Aggregate BOM task ':cyclonedxBom' expected Direct BOM files that do not exist")
+        result.output.contains("A Direct BOM can be missing when its producing cyclonedxDirectBom task was skipped")
+        result.output.contains("If this project should not contribute to the Aggregate BOM, remove it from cyclonedxAggregation.")
+        !result.output.contains("`enabled = false`")
 
         where:
         taskName = "cyclonedxBom"
