@@ -170,6 +170,19 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     @Input
     public abstract ListProperty<String> getUnresolvedDependencies();
 
+    /**
+     * The place of every component in the Resolved Dependency Graph, keyed by the component's coordinates: its
+     * project path, the components it depends on and the names of the configurations that contributed it. The
+     * document takes all of these from the graph and from no file, and a project component has no artifact among the
+     * resolved dependencies at all. Without this input a project dependency that changes version or is removed, a
+     * relationship added between two components already present, and a dependency moved to a Test Configuration
+     * would each leave the task up to date. See ADR 0012.
+     *
+     * @return one canonical description per component of the graph
+     */
+    @Input
+    public abstract MapProperty<String, String> getResolvedDependencyGraph();
+
     private final Provider<SbomGraph> componentsProvider;
     private final String projectPath;
 
@@ -208,11 +221,13 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
                 .set(componentsProvider.map(graph -> graph.getUnresolvedDependencies().getFailures().stream()
                         .map(failure -> failure.configurationNames() + ": " + failure.getSummary())
                         .collect(Collectors.toList())));
-        // All three describe what the task reads and writes; a build script that replaced them would reopen the hole
+        getResolvedDependencyGraph().set(componentsProvider.map(SbomGraph::getResolvedDependencyGraph));
+        // These describe what the task reads and writes; a build script that replaced them would reopen the hole
         // they close for every other machine sharing the build cache
         getResolvedPoms().disallowChanges();
         getMetadataEnrichment().disallowChanges();
         getUnresolvedDependencies().disallowChanges();
+        getResolvedDependencyGraph().disallowChanges();
     }
 
     /**
