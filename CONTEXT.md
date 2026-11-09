@@ -41,11 +41,17 @@ either omits the component or lists it without its artifact. Distinct from **Unr
 and artifact resolved and only the enrichment failed.
 _Avoid_: Resolution failure, missing dependency, incomplete SBOM
 
+**Resolved Dependency Graph**:
+The component identities, selected versions and dependency relationships that Gradle resolved for the configurations
+selected for a **Direct SBOM**, together with the configurations that contributed each component. It is the authority
+for which components the document lists and how they relate, per
+[ADR 0001](docs/adr/0001-use-resolved-dependency-graphs-as-sbom-evidence.md).
+_Avoid_: Dependency tree, declared dependencies, SBOM Evidence
+
 **SBOM Evidence**:
-The files read while producing a **Direct SBOM**: the artifacts of the resolved dependency graph and every POM read for
-**Metadata Enrichment**. Distinct from the graph itself, which is the authority for component identity and
-relationships per [ADR 0001](docs/adr/0001-use-resolved-dependency-graphs-as-sbom-evidence.md); the files are where
-artifact hashes and enrichment come from, and a change to any of them can change the document.
+The files read while producing a **Direct SBOM**: the artifacts of the external modules in the **Resolved Dependency
+Graph** and every POM read for **Metadata Enrichment**. Distinct from the **Resolved Dependency Graph** itself; the
+files are where artifact hashes and enrichment come from, and a change to any of them can change the document.
 _Avoid_: Task inputs, resolved dependencies (unqualified), cache key
 
 **SBOM Output Contract**:

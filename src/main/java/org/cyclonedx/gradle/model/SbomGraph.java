@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import org.apache.maven.model.License;
 import org.cyclonedx.model.ExternalReference;
 import org.jspecify.annotations.Nullable;
@@ -107,6 +108,57 @@ public class SbomGraph implements Serializable {
             }
         }
         return enrichment;
+    }
+
+    /**
+     * The place of each component in the Resolved Dependency Graph, as one canonical description per component keyed
+     * by its coordinates: its project path, the components it depends on, each with its own project path, and the
+     * names of the configurations that contributed it. The document takes these from the graph and from no file, a
+     * project component having no
+     * artifact among the inputs at all, so the task declares them as an input beside the files: a document is then
+     * only ever served to a build that resolved the same graph. Every component has an entry, the root component
+     * included when it was built outside the graph. Dependencies and configurations are written in a fixed order and
+     * each of them once, so one graph never has two descriptions, and every value is written with its length in
+     * front, so two graphs never share one.
+     */
+    public Map<String, String> getResolvedDependencyGraph() {
+        final Map<String, String> description = new TreeMap<>();
+        for (final SbomComponent component : graph.values()) {
+            description.put(coordinates(component.getId()), describePlaceInGraph(component));
+        }
+        description.putIfAbsent(coordinates(rootComponent.getId()), describePlaceInGraph(rootComponent));
+        return description;
+    }
+
+    private static String describePlaceInGraph(final SbomComponent component) {
+        final StringBuilder description = new StringBuilder();
+        field(description, "projectPath", component.getId().getGradleProjectPath());
+        final Set<String> dependencies = new TreeSet<>();
+        for (final SbomComponentId dependency : component.getDependencyComponents()) {
+            dependencies.add(reference(dependency));
+        }
+        for (final String dependency : dependencies) {
+            field(description, "dependsOn", dependency);
+        }
+        final Set<String> configurations = new TreeSet<>();
+        for (final ConfigurationScope configuration : component.getInScopeConfigurations()) {
+            configurations.add(configuration.getConfigName());
+        }
+        for (final String configuration : configurations) {
+            field(description, "configuration", configuration);
+        }
+        return description.toString();
+    }
+
+    /**
+     * A component as a dependent refers to it: its key followed by its project path. The key leaves the path out,
+     * so two projects with the same coordinates share one component, yet the reference written into the document
+     * carries the path of the project the dependent resolved to.
+     */
+    private static String reference(final SbomComponentId id) {
+        final StringBuilder reference = new StringBuilder(coordinates(id));
+        part(reference, id.getGradleProjectPath());
+        return reference.toString();
     }
 
     /**
