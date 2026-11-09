@@ -68,6 +68,11 @@ class MavenProjectLookup {
         return new LinkedHashSet<>(pomFiles);
     }
 
+    /** Releases the parsed Maven models once their metadata has been copied into the SBOM graph. */
+    void clearCache() {
+        cache.clear();
+    }
+
     void recordPomFile(final File pomFile) {
         pomFiles.add(pomFile);
     }

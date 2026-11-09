@@ -107,10 +107,15 @@ class SbomGraphProvider implements Callable<SbomGraph> {
         }
 
         LOGGER.info("{} Resolving dependencies for project [{}]", LOG_PREFIX, projectDisplayName);
-        final Map<SbomComponentId, SbomComponent> graph =
-                withPluginClassLoader(() -> traverseProject().reduce(new HashMap<>(), DependencyUtils::mergeGraphs));
-        cachedResult = buildSbomGraph(graph);
-        return cachedResult;
+        try {
+            final Map<SbomComponentId, SbomComponent> graph = withPluginClassLoader(
+                    () -> traverseProject().reduce(new HashMap<>(), DependencyUtils::mergeGraphs));
+            cachedResult = buildSbomGraph(graph);
+            return cachedResult;
+        } finally {
+            // Keep the enriched graph and its POM evidence, not the full Maven models used to build them.
+            mavenLookup.clearCache();
+        }
     }
 
     private SbomGraph buildSbomGraph(final Map<SbomComponentId, SbomComponent> graph) {
