@@ -55,7 +55,9 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
     @TaskAction
     public void aggregate() throws Exception {
         logParameters();
-        final Bom merged = mergeAll(getInputSboms().getFiles());
+        final SbomBuilder<CyclonedxAggregateTask> builder = new SbomBuilder<>(this);
+        final Bom merged = mergeAll(builder, getInputSboms().getFiles());
+        builder.assignSerialNumber(merged);
         LOGGER.info("{} Writing BOM", LOG_PREFIX);
         if (getJsonOutput().isPresent()) {
             CyclonedxUtils.writeJsonBom(
@@ -69,9 +71,10 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
         }
     }
 
-    private Bom mergeAll(final Set<File> files) throws ParseException {
+    private Bom mergeAll(final SbomBuilder<CyclonedxAggregateTask> builder, final Set<File> files)
+            throws ParseException {
         LOGGER.info("{} Received files: {}", LOG_PREFIX, files);
-        final Bom aggregateBom = getRootProjectBom();
+        final Bom aggregateBom = getRootProjectBom(builder);
         final Map<String, Component> componentsByBomRef = new TreeMap<>();
         final Map<String, Set<String>> dependenciesByBomRef = new TreeMap<>();
 
@@ -161,7 +164,7 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
         }
     }
 
-    private Bom getRootProjectBom() {
+    private Bom getRootProjectBom(final SbomBuilder<CyclonedxAggregateTask> builder) {
         final SbomComponent updatedRootComponent = new SbomComponent.Builder()
                 .withId(new SbomComponentId(
                         getComponentGroup().get(),
@@ -170,7 +173,7 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
                         null,
                         getProjectPath.get()))
                 .build();
-        return new SbomBuilder<>(this).buildBom(new SbomGraph(Collections.emptyMap(), updatedRootComponent));
+        return builder.buildBom(new SbomGraph(Collections.emptyMap(), updatedRootComponent));
     }
 
     private void logParameters() {
@@ -183,6 +186,7 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
             LOGGER.info(
                     "includeBomSerialNumber    : {}",
                     getIncludeBomSerialNumber().get());
+            LOGGER.info("timestamp                 : {}", getTimestamp().getOrNull());
             LOGGER.info("jsonOutput                : {}", getJsonOutput().getOrNull());
             LOGGER.info("xmlOutput                 : {}", getXmlOutput().getOrNull());
             LOGGER.info("componentGroup            : {}", getComponentGroup().get());

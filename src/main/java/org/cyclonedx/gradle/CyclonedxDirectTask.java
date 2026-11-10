@@ -271,7 +271,9 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
             }
             LOGGER.warn("{} {}", LOG_PREFIX, text);
         }
-        final Bom bom = new SbomBuilder<>(this).buildBom(graph);
+        final SbomBuilder<CyclonedxDirectTask> builder = new SbomBuilder<>(this);
+        final Bom bom = builder.buildBom(graph);
+        builder.assignSerialNumber(bom);
         LOGGER.info("{} Writing BOM", LOG_PREFIX);
         if (getJsonOutput().isPresent()) {
             CyclonedxUtils.writeJsonBom(
@@ -313,6 +315,7 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
             LOGGER.info(
                     "includeBomSerialNumber    : {}",
                     getIncludeBomSerialNumber().get());
+            LOGGER.info("timestamp                 : {}", getTimestamp().getOrNull());
             LOGGER.info("includeConfigs            : {}", getIncludeConfigs().get());
             LOGGER.info("skipConfigs               : {}", getSkipConfigs().get());
             LOGGER.info("testConfigs               : {}", getTestConfigs().get());
