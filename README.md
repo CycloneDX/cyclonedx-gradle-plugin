@@ -34,6 +34,7 @@ up-to-date checks, and the build cache.
 - [Configuration reference](#configuration-reference)
 - [Advanced recipes](#advanced-recipes)
   - [Set component and organizational metadata](#set-component-and-organizational-metadata)
+  - [Produce reproducible output](#produce-reproducible-output)
   - [Apply the plugin from an initialization script](#apply-the-plugin-from-an-initialization-script)
 - [Using SBOMs with SLSA provenance](#using-sboms-with-slsa-provenance)
 - [Compatibility history](#compatibility-history)
@@ -317,7 +318,8 @@ Groovy.
 | `componentDescription` | `String` | Not set | Description of the document's main component. |
 | `projectType` | `Component.Type` | `LIBRARY` | CycloneDX type of the main component. Kotlin requires an enum value such as `Component.Type.APPLICATION`; Groovy also accepts a type name such as `'application'`. |
 | `schemaVersion` | `Version` | `VERSION_16` | CycloneDX schema used for serialization. Set `Version.VERSION_17` to opt in to CycloneDX 1.7. |
-| `includeBomSerialNumber` | `Boolean` | `true` | Add a generated `urn:uuid:` serial number. |
+| `includeBomSerialNumber` | `Boolean` | `true` | Add a `urn:uuid:` serial number: random, or derived from the document's content when `timestamp` is set. |
+| `timestamp` | `String` | Not set | `metadata.timestamp` as an ISO 8601 date-time with an offset or as seconds since the epoch. Setting it makes the output reproducible; see [Produce reproducible output](#produce-reproducible-output). Not set means the time of generation. |
 | `includeLicenseText` | `Boolean` | `false` | Include complete license text when it can be resolved. |
 | `includeBuildSystem` | `Boolean` | `true` | Add a `BUILD_SYSTEM` external reference when the build URL can be detected. |
 | `buildSystemEnvironmentVariable` | `String` | Not set | Environment-variable name or `${NAME}` template used instead of automatic CI detection. |
@@ -434,6 +436,51 @@ combined with the automatically detected VCS reference when one is available.
 
 The example configures one Direct SBOM. Configure the same metadata properties on `cyclonedxBom` when they should
 describe the Aggregate SBOM's main component or metadata.
+
+### Produce reproducible output
+
+By default every generated SBOM differs from the previous one: `metadata.timestamp` is the time of generation and the
+serial number is a random UUID, so an archive or image that embeds the document changes on every build. Set
+`timestamp` to make the output reproducible. The same dependencies, configuration, environment-derived metadata and
+plugin version then produce the same bytes, and the serial number, when included, is derived from the document's
+content, so the same document always gets the same serial number and a different document a different one.
+
+The value is an ISO 8601 date-time with an offset, such as `2026-01-02T03:04:05Z`, or the seconds since the epoch,
+which is the form of [`SOURCE_DATE_EPOCH`](https://reproducible-builds.org/docs/source-date-epoch/). The example wires
+that variable into every task of the plugin, and falls back to the time of the commit being built when it is not set.
+It also switches off the build-system reference, which on a CI service names the individual run and would otherwise
+change the document on every run.
+
+**Kotlin DSL:**
+
+```kotlin
+val commitTime = providers.exec {
+    commandLine("git", "log", "-1", "--pretty=%ct")
+}.standardOutput.asText.map { it.trim() }
+
+tasks.withType<org.cyclonedx.gradle.BaseCyclonedxTask>().configureEach {
+    timestamp = providers.environmentVariable("SOURCE_DATE_EPOCH").orElse(commitTime)
+    includeBuildSystem = false
+}
+```
+
+**Groovy DSL:**
+
+```groovy
+def commitTime = providers.exec {
+    commandLine 'git', 'log', '-1', '--pretty=%ct'
+}.standardOutput.asText.map { it.trim() }
+
+tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask).configureEach {
+    timestamp = providers.environmentVariable('SOURCE_DATE_EPOCH').orElse(commitTime)
+    includeBuildSystem = false
+}
+```
+
+A value in neither form fails the task. The CycloneDX specification prefers a unique serial number for every generated
+document, even when its content is unchanged, which is why this stays opt-in. Formatting and ordering may change
+between plugin versions, and with them the serial number, so reproducibility holds for one plugin version.
+`dependsOn` lists are sorted by ref whether or not a timestamp is set.
 
 ### Apply the plugin from an initialization script
 

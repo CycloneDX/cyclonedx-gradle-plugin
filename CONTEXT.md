@@ -47,6 +47,12 @@ The public compatibility surface of produced **Direct SBOMs**, **Aggregate SBOMs
 versioned with the plugin according to [ADR 0004](docs/adr/0004-version-the-sbom-output-contract-with-the-plugin.md).
 _Avoid_: Internal output, report format
 
+**Reproducible SBOM**:
+A **Direct SBOM** or **Aggregate SBOM** produced with a supplied timestamp, so that the same **SBOM Evidence**,
+dependency graph, task configuration, environment-derived metadata and plugin version yield the same bytes. Its serial
+number names its content rather than the act of generating it.
+_Avoid_: Deterministic BOM, normalized SBOM, fixed-timestamp BOM
+
 **SBOM Attestation**:
 A signed statement that binds an artifact, identified by a cryptographic digest, to the **Direct SBOM** or **Aggregate
 SBOM** that describes it. The plugin produces the SBOM; a build platform or attestation service binds and signs it.
@@ -88,6 +94,9 @@ _Avoid_: Test dependency, test scope (unqualified), test source set
 - An **SBOM Attestation** must preserve the boundary of the SBOM it binds. A per-project artifact normally uses that
   project's **Direct SBOM**; an **Aggregate SBOM** is appropriate only when the attested artifact represents the same
   set of **Contributing Projects**.
+- A **Reproducible SBOM** keeps its supplied timestamp and a content-derived serial number. The CycloneDX property
+  taxonomy's `cdx:reproducible` demands that time-based and random values be omitted, so the plugin does not write that
+  property; "reproducible" in this context means same inputs, same bytes, not that marker.
 - A SLSA Build level applies to an artifact's build provenance and build platform, not to its SBOM. Say “an artifact
   with SLSA Build provenance and an attested CycloneDX SBOM”; avoid “SLSA-compliant SBOM.”
 
