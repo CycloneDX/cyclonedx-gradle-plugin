@@ -24,8 +24,10 @@ import com.github.packageurl.MalformedPackageURLException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import org.cyclonedx.Format;
 import org.cyclonedx.Version;
 import org.cyclonedx.gradle.model.ComponentComparator;
 import org.cyclonedx.gradle.model.DependencyComparator;
@@ -41,10 +44,12 @@ import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomGraph;
 import org.cyclonedx.gradle.model.SchemaVersion;
 import org.cyclonedx.gradle.model.SchemaVersionMapper;
+import org.cyclonedx.gradle.utils.CyclonedxUtils;
 import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.gradle.utils.EnvironmentUtils;
 import org.cyclonedx.gradle.utils.ExternalReferencesUtil;
 import org.cyclonedx.gradle.utils.HashUtils;
+import org.cyclonedx.gradle.utils.TimestampUtils;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Dependency;
@@ -57,6 +62,7 @@ import org.cyclonedx.model.Property;
 import org.cyclonedx.model.Tool;
 import org.cyclonedx.model.metadata.ToolInformation;
 import org.cyclonedx.util.BomUtils;
+import org.gradle.api.GradleException;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.jspecify.annotations.Nullable;
@@ -74,6 +80,7 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
     private final Version version;
     private final SchemaVersion schemaVersion;
     private final T task;
+    private final @Nullable Date timestamp;
 
     SbomBuilder(final T task) {
         this.version = task.getSchemaVersion().get();
@@ -82,10 +89,15 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         this.hashAlgorithms = HashUtils.selectAlgorithms(this.version);
         this.mavenHelper = new MavenHelper(task.getIncludeLicenseText().get());
         this.task = task;
+        // read up front, so that a bad value fails the task before the graph is resolved or the inputs are parsed
+        this.timestamp = task.getTimestamp().isPresent()
+                ? parseTimestamp(task.getTimestamp().get())
+                : null;
     }
 
     /**
-     * Builds the CycloneDX Bom from the aggregated dependency graph
+     * Builds the CycloneDX Bom from the aggregated dependency graph. The document has no serial number yet: that is
+     * assigned by {@link #assignSerialNumber(Bom)} once the document is complete.
      *
      * @param graph the aggregated dependency graph
      *
@@ -102,17 +114,41 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         });
 
         final Bom bom = new Bom();
-        if (task.getIncludeBomSerialNumber().get()) {
-            bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
-        }
         bom.setMetadata(buildMetadata(graph.getRootComponent()));
         bom.setComponents(new ArrayList<>(components));
         bom.setDependencies(new ArrayList<>(dependencies));
         return bom;
     }
 
+    /**
+     * Gives the complete document its serial number, if the task includes one. With a supplied timestamp the serial
+     * is a name-based UUID over the document's JSON form without a serial number, or its XML form for a schema
+     * version that has no JSON, so that it names the content and the same document gets the same serial; otherwise
+     * it is random, as the specification prefers. Called once nothing else changes the document, which for an
+     * aggregate is after the merge.
+     *
+     * @param bom the complete document
+     */
+    void assignSerialNumber(final Bom bom) {
+        if (!task.getIncludeBomSerialNumber().get()) {
+            return;
+        }
+        if (timestamp != null) {
+            bom.setSerialNumber(null);
+            final String content = version.getFormats().contains(Format.JSON)
+                    ? CyclonedxUtils.toJsonString(version, bom)
+                    : CyclonedxUtils.toXmlString(version, bom);
+            bom.setSerialNumber("urn:uuid:" + UUID.nameUUIDFromBytes(content.getBytes(StandardCharsets.UTF_8)));
+        } else {
+            bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
+        }
+    }
+
     private Metadata buildMetadata(final SbomComponent rootComponent) {
         final Metadata metadata = new Metadata();
+        if (timestamp != null) {
+            metadata.setTimestamp(timestamp);
+        }
         try {
             metadata.setComponent(buildFinilizedRootComponent(rootComponent));
         } catch (MalformedPackageURLException e) {
@@ -158,6 +194,14 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         }
 
         return metadata;
+    }
+
+    private Date parseTimestamp(final String text) {
+        try {
+            return TimestampUtils.parse(text);
+        } catch (IllegalArgumentException e) {
+            throw new GradleException("Invalid timestamp on task '" + task.getPath() + "': " + e.getMessage(), e);
+        }
     }
 
     private Component buildFinilizedRootComponent(final SbomComponent rootComponent)
@@ -208,9 +252,11 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
                     e);
             return;
         }
+        // the graph holds them in hash order; the document lists them by ref so that it reads the same every time
+        final Set<Dependency> dependsOn = new TreeSet<>(new DependencyComparator());
         component.getDependencyComponents().forEach(dependencyComponent -> {
             try {
-                dependency.addDependency(toDependency(dependencyComponent));
+                dependsOn.add(toDependency(dependencyComponent));
             } catch (MalformedPackageURLException e) {
                 LOGGER.warn(
                         "{} Error constructing packageUrl for component dependency {}. Skipping...",
@@ -219,6 +265,7 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
                         e);
             }
         });
+        dependsOn.forEach(dependency::addDependency);
         dependencies.add(dependency);
     }
 
