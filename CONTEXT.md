@@ -53,6 +53,10 @@ The public compatibility surface of produced **Direct SBOMs**, **Aggregate SBOMs
 versioned with the plugin according to [ADR 0004](docs/adr/0004-version-the-sbom-output-contract-with-the-plugin.md).
 _Avoid_: Internal output, report format
 
+**Gradle Task API**:
+The documented tasks, configuration properties, and types that build authors use to configure SBOM generation.
+Its compatibility boundary is defined in [ADR 0012](docs/adr/0012-preserve-the-documented-gradle-task-api.md).
+
 **SBOM Attestation**:
 A signed statement that binds an artifact, identified by a cryptographic digest, to the **Direct SBOM** or **Aggregate
 SBOM** that describes it. The plugin produces the SBOM; a build platform or attestation service binds and signs it.

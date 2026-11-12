@@ -3,7 +3,8 @@ release-sbom-generator = "3.5.1"
 plugin-publish = "2.2.1"
 spotless = "8.10.4"
 errorprone-gradle-plugin = "5.2.0"
-cyclonedx-core-java = "13.3.0"
+cyclonedx-core-java = "13.4.0"
+packageurl-java = "1.5.0"
 jspecify = "1.0.1"
 maven-core = "3.10.0"
 spock = "2.4-M6-groovy-4.0"
@@ -14,6 +15,7 @@ errorprone-core = "2.52.0"
 
 [libraries]
 cyclonedx-core-java = { module = "org.cyclonedx:cyclonedx-core-java", version.ref = "cyclonedx-core-java" }
+packageurl-java = { module = "com.github.package-url:packageurl-java", version.ref = "packageurl-java" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 maven-core = { module = "org.apache.maven:maven-core", version.ref = "maven-core" }
 spock-core = { module = "org.spockframework:spock-core", version.ref = "spock" }
