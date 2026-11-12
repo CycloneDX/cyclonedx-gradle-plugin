@@ -104,6 +104,55 @@ class ExternalReferencesUtilTest extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    @Unroll("java version: #javaVersion, task name: #taskName")
+    def "should not add a VCS reference when externalReferences is explicitly empty"() {
+        given: "A mocked project directory with no git repo and an explicitly empty externalReferences list"
+        File testDir = TestUtils.createFromString(
+            """
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            repositories {
+                mavenCentral()
+            }
+            group = 'com.example'
+            version = '1.0.0'
+
+            tasks.withType(org.cyclonedx.gradle.BaseCyclonedxTask) {
+                externalReferences = []
+            }
+
+            dependencies {
+                implementation("org.hibernate:hibernate-core:5.6.15.Final")
+            }""", "rootProject.name = 'hello-world'"
+        )
+
+        and: "given the current test directory context (otherwise a parent git repo url may be picked up)"
+        System.setProperty("user.dir", testDir.toPath().toString())
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withEnvironment([:])
+            .withArguments(TestUtils.arguments(taskName))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":" + taskName).outcome == TaskOutcome.SUCCESS
+        File jsonBom = new File(testDir, reportLocation + "/bom.json")
+        Bom bom = new ObjectMapper().readValue(jsonBom, Bom.class)
+
+        assert bom.getMetadata().getComponent().getExternalReferences() == null
+
+        where:
+        taskName             | reportLocation
+        "cyclonedxBom"       | "build/reports/cyclonedx"
+        "cyclonedxDirectBom" | "build/reports/cyclonedx-direct"
+        javaVersion = JavaVersion.current()
+    }
+
     def "should add git reference to metadata from environment (Jenkins e.g.)"() {
         given: "A mocked project directory with .git config and https url"
         File testDir = TestUtils.createFromString(
