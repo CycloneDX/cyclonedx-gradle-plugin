@@ -32,6 +32,7 @@ dependencies {
     api(libs.cyclonedx.core.java) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j-impl")
     }
+    api(libs.packageurl.java)
     api(libs.jspecify)
     implementation(libs.maven.core)
 
