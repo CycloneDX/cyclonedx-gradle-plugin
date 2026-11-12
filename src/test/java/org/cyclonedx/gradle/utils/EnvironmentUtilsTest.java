@@ -109,4 +109,31 @@ class EnvironmentUtilsTest {
         });
         assertNull(uri);
     }
+
+    @Test
+    void getBuildURI_BlankGithubEnvVar() throws Exception {
+        String uri = withEnvironmentVariable("GITHUB_SERVER_URL", "https://github.com")
+                .and("GITHUB_REPOSITORY", "  ")
+                .and("GITHUB_RUN_ID", "12345")
+                .execute(() -> {
+                    return EnvironmentUtils.getBuildURI();
+                });
+        assertNull(uri);
+    }
+
+    @Test
+    void getBuildURI_BlankEnvVarName() throws Exception {
+        assertNull(EnvironmentUtils.getBuildURI("   "));
+    }
+
+    @Test
+    void getBuildURI_BlankPatternEnvVar() throws Exception {
+        String uri = withEnvironmentVariable("SERVER", "")
+                .and("JOB_ID", "123")
+                .and("GITHUB_REPOSITORY", null)
+                .execute(() -> {
+                    return EnvironmentUtils.getBuildURI("${SERVER}/jobs/${JOB_ID}");
+                });
+        assertNull(uri);
+    }
 }

@@ -61,7 +61,7 @@ Apply the plugin to the root project. The version shown here matches the version
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.4.1"
+    id("org.cyclonedx.bom") version "3.5.1"
 }
 ```
 
@@ -69,7 +69,7 @@ plugins {
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '3.4.1'
+    id 'org.cyclonedx.bom' version '3.5.1'
 }
 ```
 
@@ -333,6 +333,7 @@ Groovy.
 | `componentGroup` | `String` | Project group | Group of the document's main component. |
 | `componentName` | `String` | Project name | Name of the document's main component. |
 | `componentVersion` | `String` | Project version | Version of the document's main component. |
+| `componentDescription` | `String` | Not set | Description of the document's main component. |
 | `projectType` | `Component.Type` | `LIBRARY` | CycloneDX type of the main component. Kotlin requires an enum value such as `Component.Type.APPLICATION`; Groovy also accepts a type name such as `'application'`. |
 | `schemaVersion` | `Version` | `VERSION_16` | CycloneDX schema used for serialization. Set `Version.VERSION_17` to opt in to CycloneDX 1.7. |
 | `includeBomSerialNumber` | `Boolean` | `true` | Add a generated `urn:uuid:` serial number. |
@@ -468,7 +469,7 @@ initscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath("org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.4.1")
+        classpath("org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.5.1")
     }
 }
 
@@ -493,7 +494,7 @@ initscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath 'org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.4.1'
+        classpath 'org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.5.1'
     }
 }
 
@@ -529,7 +530,7 @@ import org.cyclonedx.gradle.CyclonedxDirectTask
 import org.gradle.api.publish.maven.MavenPublication
 
 plugins {
-    id("org.cyclonedx.bom") version "3.4.1"
+    id("org.cyclonedx.bom") version "3.5.1"
     id("maven-publish")
     id("java")
 }

@@ -20,6 +20,7 @@ package org.cyclonedx.gradle.utils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,5 +75,18 @@ class DependencyUtilsTest {
         final Set<ConfigurationScope> componentConfigs = new HashSet<>();
         Collections.addAll(componentConfigs, configs);
         return componentConfigs;
+    }
+
+    @Test
+    void getTypeShouldUseTheFileExtension() {
+        assertEquals("jar", DependencyUtils.getType(new File("componenta-1.0.0.jar")));
+        assertEquals("pom", DependencyUtils.getType(new File("componenta-1.0.0.pom")));
+        assertEquals("module", DependencyUtils.getType(new File("componenta-1.0.0.module")));
+    }
+
+    @Test
+    void getTypeShouldFallBackToPomWithoutAnExtension() {
+        assertEquals("pom", DependencyUtils.getType(new File("componenta")));
+        assertEquals("pom", DependencyUtils.getType(new File("componenta-1.0.0.")));
     }
 }

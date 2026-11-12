@@ -1,15 +1,15 @@
 [versions]
-release-sbom-generator = "3.4.0"
-plugin-publish = "2.1.1"
-spotless = "8.9.0"
-errorprone-gradle-plugin = "5.1.0"
-cyclonedx-core-java = "13.1.0"
+release-sbom-generator = "3.5.1"
+plugin-publish = "2.2.1"
+spotless = "8.10.4"
+errorprone-gradle-plugin = "5.1.1"
+cyclonedx-core-java = "13.3.0"
 jspecify = "1.0.1"
-maven-core = "3.9.16"
+maven-core = "3.10.0"
 spock = "2.4-M6-groovy-4.0"
 junit = "5.13.4"
 system-lambda = "1.2.1"
-nullaway = "0.13.8"
+nullaway = "0.14.2"
 errorprone-core = "2.50.0"
 
 [libraries]

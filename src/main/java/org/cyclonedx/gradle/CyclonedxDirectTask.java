@@ -36,6 +36,7 @@ import org.gradle.api.file.RegularFile;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.CacheableTask;
@@ -129,6 +130,31 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
     @PathSensitive(PathSensitivity.RELATIVE)
     public abstract ConfigurableFileCollection getResolvedDependencies();
 
+    /**
+     * Every POM read for metadata resolution: the component POMs, and the parent and imported POMs their effective
+     * models were built from. Declared as an input beside the resolved dependencies so that a POM which appears,
+     * changes or becomes readable changes the cache key, and a document produced while a POM was unreadable is not
+     * served once that POM is fine. See ADR 0010. Empty when metadata resolution is disabled.
+     *
+     * @return the POM files the document was produced from
+     */
+    @InputFiles
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public abstract ConfigurableFileCollection getResolvedPoms();
+
+    /**
+     * The metadata that enrichment contributed to each component, keyed by the component's coordinates, as read when
+     * the task graph was configured. The POM files are fingerprinted when the task runs, and the two can disagree:
+     * a POM rewritten in between, or a configuration cache entry stored while a parent was missing, leaves the
+     * document describing metadata the files no longer carry. Declaring the metadata as well means such a document
+     * is stored under a key that only a build with the same metadata computes, so it is never served to a build
+     * whose metadata is current. See ADR 0010.
+     *
+     * @return one canonical description per enriched component
+     */
+    @Input
+    public abstract MapProperty<String, String> getMetadataEnrichment();
+
     private final Provider<SbomGraph> componentsProvider;
 
     public CyclonedxDirectTask() {
@@ -159,6 +185,12 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toSet())));
+        getResolvedPoms().from(componentsProvider.map(SbomGraph::getPomFiles));
+        getMetadataEnrichment().set(componentsProvider.map(SbomGraph::getMetadataEnrichment));
+        // Both describe what the task reads and writes; a build script that replaced them would reopen the hole
+        // they close for every other machine sharing the build cache
+        getResolvedPoms().disallowChanges();
+        getMetadataEnrichment().disallowChanges();
     }
 
     /**
@@ -220,6 +252,8 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
             LOGGER.info("componentGroup            : {}", getComponentGroup().get());
             LOGGER.info("componentName             : {}", getComponentName().get());
             LOGGER.info("componentVersion          : {}", getComponentVersion().get());
+            LOGGER.info(
+                    "componentDescription      : {}", getComponentDescription().getOrNull());
             LOGGER.info("projectType               : {}", getProjectType().get());
             LOGGER.info("hashAlgorithms            : {}", getHashAlgorithms().get());
             LOGGER.info("------------------------------------------------------------------------");

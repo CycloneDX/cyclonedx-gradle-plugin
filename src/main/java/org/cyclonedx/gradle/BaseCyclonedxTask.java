@@ -70,6 +70,15 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
     public abstract Property<String> getComponentVersion();
 
     /**
+     * The description of the component that will be used in the BOM.
+     * If not set, no description is added to the component.
+     * @return the description of the component
+     */
+    @Input
+    @Optional
+    public abstract Property<String> getComponentDescription();
+
+    /**
      * The schema version of the BOM.
      * It can be one of the supported versions, e.g., {@link Version#VERSION_16}.
      * If not set, it defaults to {@link Version#VERSION_16}.
