@@ -62,7 +62,7 @@ Apply the plugin to the root project. The version shown here matches the version
 
 ```kotlin
 plugins {
-    id("org.cyclonedx.bom") version "3.6.0"
+    id("org.cyclonedx.bom") version "3.6.1"
 }
 ```
 
@@ -70,7 +70,7 @@ plugins {
 
 ```groovy
 plugins {
-    id 'org.cyclonedx.bom' version '3.6.0'
+    id 'org.cyclonedx.bom' version '3.6.1'
 }
 ```
 
@@ -492,7 +492,7 @@ initscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath("org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.6.0")
+        classpath("org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.6.1")
     }
 }
 
@@ -517,7 +517,7 @@ initscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath 'org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.6.0'
+        classpath 'org.cyclonedx.bom:org.cyclonedx.bom.gradle.plugin:3.6.1'
     }
 }
 
@@ -553,7 +553,7 @@ import org.cyclonedx.gradle.CyclonedxDirectTask
 import org.gradle.api.publish.maven.MavenPublication
 
 plugins {
-    id("org.cyclonedx.bom") version "3.6.0"
+    id("org.cyclonedx.bom") version "3.6.1"
     id("maven-publish")
     id("java")
 }
