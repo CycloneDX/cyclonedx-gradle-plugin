@@ -81,6 +81,18 @@ test only when every configuration that contributed it is a **Test Configuration
 name pattern per [ADR 0005](docs/adr/0005-classify-test-configurations-by-name-pattern.md).
 _Avoid_: Test dependency, test scope (unqualified), test source set
 
+**Component File**:
+The file a component is delivered as: the resolved artifact a **Direct SBOM** hashes, or the archive the build names for
+the document's main component. Described by its file name and, where the file format is known, by whether it is
+executable, an archive and structured, in the terms of BSI TR-03183-2. A BOM import or a project of the build has none.
+_Avoid_: artifact (unqualified), deployable, binary
+
+**Component Creator**:
+The organization that created and maintains a component, identified by a URL or an email address as BSI TR-03183-2
+asks. For a resolved module it is read from its POM, the organization first and the source repository as fallback; the
+main component and the projects of the build have the organizational entity the build configures.
+_Avoid_: publisher, supplier, author, vendor
+
 ## Flagged ambiguities
 
 - Prefer **SBOM** in explanatory prose. **BOM** remains correct when referring to CycloneDX specification concepts or
@@ -100,6 +112,10 @@ _Avoid_: Test dependency, test scope (unqualified), test source set
 - An **SBOM Attestation** must preserve the boundary of the SBOM it binds. A per-project artifact normally uses that
   project's **Direct SBOM**; an **Aggregate SBOM** is appropriate only when the attested artifact represents the same
   set of **Contributing Projects**.
+- Unqualified **artifact** means a module artifact Gradle resolved. The main component's **Component File** is not
+  resolved, it is named by the build.
+- **manufacturer** is the CycloneDX field a **Component Creator** is written to, as **publisher** is the field that
+  carries only the organization's name. Neither names the concept.
 - A SLSA Build level applies to an artifact's build provenance and build platform, not to its SBOM. Say “an artifact
   with SLSA Build provenance and an attested CycloneDX SBOM”; avoid “SLSA-compliant SBOM.”
 

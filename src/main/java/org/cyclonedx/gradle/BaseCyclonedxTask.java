@@ -81,6 +81,29 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
     public abstract Property<String> getComponentDescription();
 
     /**
+     * The file name of the document's main component, its Component File: the archive the build ships it as, not a
+     * path. Read only when {@link #getIncludeBsiFields()} is set, and written as {@code bsi:component:filename} with
+     * the flags its format determines. On {@code cyclonedxDirectBom} it defaults to the {@code jar} task's archive file
+     * name when the {@code java} plugin is applied; {@code cyclonedxBom} has no default. See ADR 0013.
+     *
+     * @return the file name of the main component
+     */
+    @Input
+    @Optional
+    public abstract Property<String> getComponentFileName();
+
+    /**
+     * Whether to write the component data fields of BSI TR-03183-2 that the plugin can derive: every component's file
+     * name and whether it is executable, an archive and structured, as {@code bsi:component:*} properties, and every
+     * component's creator as {@code manufacturer}. If not set, it defaults to false, and the document is unchanged.
+     * See ADR 0013 and ADR 0014.
+     *
+     * @return true if the BSI data fields should be written, false otherwise
+     */
+    @Input
+    public abstract Property<Boolean> getIncludeBsiFields();
+
+    /**
      * The schema version of the BOM.
      * It can be one of the supported versions, e.g., {@link Version#VERSION_16}.
      * If not set, it defaults to {@link Version#VERSION_16}.
@@ -249,6 +272,7 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
         getIncludeBomSerialNumber().convention(true);
         getProjectType().convention(Component.Type.LIBRARY);
         getIncludeBuildSystem().convention(true);
+        getIncludeBsiFields().convention(false);
         getOrganizationalEntity().convention(getProject().getObjects().property(OrganizationalEntity.class));
         getLicenseChoice().convention(getProject().getObjects().property(LicenseChoice.class));
         getExternalReferences().convention(getProject().getObjects().listProperty(ExternalReference.class));
