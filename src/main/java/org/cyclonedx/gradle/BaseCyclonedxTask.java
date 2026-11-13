@@ -19,6 +19,7 @@
 package org.cyclonedx.gradle;
 
 import org.cyclonedx.Version;
+import org.cyclonedx.gradle.utils.CanonicalForm;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
@@ -27,6 +28,7 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
@@ -185,6 +187,43 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
      */
     @Internal
     public abstract ListProperty<ExternalReference> getExternalReferences();
+
+    /**
+     * {@link #getOrganizationalEntity()} in the JSON form the document writes it in. The Core type is not serializable,
+     * so the entity itself is {@code @Internal} and cannot be fingerprinted; without this input a changed entity left a
+     * cached document in place. See ADR 0010 for the principle.
+     *
+     * @return the organizational entity as JSON, absent when none is set
+     */
+    @Input
+    @Optional
+    Provider<String> getOrganizationalEntityJson() {
+        return getOrganizationalEntity().map(CanonicalForm::ofEntity);
+    }
+
+    /**
+     * {@link #getLicenseChoice()} in the JSON form the document writes it in, declared as an input for the same reason
+     * as {@link #getOrganizationalEntityJson()}.
+     *
+     * @return the license choice as JSON, absent when none is set
+     */
+    @Input
+    @Optional
+    Provider<String> getLicenseChoiceJson() {
+        return getLicenseChoice().map(CanonicalForm::ofLicenses);
+    }
+
+    /**
+     * {@link #getExternalReferences()} in the JSON form the document writes them in, declared as an input for the same
+     * reason as {@link #getOrganizationalEntityJson()}.
+     *
+     * @return the external references as JSON, absent when the list property was unset
+     */
+    @Input
+    @Optional
+    Provider<String> getExternalReferencesJson() {
+        return getExternalReferences().map(CanonicalForm::ofReferences);
+    }
 
     /**
      * Whether to include the license text in the BOM.
