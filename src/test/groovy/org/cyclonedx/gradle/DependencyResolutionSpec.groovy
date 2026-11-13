@@ -594,6 +594,25 @@ class DependencyResolutionSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    @Issue("https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/821")
+    def "should not fail with 'Cannot mutate' when maven-publish attaches SBOM artifacts to publication"() {
+        given: "a multi-module project where a subproject attaches SBOM outputs to a Maven publication"
+        File testDir = TestUtils.duplicate("multi-module-with-maven-publish")
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("publish"))
+            .withPluginClasspath()
+            .build()
+
+        then:
+        result.task(":app-a:publish").outcome == TaskOutcome.SUCCESS
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
     private static def loadJsonBom(File file) {
         return new JsonSlurper().parse(file)
     }
