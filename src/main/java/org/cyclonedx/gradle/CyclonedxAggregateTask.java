@@ -32,6 +32,7 @@ import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.BomReference;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Dependency;
+import org.cyclonedx.model.Property;
 import org.cyclonedx.parsers.BomParserFactory;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -94,15 +95,25 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
                         LOG_PREFIX,
                         aggregateBom.getMetadata().getComponent().getBomRef(),
                         subProjectBom.getMetadata().getComponent().getBomRef());
-                componentsByBomRef.putIfAbsent(
-                        subProjectBom.getMetadata().getComponent().getBomRef(),
-                        subProjectBom.getMetadata().getComponent());
+                // A project's own Direct SBOM is the authority on that project (ADR 0002), so its main component
+                // replaces the bare reference another project's document may already have contributed for it,
+                // whichever document came first. How the project is used, test or not, is known to the documents
+                // that depend on it, so their properties are kept on it.
+                final Component mainComponent = subProjectBom.getMetadata().getComponent();
+                final Component earlierView = componentsByBomRef.put(mainComponent.getBomRef(), mainComponent);
+                if (earlierView != null) {
+                    addMissingProperties(mainComponent, earlierView);
+                }
             }
             if (subProjectBom.getComponents() == null) {
                 continue; // no components in this BOM
             }
             for (final Component component : subProjectBom.getComponents()) {
-                componentsByBomRef.putIfAbsent(component.getBomRef(), component);
+                // the first document to describe a dependency wins, later ones only add what it did not state
+                final Component existing = componentsByBomRef.putIfAbsent(component.getBomRef(), component);
+                if (existing != null) {
+                    addMissingProperties(existing, component);
+                }
             }
             // merge dependencies of all BOMs
             if (subProjectBom.getDependencies() == null) {
@@ -137,6 +148,26 @@ public abstract class CyclonedxAggregateTask extends BaseCyclonedxTask {
                 })
                 .collect(Collectors.toList()));
         return aggregateBom;
+    }
+
+    /**
+     * Adds to {@code target} every property of {@code source} whose name it does not carry yet, so that a property is
+     * taken from the first document that states it and a document that states none does not erase it.
+     */
+    private static void addMissingProperties(final Component target, final Component source) {
+        if (source.getProperties() == null) {
+            return;
+        }
+        final List<Property> properties =
+                target.getProperties() == null ? new ArrayList<>() : new ArrayList<>(target.getProperties());
+        for (final Property property : source.getProperties()) {
+            if (properties.stream().noneMatch(present -> Objects.equals(present.getName(), property.getName()))) {
+                properties.add(property);
+            }
+        }
+        if (!properties.isEmpty()) {
+            target.setProperties(properties);
+        }
     }
 
     private void checkForMissingInputSboms(final Set<File> files) {

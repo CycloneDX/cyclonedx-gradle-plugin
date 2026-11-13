@@ -594,6 +594,68 @@ class DependencyResolutionSpec extends Specification {
         javaVersion = JavaVersion.current()
     }
 
+    def "aggregate keeps a project's own main component over a sibling's view of it"() {
+        given: "app-a depends on app-b, whose own Direct SBOM is the only one describing it"
+        File testDir = TestUtils.createFromString("""
+            plugins {
+                id 'org.cyclonedx.bom'
+                id 'java'
+            }
+            allprojects {
+                group = 'com.example'
+                version = '1.0.0'
+                repositories {
+                    mavenCentral()
+                }
+            }
+            """, "rootProject.name = 'sibling-precedence'\ninclude 'app-a', 'app-b'")
+        new File(testDir, "app-a").mkdirs()
+        new File(testDir, "app-a/build.gradle") << """
+            plugins {
+                id 'java'
+            }
+            dependencies {
+                implementation project(':app-b')
+            }
+            tasks.cyclonedxDirectBom {
+                componentDescription = 'app-a describes itself'
+            }
+            """
+        new File(testDir, "app-b").mkdirs()
+        new File(testDir, "app-b/build.gradle") << """
+            plugins {
+                id 'java'
+            }
+            tasks.cyclonedxDirectBom {
+                componentDescription = 'app-b describes itself'
+                projectType = 'application'
+            }
+            """
+
+        when:
+        def result = GradleRunner.create()
+            .withProjectDir(testDir)
+            .withArguments(TestUtils.arguments("cyclonedxBom"))
+            .withPluginClasspath()
+            .build()
+
+        then: "the aggregate carries app-b as app-b's Direct SBOM describes it, not as app-a's bare reference"
+        result.task(":cyclonedxBom").outcome == TaskOutcome.SUCCESS
+        def jsonBom = loadJsonBom(new File(testDir, "build/reports/cyclonedx/bom.json"))
+        def appB = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-b@1.0.0?project_path=%3Aapp-b")
+        appB.component.type == "application"
+        appB.component.description == "app-b describes itself"
+
+        and: "the label the documents depending on a project gave it survives, since its own document states none"
+        appB.component.properties.find { it.name == "cdx:maven:package:test" }.value == "false"
+        def appA = JsonBomComponent.of(jsonBom, "pkg:maven/com.example/app-a@1.0.0?project_path=%3Aapp-a")
+        appA.component.description == "app-a describes itself"
+        appA.component.properties.find { it.name == "cdx:maven:package:test" } != null
+
+        where:
+        javaVersion = JavaVersion.current()
+    }
+
     private static def loadJsonBom(File file) {
         return new JsonSlurper().parse(file)
     }
