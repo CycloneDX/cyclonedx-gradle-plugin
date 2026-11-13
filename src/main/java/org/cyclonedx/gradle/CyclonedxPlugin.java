@@ -33,8 +33,11 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.api.tasks.bundling.Jar;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Entrypoint of the plugin which simply configures one task
@@ -150,12 +153,28 @@ public class CyclonedxPlugin implements Plugin<Project> {
                     task.getXmlOutput().convention(dir.get().file("bom.xml"));
                     task.getJsonOutput().convention(dir.get().file("bom.json"));
                     task.getAggregateConfigurationName().convention(cyclonedxAggregateConfigurationName);
+                    // the jar is what a JVM project ships; a build shipping another archive sets the name itself
+                    project.getPluginManager().withPlugin("java", plugin -> task.getComponentFileName()
+                            .convention(project.provider(() -> jarArchiveFileName(project))));
                 });
 
         project.getConfigurations()
                 .getByName(cyclonedxDirectConfigurationName)
                 .getOutgoing()
                 .artifacts(taskProvider.map(CyclonedxDirectTask::getOutputFiles), a -> a.builtBy(taskProvider));
+    }
+
+    /**
+     * The archive file name of the project's {@code jar} task, looked up when the value is read so that a build which
+     * removed or replaced the task still configures. Null when there is no such Jar task or it is disabled: a jar the
+     * build does not produce is not the main component's file.
+     */
+    private static @Nullable String jarArchiveFileName(final Project project) {
+        final Task jar = project.getTasks().findByName(JavaPlugin.JAR_TASK_NAME);
+        if (jar instanceof Jar && jar.getEnabled()) {
+            return ((Jar) jar).getArchiveFileName().getOrNull();
+        }
+        return null;
     }
 
     private boolean hasEnabledDirectBomTask(final Project project) {
