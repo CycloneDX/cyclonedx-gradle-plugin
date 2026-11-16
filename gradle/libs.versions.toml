@@ -1,5 +1,5 @@
 [versions]
-release-sbom-generator = "3.5.1"
+release-sbom-generator = "3.6.0"
 plugin-publish = "2.2.1"
 spotless = "8.11.0"
 errorprone-gradle-plugin = "5.2.0"
