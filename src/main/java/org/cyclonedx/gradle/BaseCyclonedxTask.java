@@ -19,6 +19,7 @@
 package org.cyclonedx.gradle;
 
 import org.cyclonedx.Version;
+import org.cyclonedx.gradle.utils.CanonicalForm;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
@@ -27,6 +28,7 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
@@ -77,6 +79,29 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
     @Input
     @Optional
     public abstract Property<String> getComponentDescription();
+
+    /**
+     * The file name of the document's main component, its Component File: the archive the build ships it as, not a
+     * path. Read only when {@link #getIncludeBsiFields()} is set, and written as {@code bsi:component:filename} with
+     * the flags its format determines. On {@code cyclonedxDirectBom} it defaults to the {@code jar} task's archive file
+     * name when the {@code java} plugin is applied; {@code cyclonedxBom} has no default. See ADR 0013.
+     *
+     * @return the file name of the main component
+     */
+    @Input
+    @Optional
+    public abstract Property<String> getComponentFileName();
+
+    /**
+     * Whether to write the component data fields of BSI TR-03183-2 that the plugin can derive: every component's file
+     * name and whether it is executable, an archive and structured, as {@code bsi:component:*} properties, and every
+     * component's creator as {@code manufacturer}. If not set, it defaults to false, and the document is unchanged.
+     * See ADR 0013 and ADR 0014.
+     *
+     * @return true if the BSI data fields should be written, false otherwise
+     */
+    @Input
+    public abstract Property<Boolean> getIncludeBsiFields();
 
     /**
      * The schema version of the BOM.
@@ -187,6 +212,43 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
     public abstract ListProperty<ExternalReference> getExternalReferences();
 
     /**
+     * {@link #getOrganizationalEntity()} in the JSON form the document writes it in. The Core type is not serializable,
+     * so the entity itself is {@code @Internal} and cannot be fingerprinted; without this input a changed entity left a
+     * cached document in place. See ADR 0010 for the principle.
+     *
+     * @return the organizational entity as JSON, absent when none is set
+     */
+    @Input
+    @Optional
+    Provider<String> getOrganizationalEntityJson() {
+        return getOrganizationalEntity().map(CanonicalForm::ofEntity);
+    }
+
+    /**
+     * {@link #getLicenseChoice()} in the JSON form the document writes it in, declared as an input for the same reason
+     * as {@link #getOrganizationalEntityJson()}.
+     *
+     * @return the license choice as JSON, absent when none is set
+     */
+    @Input
+    @Optional
+    Provider<String> getLicenseChoiceJson() {
+        return getLicenseChoice().map(CanonicalForm::ofLicenses);
+    }
+
+    /**
+     * {@link #getExternalReferences()} in the JSON form the document writes them in, declared as an input for the same
+     * reason as {@link #getOrganizationalEntityJson()}.
+     *
+     * @return the external references as JSON, absent when the list property was unset
+     */
+    @Input
+    @Optional
+    Provider<String> getExternalReferencesJson() {
+        return getExternalReferences().map(CanonicalForm::ofReferences);
+    }
+
+    /**
      * Whether to include the license text in the BOM.
      * If not set, it defaults to false.
      *
@@ -210,6 +272,7 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
         getIncludeBomSerialNumber().convention(true);
         getProjectType().convention(Component.Type.LIBRARY);
         getIncludeBuildSystem().convention(true);
+        getIncludeBsiFields().convention(false);
         getOrganizationalEntity().convention(getProject().getObjects().property(OrganizationalEntity.class));
         getLicenseChoice().convention(getProject().getObjects().property(LicenseChoice.class));
         getExternalReferences().convention(getProject().getObjects().listProperty(ExternalReference.class));

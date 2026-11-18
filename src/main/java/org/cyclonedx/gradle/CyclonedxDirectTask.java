@@ -333,6 +333,8 @@ public abstract class CyclonedxDirectTask extends BaseCyclonedxTask {
             LOGGER.info(
                     "componentDescription      : {}", getComponentDescription().getOrNull());
             LOGGER.info("projectType               : {}", getProjectType().get());
+            LOGGER.info("includeBsiFields          : {}", getIncludeBsiFields().get());
+            LOGGER.info("componentFileName         : {}", getComponentFileName().getOrNull());
             LOGGER.info("------------------------------------------------------------------------");
         }
     }

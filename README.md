@@ -35,6 +35,7 @@ up-to-date checks, and the build cache.
 - [Configuration reference](#configuration-reference)
 - [Advanced recipes](#advanced-recipes)
   - [Set component and organizational metadata](#set-component-and-organizational-metadata)
+  - [Write the BSI TR-03183-2 component fields](#write-the-bsi-tr-03183-2-component-fields)
   - [Apply the plugin from an initialization script](#apply-the-plugin-from-an-initialization-script)
 - [Using SBOMs with SLSA provenance](#using-sboms-with-slsa-provenance)
 - [Compatibility history](#compatibility-history)
@@ -365,6 +366,8 @@ Groovy.
 | `organizationalEntity` | `OrganizationalEntity` | Not set | Manufacturer or organizational metadata for the SBOM. |
 | `licenseChoice` | `LicenseChoice` | Not set | License information placed in the SBOM metadata. |
 | `externalReferences` | `List<ExternalReference>` | Not set | External references added to the main component. A VCS reference is detected from CI or the Git remote when one was not supplied. |
+| `includeBsiFields` | `Boolean` | `false` | Write the component data fields of BSI TR-03183-2 the plugin can derive: each component's file name and flags as `bsi:component:*` properties, and each component's creator as `manufacturer`. See [Write the BSI TR-03183-2 component fields](#write-the-bsi-tr-03183-2-component-fields). |
+| `componentFileName` | `String` | `jar` archive file name on `cyclonedxDirectBom` when the `java` plugin is applied and the `jar` task is enabled, otherwise not set | File name of the main component, written as `bsi:component:filename` when `includeBsiFields` is `true`. Not a path. |
 | `jsonOutput` | `RegularFileProperty` | Task-specific `bom.json` | JSON output. Clear its convention to disable JSON. |
 | `xmlOutput` | `RegularFileProperty` | Task-specific `bom.xml` | XML output. Clear its convention to disable XML. |
 
@@ -476,6 +479,50 @@ combined with the automatically detected VCS reference when one is available.
 
 The example configures one Direct SBOM. Configure the same metadata properties on `cyclonedxBom` when they should
 describe the Aggregate SBOM's main component or metadata.
+
+### Write the BSI TR-03183-2 component fields
+
+[BSI TR-03183-2](https://www.bsi.bund.de/dok/TR-03183-en), the German guideline for SBOMs under the EU Cyber Resilience
+Act, requires of every component its file name, whether it is executable, an archive and structured, and its creator.
+The plugin derives them from what it already resolves when `includeBsiFields` is `true`; the switch is off by default,
+so a document only changes when a build asks for it.
+
+```kotlin
+tasks.withType<org.cyclonedx.gradle.BaseCyclonedxTask>().configureEach {
+    includeBsiFields = true
+}
+tasks.cyclonedxBom {
+    componentFileName = "payment-service-2.0.0.zip"
+}
+```
+
+With the switch on, each component with a resolved file carries the properties of the
+[BSI property taxonomy](https://github.com/BSI-Bund/tr-03183-cyclonedx-property-taxonomy):
+
+| File | `bsi:component:executable` | `bsi:component:archive` | `bsi:component:structured` |
+|------|----------------------------|-------------------------|----------------------------|
+| `.jar`, `.war`, `.ear`, `.aar` | `executable` | `archive` | `structured` |
+| `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.7z` | `non-executable` | `archive` | `structured` |
+| `.so`, `.dll`, `.dylib` | `executable` | `no archive` | `unstructured` |
+| any other file | only `bsi:component:filename` is written | | |
+
+`bsi:component:filename` is always the name of the resolved file, the one the component's hashes are computed from. A
+flag is written only when the file format determines it; a format outside the table gets no flag rather than a guess.
+A BOM import has no file, and neither has a project of the build inside another project's Direct SBOM, since its
+archive is not resolved there. The main component is described from `componentFileName`, which defaults to the `jar`
+task's archive file name on `cyclonedxDirectBom` when that task is enabled; a build that ships another archive, such
+as a Spring Boot `bootJar` or a shadow jar, and the Aggregate SBOM, set it themselves.
+
+Each component's creator is written as `manufacturer`, a field of CycloneDX 1.6 or later; with an older schema the
+task logs a warning and writes the properties alone. A resolved module gets the URL of
+its POM's `<organization>`, or of its `<scm>` when the POM declares no organization, together with the organization's
+name; the main component and the projects of the build get `organizationalEntity`, which then appears both as
+`metadata.manufacturer` and as `metadata.component.manufacturer`. A module whose POM declares neither gets no creator.
+
+Set the switch on every task: the Aggregate SBOM copies components from the Direct SBOMs, so a subproject's components
+carry the fields only when its own `cyclonedxDirectBom` wrote them. The decisions behind the mapping are recorded in
+[ADR 0013](docs/adr/0013-describe-the-component-file-in-bsi-terms.md) and
+[ADR 0014](docs/adr/0014-derive-the-component-creator-from-the-pom.md).
 
 ### Apply the plugin from an initialization script
 

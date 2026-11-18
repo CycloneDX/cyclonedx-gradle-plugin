@@ -39,8 +39,10 @@ import org.cyclonedx.gradle.model.DependencyComparator;
 import org.cyclonedx.gradle.model.SbomComponent;
 import org.cyclonedx.gradle.model.SbomComponentId;
 import org.cyclonedx.gradle.model.SbomGraph;
+import org.cyclonedx.gradle.model.SbomMetaData;
 import org.cyclonedx.gradle.model.SchemaVersion;
 import org.cyclonedx.gradle.model.SchemaVersionMapper;
+import org.cyclonedx.gradle.utils.ComponentFileUtils;
 import org.cyclonedx.gradle.utils.DependencyUtils;
 import org.cyclonedx.gradle.utils.EnvironmentUtils;
 import org.cyclonedx.gradle.utils.ExternalReferencesUtil;
@@ -93,6 +95,13 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
      */
     Bom buildBom(final SbomGraph graph) {
         LOGGER.info("{} Creating BOM", LOG_PREFIX);
+        if (task.getIncludeBsiFields().get() && !schemaVersion.usesManufacturer()) {
+            LOGGER.warn(
+                    "{} includeBsiFields is set, but CycloneDX {} has no component manufacturer, so the component"
+                            + " creators are left out of the document; use schema 1.6 or later to write them",
+                    LOG_PREFIX,
+                    version.getVersionString());
+        }
         final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
         final Set<Component> components = new TreeSet<>(new ComponentComparator());
 
@@ -126,13 +135,12 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
             metadata.setLicenses(task.getLicenseChoice().get());
         }
 
-        if (task.getOrganizationalEntity().isPresent()
-                && !new OrganizationalEntity()
-                        .equals(task.getOrganizationalEntity().get())) {
+        final OrganizationalEntity organizationalEntity = configuredOrganizationalEntity();
+        if (organizationalEntity != null) {
             if (schemaVersion.usesManufacturer()) {
-                metadata.setManufacturer(task.getOrganizationalEntity().get());
+                metadata.setManufacturer(organizationalEntity);
             } else {
-                metadata.setManufacture(task.getOrganizationalEntity().get());
+                metadata.setManufacture(organizationalEntity);
             }
         }
 
@@ -164,6 +172,10 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
             throws MalformedPackageURLException {
         final Component component = toComponent(rootComponent, null, resolveProjectType());
         component.setProperties(null);
+        if (task.getIncludeBsiFields().get() && task.getComponentFileName().isPresent()) {
+            component.setProperties(
+                    ComponentFileUtils.describe(task.getComponentFileName().get()));
+        }
         component.setGroup(task.getComponentGroup().get());
         component.setName(task.getComponentName().get());
         component.setVersion(task.getComponentVersion().get());
@@ -277,7 +289,57 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
             resultComponent.setHashes(calculateHashes(artifactFile));
         }
 
+        if (task.getIncludeBsiFields().get()) {
+            if (artifactFile != null) {
+                resultComponent.getProperties().addAll(ComponentFileUtils.describe(artifactFile.getName()));
+            }
+            resultComponent.setManufacturer(creatorOf(component));
+        }
+
         return resultComponent;
+    }
+
+    /**
+     * The Component Creator as BSI TR-03183-2 asks for it (ADR 0014): a project of the build gets the organizational
+     * entity the task configures; a resolved module gets the organization URL its POM declares, else its scm URL, with
+     * the organization's name when there is one. Both URLs are already on the component as the {@code website} and
+     * {@code vcs} references. Null when nothing names the creator.
+     */
+    private @Nullable OrganizationalEntity creatorOf(final SbomComponent component) {
+        if (component.getId().getGradleProjectPath() != null) {
+            return configuredOrganizationalEntity();
+        }
+        final SbomMetaData metaData = component.getSbomMetaData().orElse(null);
+        if (metaData == null) {
+            return null;
+        }
+        final String url = referenceUrl(metaData, ExternalReference.Type.WEBSITE);
+        final String creatorUrl = url != null ? url : referenceUrl(metaData, ExternalReference.Type.VCS);
+        if (creatorUrl == null) {
+            return null;
+        }
+        final OrganizationalEntity creator = new OrganizationalEntity();
+        creator.setName(metaData.getPublisher());
+        creator.setUrls(Collections.singletonList(creatorUrl));
+        return creator;
+    }
+
+    private static @Nullable String referenceUrl(final SbomMetaData metaData, final ExternalReference.Type type) {
+        return metaData.getExternalReferences().stream()
+                .filter(reference -> type.equals(reference.getType()))
+                .map(ExternalReference::getUrl)
+                .filter(url -> url != null && !url.isEmpty())
+                .findFirst()
+                .orElse(null);
+    }
+
+    /** The organizational entity the task configures, or null when none is set or it is empty. */
+    private @Nullable OrganizationalEntity configuredOrganizationalEntity() {
+        if (!task.getOrganizationalEntity().isPresent()) {
+            return null;
+        }
+        final OrganizationalEntity entity = task.getOrganizationalEntity().get();
+        return new OrganizationalEntity().equals(entity) ? null : entity;
     }
 
     private List<Property> buildProperties(final SbomComponent component) {
