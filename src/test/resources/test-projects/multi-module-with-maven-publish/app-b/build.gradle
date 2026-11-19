@@ -1,0 +1,39 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+dependencies {
+    implementation project(':app-a')
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+
+            def cyclonedxTask = tasks.named('cyclonedxDirectBom', org.cyclonedx.gradle.CyclonedxDirectTask)
+            artifact(cyclonedxTask.flatMap { it.jsonOutput }) {
+                classifier = 'cyclonedx'
+                extension = 'json'
+            }
+            artifact(cyclonedxTask.flatMap { it.xmlOutput }) {
+                classifier = 'cyclonedx'
+                extension = 'xml'
+            }
+        }
+    }
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('repo')
+        }
+    }
+}
