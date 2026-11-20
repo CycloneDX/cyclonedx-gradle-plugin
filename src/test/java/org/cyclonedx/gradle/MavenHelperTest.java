@@ -37,7 +37,8 @@ import org.cyclonedx.model.License;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.LicenseItem;
 import org.cyclonedx.model.license.Acknowledgement;
-import org.gradle.api.internal.artifacts.DefaultModuleVersionIdentifier;
+import org.gradle.api.artifacts.ModuleIdentifier;
+import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -141,7 +142,7 @@ class MavenHelperTest {
     }
 
     @Test
-    void logsInsteadOfFailingWhenTheParentPomPathCannotBeBuilt(@TempDir final File repository) {
+    void skipsAParentDeclaredWithoutFullCoordinates(@TempDir final File repository) {
         final Parent parent = new Parent();
         parent.setArtifactId("parent");
         parent.setVersion("1.0");
@@ -152,7 +153,42 @@ class MavenHelperTest {
                 new File(repository, "child-1.0.jar"),
                 new MavenProject(model),
                 new Component(),
-                DefaultModuleVersionIdentifier.newId("com.test", "child", "1.0")));
+                moduleVersion("com.test", "child", "1.0")));
+    }
+
+    private static ModuleVersionIdentifier moduleVersion(final String group, final String name, final String version) {
+        final ModuleIdentifier module = new ModuleIdentifier() {
+            @Override
+            public String getGroup() {
+                return group;
+            }
+
+            @Override
+            public String getName() {
+                return name;
+            }
+        };
+        return new ModuleVersionIdentifier() {
+            @Override
+            public String getVersion() {
+                return version;
+            }
+
+            @Override
+            public String getGroup() {
+                return group;
+            }
+
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public ModuleIdentifier getModule() {
+                return module;
+            }
+        };
     }
 
     @Test

@@ -282,7 +282,12 @@ class MavenHelper {
         }
         // A license object needs a name, so an entry without one has nothing to be written with
         if (name == null || name.trim().isEmpty()) {
-            LOGGER.debug("{} Skipping a license without a name whose url {} is not a known license", LOG_PREFIX, url);
+            if (url == null) {
+                LOGGER.debug("{} Skipping an empty license entry", LOG_PREFIX);
+            } else {
+                LOGGER.debug(
+                        "{} Skipping a license without a name whose url {} is not a known license", LOG_PREFIX, url);
+            }
             return null;
         }
         return new DeclaredLicense(LicenseItem.ofLicense(namedLicense(name, url)), url);
@@ -358,6 +363,13 @@ class MavenHelper {
         }
         final Parent parent = project.getModel().getParent();
         if (parent == null) {
+            return null;
+        }
+        if (parent.getGroupId() == null || parent.getArtifactId() == null || parent.getVersion() == null) {
+            LOGGER.debug(
+                    "{} The parent of {} is declared without full coordinates, so its pom is not read",
+                    LOG_PREFIX,
+                    mid);
             return null;
         }
         try {
