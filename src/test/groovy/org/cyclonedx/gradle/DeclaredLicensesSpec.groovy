@@ -12,10 +12,12 @@ import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import spock.lang.IgnoreIf
 import spock.lang.Specification
+import spock.lang.Unroll
 
 @IgnoreIf({ !JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) })
 class DeclaredLicensesSpec extends Specification {
 
+    @Unroll("schema version: #schemaVersion")
     def "a pom listing a license that resolves to an expression next to others is written as one expression"() {
         given: "the expression after another license, before one, and next to a name no SPDX id matches"
         String localRepoUri = TestUtils.duplicateRepo("declared-licenses")
@@ -35,6 +37,9 @@ class DeclaredLicensesSpec extends Specification {
                 implementation("com.test:expression-last:1.0.0")
                 implementation("com.test:expression-first:1.0.0")
                 implementation("com.test:expression-and-name:1.0.0")
+            }
+            tasks.named('cyclonedxDirectBom') {
+                schemaVersion = org.cyclonedx.Version.${schemaVersion.name()}
             }""", "rootProject.name = 'declared-licenses'")
 
         when:
@@ -47,10 +52,10 @@ class DeclaredLicensesSpec extends Specification {
         then:
         result.task(":cyclonedxDirectBom").outcome == TaskOutcome.SUCCESS
 
-        and: "both documents pass the 1.6 schema, which allows license objects or one expression, never both"
+        and: "both documents pass their schema, which below 1.7 allows license objects or one expression, never both"
         File reportDir = new File(testDir, "build/reports/cyclonedx-direct")
-        new JsonParser().validate(new File(reportDir, "bom.json"), Version.VERSION_16).isEmpty()
-        new XmlParser().validate(new File(reportDir, "bom.xml"), Version.VERSION_16).isEmpty()
+        new JsonParser().validate(new File(reportDir, "bom.json"), schemaVersion).isEmpty()
+        new XmlParser().validate(new File(reportDir, "bom.xml"), schemaVersion).isEmpty()
 
         and: "the licenses around the expression join it, in the order the pom declared them"
         Bom bom = new ObjectMapper().readValue(new File(reportDir, "bom.json"), Bom.class)
@@ -61,10 +66,16 @@ class DeclaredLicensesSpec extends Specification {
         licenseNames(component(bom, 'expression-and-name')) ==
             ['(CDDL-1.0 OR GPL-2.0-with-classpath-exception)', 'Some Bespoke License']
 
-        and: "all of it is what the pom states, so it is declared, whichever shape it took"
-        component(bom, 'expression-last').licenses.items*.expression*.acknowledgement == [Acknowledgement.DECLARED]
+        and: "all of it is what the pom states, so it is declared wherever the schema can say so"
+        component(bom, 'expression-last').licenses.items*.expression*.acknowledgement == [acknowledgement]
         component(bom, 'expression-and-name').licenses.items*.license*.acknowledgement ==
-            [Acknowledgement.DECLARED, Acknowledgement.DECLARED]
+            [acknowledgement, acknowledgement]
+
+        where:
+        schemaVersion      | acknowledgement
+        Version.VERSION_15 | null
+        Version.VERSION_16 | Acknowledgement.DECLARED
+        Version.VERSION_17 | Acknowledgement.DECLARED
     }
 
     private static Component component(Bom bom, String name) {

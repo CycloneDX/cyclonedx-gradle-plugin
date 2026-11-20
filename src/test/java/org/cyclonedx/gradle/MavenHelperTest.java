@@ -98,6 +98,28 @@ class MavenHelperTest {
     }
 
     @Test
+    void joinsALicenseResolvedByItsUrlIntoTheExpression() {
+        final LicenseChoice result = resolve(
+                pomLicense(EXPRESSION_NAME, null),
+                pomLicense("The license of this project", "https://opensource.org/license/MIT"));
+
+        assertEquals(EXPRESSION + " OR MIT", expression(result));
+    }
+
+    @Test
+    void joinedExpressionCarriesNoLicenseTextEvenWhenAsked() {
+        final MavenHelper withText = new MavenHelper(true);
+        final LicenseChoice objects = withText.resolveMavenLicenses(Arrays.asList(pomLicense("Apache-2.0", null)));
+        final LicenseChoice joined = withText.resolveMavenLicenses(
+                Arrays.asList(pomLicense("Apache-2.0", null), pomLicense(EXPRESSION_NAME, null)));
+
+        assertNotNull(objects);
+        assertNotNull(licenses(objects).get(0).getAttachmentText());
+        assertNotNull(joined);
+        assertEquals("Apache-2.0 OR " + EXPRESSION, expression(joined));
+    }
+
+    @Test
     void tagsEveryLicenseReadFromThePomAsDeclared() {
         assertDeclared(resolve(pomLicense("Apache-2.0", null), pomLicense("MIT", null)));
         assertDeclared(resolve(pomLicense("Apache-2.0", null), pomLicense(EXPRESSION_NAME, null)));
