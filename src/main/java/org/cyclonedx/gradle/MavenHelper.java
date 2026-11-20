@@ -248,11 +248,8 @@ class MavenHelper {
             return null;
         }
         final LicenseChoice licenseChoice = new LicenseChoice();
-        if (declared.stream().noneMatch(DeclaredLicense::isExpression)) {
-            for (DeclaredLicense license : declared) {
-                licenseChoice.addItem(license.item);
-            }
-        } else if (declared.stream().allMatch(DeclaredLicense::hasSpdxTerm)) {
+        if (declared.stream().anyMatch(DeclaredLicense::isExpression)
+                && declared.stream().allMatch(DeclaredLicense::hasSpdxTerm)) {
             final Set<String> alternatives = new LinkedHashSet<>();
             for (DeclaredLicense license : declared) {
                 alternatives.add(license.spdxTerm());
