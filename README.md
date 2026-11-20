@@ -346,6 +346,20 @@ tasks.cyclonedxDirectBom {
 To read one variable directly, set the property to its name, for example `"BUILD_URL"` in Kotlin or `'BUILD_URL'` in
 Groovy.
 
+### Declared licenses
+
+Each component's licenses come from its POM, including the POMs it inherits from. A `<license>` whose name or URL
+`cyclonedx-core-java` recognizes is written with the SPDX id, or SPDX expression, it maps to; any other is written with
+its declared name and URL, a URL that is not a valid URI being left out, and an entry with neither a name nor a
+recognized URL is left out altogether. Every license read from a POM carries `acknowledgement: declared` under
+CycloneDX 1.6 and newer.
+
+Maven treats several `<license>` entries as alternatives. When one of them resolves to an SPDX expression, such as
+`CDDL + GPLv2 with classpath exception`, the entries are written as one expression joined with `OR`, in the POM's
+order, because a license list below CycloneDX 1.7 holds license objects or one expression, never both. An entry that
+resolves to no SPDX id cannot join an expression, so in that case the list stays license objects and the expression
+becomes a named license. A joined expression carries no license URL and no license text.
+
 ## Configuration reference
 
 ### Properties shared by both tasks
@@ -359,7 +373,7 @@ Groovy.
 | `projectType` | `Component.Type` | `LIBRARY` | CycloneDX type of the main component. Kotlin requires an enum value such as `Component.Type.APPLICATION`; Groovy also accepts a type name such as `'application'`. |
 | `schemaVersion` | `Version` | `VERSION_16` | CycloneDX schema used for serialization. Set `Version.VERSION_17` to opt in to CycloneDX 1.7. |
 | `includeBomSerialNumber` | `Boolean` | `true` | Add a generated `urn:uuid:` serial number. |
-| `includeLicenseText` | `Boolean` | `false` | Include complete license text when it can be resolved. |
+| `includeLicenseText` | `Boolean` | `false` | Include complete license text when it can be resolved. A component whose declared licenses are written as one SPDX expression carries no text, since an expression has no place for it. |
 | `includeBuildSystem` | `Boolean` | `true` | Add a `BUILD_SYSTEM` external reference when the build URL can be detected. |
 | `buildSystemEnvironmentVariable` | `String` | Not set | Environment-variable name or `${NAME}` template used instead of automatic CI detection. |
 | `organizationalEntity` | `OrganizationalEntity` | Not set | Manufacturer or organizational metadata for the SBOM. |

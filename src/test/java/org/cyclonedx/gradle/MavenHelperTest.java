@@ -18,23 +18,237 @@
  */
 package org.cyclonedx.gradle;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Collections;
-import org.apache.maven.model.License;
+import java.io.File;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.Parent;
+import org.apache.maven.project.MavenProject;
+import org.cyclonedx.Version;
+import org.cyclonedx.model.Component;
+import org.cyclonedx.model.License;
 import org.cyclonedx.model.LicenseChoice;
+import org.cyclonedx.model.LicenseItem;
+import org.cyclonedx.model.license.Acknowledgement;
+import org.gradle.api.artifacts.ModuleIdentifier;
+import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * Tests for how {@link MavenHelper} turns the license list of a POM into the licenses of a component.
+ */
 class MavenHelperTest {
+
+    private static final String EXPRESSION_NAME = "CDDL + GPLv2 with classpath exception";
+    private static final String EXPRESSION = "(CDDL-1.0 OR GPL-2.0-with-classpath-exception)";
+
+    private final MavenHelper helper = new MavenHelper(false);
 
     @Test
     void retainsExpressionOnlyLicenseFromJavaxAnnotationApiPom() {
-        final License pomLicense = new License();
-        pomLicense.setName("CDDL + GPLv2 with classpath exception");
+        final LicenseChoice result = resolve(pomLicense(EXPRESSION_NAME, null));
 
-        final LicenseChoice result = new MavenHelper(false).resolveMavenLicenses(Collections.singletonList(pomLicense));
+        assertEquals(EXPRESSION, expression(result));
+    }
 
+    @Test
+    void joinsLicensesDeclaredBeforeAnExpressionIntoThatExpression() {
+        final LicenseChoice result = resolve(pomLicense("Apache-2.0", null), pomLicense(EXPRESSION_NAME, null));
+
+        assertEquals("Apache-2.0 OR " + EXPRESSION, expression(result));
+    }
+
+    @Test
+    void joinsLicensesDeclaredAfterAnExpressionIntoThatExpression() {
+        final LicenseChoice result = resolve(pomLicense(EXPRESSION_NAME, null), pomLicense("Apache-2.0", null));
+
+        assertEquals(EXPRESSION + " OR Apache-2.0", expression(result));
+        assertTrue(result.isValidForVersion(Version.VERSION_16));
+    }
+
+    @Test
+    void dropsAnAlternativeEqualToAnEarlierOne() {
+        final LicenseChoice result = resolve(
+                pomLicense("Apache-2.0", null), pomLicense("Apache 2.0", null), pomLicense(EXPRESSION_NAME, null));
+
+        assertEquals("Apache-2.0 OR " + EXPRESSION, expression(result));
+    }
+
+    @Test
+    void namesTheExpressionWhenAnotherLicenseResolvesToNoSpdxId() {
+        final LicenseChoice result = resolve(
+                pomLicense(EXPRESSION_NAME, "https://github.com/javaee/javax.annotation/blob/master/LICENSE"),
+                pomLicense("Some Bespoke License", "https://example.com/LICENSE"));
+
+        final List<License> licenses = licenses(result);
+        assertEquals(2, licenses.size());
+        assertNull(licenses.get(0).getId());
+        assertEquals(EXPRESSION, licenses.get(0).getName());
+        assertEquals(
+                "https://github.com/javaee/javax.annotation/blob/master/LICENSE",
+                licenses.get(0).getUrl());
+        assertNull(licenses.get(1).getId());
+        assertEquals("Some Bespoke License", licenses.get(1).getName());
+        assertEquals("https://example.com/LICENSE", licenses.get(1).getUrl());
+        assertTrue(result.isValidForVersion(Version.VERSION_16));
+    }
+
+    @Test
+    void keepsLicensesThatAllResolveToAnIdAsLicenseObjects() {
+        final LicenseChoice result = resolve(pomLicense("Apache-2.0", null), pomLicense("MIT", null));
+
+        assertEquals(
+                Arrays.asList("Apache-2.0", "MIT"),
+                licenses(result).stream().map(License::getId).collect(Collectors.toList()));
+    }
+
+    @Test
+    void joinsALicenseResolvedByItsUrlIntoTheExpression() {
+        final LicenseChoice result = resolve(
+                pomLicense(EXPRESSION_NAME, null),
+                pomLicense("The license of this project", "https://opensource.org/license/MIT"));
+
+        assertEquals(EXPRESSION + " OR MIT", expression(result));
+    }
+
+    @Test
+    void writesOnlyTheJoinedExpressionEvenWhenLicenseTextIsAsked() {
+        final MavenHelper withText = new MavenHelper(true);
+        final LicenseChoice objects = withText.resolveMavenLicenses(Arrays.asList(pomLicense("Apache-2.0", null)));
+        final LicenseChoice joined = withText.resolveMavenLicenses(
+                Arrays.asList(pomLicense("Apache-2.0", null), pomLicense(EXPRESSION_NAME, null)));
+
+        assertNotNull(objects);
+        assertNotNull(licenses(objects).get(0).getAttachmentText());
+        assertNotNull(joined);
+        assertEquals("Apache-2.0 OR " + EXPRESSION, expression(joined));
+    }
+
+    @Test
+    void keepsAnEntryWithoutANameWhenItsUrlResolves() {
+        final LicenseChoice result = resolve(pomLicense(null, "https://opensource.org/license/MIT"));
+
+        assertEquals(
+                Arrays.asList("MIT"),
+                licenses(result).stream().map(License::getId).collect(Collectors.toList()));
+    }
+
+    @Test
+    void skipsAParentDeclaredWithoutFullCoordinates(@TempDir final File repository) {
+        final Parent parent = new Parent();
+        parent.setArtifactId("parent");
+        parent.setVersion("1.0");
+        final Model model = new Model();
+        model.setParent(parent);
+
+        assertDoesNotThrow(() -> helper.getClosestMetadata(
+                new File(repository, "child-1.0.jar"),
+                new MavenProject(model),
+                new Component(),
+                moduleVersion("com.test", "child", "1.0")));
+    }
+
+    private static ModuleVersionIdentifier moduleVersion(final String group, final String name, final String version) {
+        final ModuleIdentifier module = new ModuleIdentifier() {
+            @Override
+            public String getGroup() {
+                return group;
+            }
+
+            @Override
+            public String getName() {
+                return name;
+            }
+        };
+        return new ModuleVersionIdentifier() {
+            @Override
+            public String getVersion() {
+                return version;
+            }
+
+            @Override
+            public String getGroup() {
+                return group;
+            }
+
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public ModuleIdentifier getModule() {
+                return module;
+            }
+        };
+    }
+
+    @Test
+    void writesNothingForAnEntryWithABlankName() {
+        assertNull(helper.resolveMavenLicenses(Arrays.asList(pomLicense("", "https://example.com/LICENSE"))));
+    }
+
+    @Test
+    void tagsEveryLicenseReadFromThePomAsDeclared() {
+        assertDeclared(resolve(pomLicense("Apache-2.0", null), pomLicense("MIT", null)));
+        assertDeclared(resolve(pomLicense("Apache-2.0", null), pomLicense(EXPRESSION_NAME, null)));
+        assertDeclared(resolve(pomLicense(EXPRESSION_NAME, null), pomLicense("Some Bespoke License", null)));
+    }
+
+    private static void assertDeclared(final LicenseChoice choice) {
+        for (LicenseItem item : choice.getItems()) {
+            final Acknowledgement acknowledgement = item.getExpression() != null
+                    ? item.getExpression().getAcknowledgement()
+                    : item.getLicense().getAcknowledgement();
+            assertEquals(Acknowledgement.DECLARED, acknowledgement, describe(choice));
+        }
+    }
+
+    private LicenseChoice resolve(final org.apache.maven.model.License... pomLicenses) {
+        final LicenseChoice result = helper.resolveMavenLicenses(Arrays.asList(pomLicenses));
         assertNotNull(result);
-        assertNotNull(result.getExpression());
+        return result;
+    }
+
+    private static org.apache.maven.model.License pomLicense(final String name, final String url) {
+        final org.apache.maven.model.License license = new org.apache.maven.model.License();
+        license.setName(name);
+        license.setUrl(url);
+        return license;
+    }
+
+    /** The value of the one expression the choice holds, failing when it holds anything else. */
+    private static String expression(final LicenseChoice choice) {
+        assertEquals(1, choice.getItems().size(), describe(choice));
+        final LicenseItem item = choice.getItems().get(0);
+        assertNotNull(item.getExpression(), describe(choice));
+        return item.getExpression().getValue();
+    }
+
+    /** The license objects the choice holds, failing when it holds an expression. */
+    private static List<License> licenses(final LicenseChoice choice) {
+        return choice.getItems().stream()
+                .map(item -> {
+                    assertNotNull(item.getLicense(), describe(choice));
+                    return item.getLicense();
+                })
+                .collect(Collectors.toList());
+    }
+
+    private static String describe(final LicenseChoice choice) {
+        return choice.getItems().stream()
+                .map(item -> item.getExpression() != null
+                        ? "expression " + item.getExpression().getValue()
+                        : "license " + item.getLicense().getId() + " "
+                                + item.getLicense().getName())
+                .collect(Collectors.joining(", ", "[", "]"));
     }
 }

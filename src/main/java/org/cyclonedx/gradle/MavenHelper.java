@@ -26,11 +26,13 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.MailingList;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
@@ -47,6 +49,9 @@ import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
+import org.cyclonedx.model.LicenseItem;
+import org.cyclonedx.model.license.Acknowledgement;
+import org.cyclonedx.model.license.Expression;
 import org.cyclonedx.util.LicenseResolver;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
@@ -126,7 +131,7 @@ class MavenHelper {
             component.setDescription(project.getDescription());
         }
         if (project.getOrganization() != null && project.getOrganization().getUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.WEBSITE)) {
+            if (lacksExternalReference(component, ExternalReference.Type.WEBSITE)) {
                 addExternalReference(
                         ExternalReference.Type.WEBSITE,
                         project.getOrganization().getUrl(),
@@ -134,7 +139,7 @@ class MavenHelper {
             }
         }
         if (project.getCiManagement() != null && project.getCiManagement().getUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.BUILD_SYSTEM)) {
+            if (lacksExternalReference(component, ExternalReference.Type.BUILD_SYSTEM)) {
                 addExternalReference(
                         ExternalReference.Type.BUILD_SYSTEM,
                         project.getCiManagement().getUrl(),
@@ -143,7 +148,7 @@ class MavenHelper {
         }
         if (project.getDistributionManagement() != null
                 && project.getDistributionManagement().getDownloadUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
+            if (lacksExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
                 addExternalReference(
                         ExternalReference.Type.DISTRIBUTION,
                         project.getDistributionManagement().getDownloadUrl(),
@@ -153,7 +158,7 @@ class MavenHelper {
         if (project.getDistributionManagement() != null
                 && project.getDistributionManagement().getRepository() != null
                 && project.getDistributionManagement().getRepository().getUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
+            if (lacksExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
                 addExternalReference(
                         ExternalReference.Type.DISTRIBUTION,
                         project.getDistributionManagement().getRepository().getUrl(),
@@ -161,28 +166,28 @@ class MavenHelper {
             }
         }
         if (project.getIssueManagement() != null && project.getIssueManagement().getUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.ISSUE_TRACKER)) {
+            if (lacksExternalReference(component, ExternalReference.Type.ISSUE_TRACKER)) {
                 addExternalReference(
                         ExternalReference.Type.ISSUE_TRACKER,
                         project.getIssueManagement().getUrl(),
                         component);
             }
         }
-        if (project.getMailingLists() != null && project.getMailingLists().size() > 0) {
+        if (project.getMailingLists() != null && !project.getMailingLists().isEmpty()) {
             for (MailingList list : project.getMailingLists()) {
                 if (list.getArchive() != null) {
-                    if (!doesComponentHaveExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
+                    if (lacksExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
                         addExternalReference(ExternalReference.Type.MAILING_LIST, list.getArchive(), component);
                     }
                 } else if (list.getSubscribe() != null) {
-                    if (!doesComponentHaveExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
+                    if (lacksExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
                         addExternalReference(ExternalReference.Type.MAILING_LIST, list.getSubscribe(), component);
                     }
                 }
             }
         }
         if (project.getScm() != null && project.getScm().getUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.VCS)) {
+            if (lacksExternalReference(component, ExternalReference.Type.VCS)) {
                 addExternalReference(
                         ExternalReference.Type.VCS, project.getScm().getUrl(), component);
             }
@@ -191,81 +196,155 @@ class MavenHelper {
 
     private void addExternalReference(
             final ExternalReference.Type referenceType, final String url, final Component component) {
-        try {
-            final URI uri = new URI(url.trim());
+        final String uri = asUri(url);
+        if (uri != null) {
             final ExternalReference ref = new ExternalReference();
             ref.setType(referenceType);
-            ref.setUrl(uri.toString());
+            ref.setUrl(uri);
             component.addExternalReference(ref);
-        } catch (URISyntaxException e) {
-            // throw it away
         }
     }
 
-    private boolean doesComponentHaveExternalReference(final Component component, final ExternalReference.Type type) {
+    /**
+     * The URL as a URI string, or null when it is not one; a URL the POM got wrong is thrown away.
+     */
+    @Nullable private static String asUri(final String url) {
+        try {
+            return new URI(url.trim()).toString();
+        } catch (URISyntaxException e) {
+            return null;
+        }
+    }
+
+    private boolean lacksExternalReference(final Component component, final ExternalReference.Type type) {
         if (component.getExternalReferences() != null
                 && !component.getExternalReferences().isEmpty()) {
             for (final ExternalReference ref : component.getExternalReferences()) {
                 if (type == ref.getType()) {
-                    return true;
+                    return false;
                 }
             }
         }
-        return false;
+        return true;
     }
 
+    /**
+     * Resolves the licenses a POM declares into the licenses of a component. Maven reads several licenses as
+     * alternatives the user may choose among, and a CycloneDX list below 1.7 holds either license objects or one
+     * expression, so once one of them resolves to an expression they are all joined into a single expression with
+     * {@code OR}. A name that resolves to no SPDX id cannot join an expression, so in that case the licenses stay
+     * objects and the expression becomes one with the expression as its name and the URL the POM gave it. Whichever
+     * shape results, it is what the POM states, so every license is acknowledged as declared.
+     */
     @Nullable LicenseChoice resolveMavenLicenses(final List<org.apache.maven.model.License> projectLicenses) {
-        final LicenseChoice licenseChoice = new LicenseChoice();
+        final List<DeclaredLicense> declared = new ArrayList<>();
         for (org.apache.maven.model.License artifactLicense : projectLicenses) {
-            boolean resolved = false;
-            if (artifactLicense.getName() != null) {
-                final LicenseChoice resolvedByName =
-                        LicenseResolver.resolve(artifactLicense.getName(), includeLicenseText);
-                if (resolvedByName != null) {
-                    if (resolvedByName.getLicenses() != null
-                            && !resolvedByName.getLicenses().isEmpty()) {
-                        resolved = true;
-                        licenseChoice.addLicense(resolvedByName.getLicenses().get(0));
-                    } else if (resolvedByName.getExpression() != null) {
-                        resolved = true;
-                        licenseChoice.setExpression(resolvedByName.getExpression());
-                    }
-                }
-            }
-            if (artifactLicense.getUrl() != null && !resolved) {
-                final LicenseChoice resolvedByUrl =
-                        LicenseResolver.resolve(artifactLicense.getUrl(), includeLicenseText);
-                if (resolvedByUrl != null) {
-                    if (resolvedByUrl.getLicenses() != null
-                            && !resolvedByUrl.getLicenses().isEmpty()) {
-                        resolved = true;
-                        licenseChoice.addLicense(resolvedByUrl.getLicenses().get(0));
-                    } else if (resolvedByUrl.getExpression() != null) {
-                        resolved = true;
-                        licenseChoice.setExpression(resolvedByUrl.getExpression());
-                    }
-                }
-            }
-            if (artifactLicense.getName() != null && !resolved) {
-                final org.cyclonedx.model.License license = new org.cyclonedx.model.License();
-                ;
-                license.setName(artifactLicense.getName().trim());
-                final String licenseUrl = artifactLicense.getUrl();
-                if (licenseUrl != null && !licenseUrl.trim().isEmpty()) {
-                    try {
-                        final URI uri = new URI(licenseUrl.trim());
-                        license.setUrl(uri.toString());
-                    } catch (URISyntaxException e) {
-                        // throw it away
-                    }
-                }
-                licenseChoice.addLicense(license);
+            final DeclaredLicense license = resolveMavenLicense(artifactLicense);
+            if (license != null) {
+                declared.add(license);
             }
         }
-        if (licenseChoice.getLicenses() == null && licenseChoice.getExpression() == null) {
+        if (declared.isEmpty()) {
             return null;
         }
+        final LicenseChoice licenseChoice = new LicenseChoice();
+        if (declared.stream().anyMatch(DeclaredLicense::isExpression)
+                && declared.stream().allMatch(DeclaredLicense::hasSpdxTerm)) {
+            final Set<String> alternatives = new LinkedHashSet<>();
+            for (DeclaredLicense license : declared) {
+                alternatives.add(license.spdxTerm());
+            }
+            licenseChoice.addExpression(new Expression(String.join(" OR ", alternatives)));
+        } else {
+            for (DeclaredLicense license : declared) {
+                licenseChoice.addLicense(license.asLicense());
+            }
+        }
+        for (LicenseItem item : licenseChoice.getItems()) {
+            if (item.getExpression() != null) {
+                item.getExpression().setAcknowledgement(Acknowledgement.DECLARED);
+            } else {
+                item.getLicense().setAcknowledgement(Acknowledgement.DECLARED);
+            }
+        }
         return licenseChoice;
+    }
+
+    @Nullable private DeclaredLicense resolveMavenLicense(final org.apache.maven.model.License artifactLicense) {
+        final @Nullable String name = artifactLicense.getName();
+        final @Nullable String url = artifactLicense.getUrl();
+        LicenseItem resolved = resolveSpdx(name);
+        if (resolved == null) {
+            resolved = resolveSpdx(url);
+        }
+        if (resolved != null) {
+            return new DeclaredLicense(resolved, url);
+        }
+        // A license object needs a name, so an entry without one has nothing to be written with
+        if (name == null || name.trim().isEmpty()) {
+            if (url == null) {
+                LOGGER.debug("{} Skipping an empty license entry", LOG_PREFIX);
+            } else {
+                LOGGER.debug(
+                        "{} Skipping a license without a name whose url {} is not a known license", LOG_PREFIX, url);
+            }
+            return null;
+        }
+        return new DeclaredLicense(LicenseItem.ofLicense(namedLicense(name, url)), url);
+    }
+
+    @Nullable private LicenseItem resolveSpdx(final @Nullable String nameOrUrl) {
+        if (nameOrUrl == null || nameOrUrl.trim().isEmpty()) {
+            return null;
+        }
+        final LicenseChoice resolved = LicenseResolver.resolve(nameOrUrl, includeLicenseText);
+        if (resolved == null
+                || resolved.getItems() == null
+                || resolved.getItems().isEmpty()) {
+            return null;
+        }
+        return resolved.getItems().get(0);
+    }
+
+    private static org.cyclonedx.model.License namedLicense(final String name, final @Nullable String url) {
+        final org.cyclonedx.model.License license = new org.cyclonedx.model.License();
+        license.setName(name.trim());
+        if (url != null && !url.trim().isEmpty()) {
+            license.setUrl(asUri(url));
+        }
+        return license;
+    }
+
+    /**
+     * One license entry of a POM as resolved, with the URL the POM gave it, for the case where an expression has to be
+     * written as a named license.
+     */
+    private static final class DeclaredLicense {
+        final LicenseItem item;
+        final @Nullable String pomUrl;
+
+        DeclaredLicense(final LicenseItem item, final @Nullable String pomUrl) {
+            this.item = item;
+            this.pomUrl = pomUrl;
+        }
+
+        boolean isExpression() {
+            return item.getExpression() != null;
+        }
+
+        boolean hasSpdxTerm() {
+            return isExpression() || item.getLicense().getId() != null;
+        }
+
+        String spdxTerm() {
+            return isExpression()
+                    ? item.getExpression().getValue()
+                    : item.getLicense().getId();
+        }
+
+        org.cyclonedx.model.License asLicense() {
+            return isExpression() ? namedLicense(item.getExpression().getValue(), pomUrl) : item.getLicense();
+        }
     }
 
     /**
@@ -282,32 +361,46 @@ class MavenHelper {
         if (artifact == null || artifact.getParentFile() == null) {
             return null;
         }
-        final Model model = project.getModel();
-        if (model.getParent() != null) {
-            final Parent parent = model.getParent();
-            // Navigate out of version, artifactId, and first (possibly only) level of
-            // groupId
-            final StringBuilder getout = new StringBuilder("../../../");
-            final int periods =
-                    mid.getGroup().length() - mid.getGroup().replace(".", "").length();
-            for (int i = 0; i < periods; i++) {
-                getout.append("../");
-            }
-            final File parentFile = new File(
-                    artifact.getParentFile(),
-                    getout + parent.getGroupId().replace(".", "/") + "/" + parent.getArtifactId() + "/"
-                            + parent.getVersion() + "/" + parent.getArtifactId() + "-" + parent.getVersion() + ".pom");
+        final Parent parent = project.getModel().getParent();
+        if (parent == null) {
+            return null;
+        }
+        if (parent.getGroupId() == null || parent.getArtifactId() == null || parent.getVersion() == null) {
+            LOGGER.debug(
+                    "{} The parent of {} is declared without full coordinates, so its pom is not read",
+                    LOG_PREFIX,
+                    mid);
+            return null;
+        }
+        try {
+            final File parentFile = parentPomFile(artifact.getParentFile(), parent, mid);
             if (parentFile.exists() && parentFile.isFile()) {
-                try {
-                    final File canonicalParentFile = parentFile.getCanonicalFile();
-                    onPomRead.accept(canonicalParentFile);
-                    return readPom(canonicalParentFile);
-                } catch (Exception e) {
-                    LOGGER.error("{} An error occurred retrieving an artifacts parent pom", LOG_PREFIX, e);
-                }
+                final File canonicalParentFile = parentFile.getCanonicalFile();
+                onPomRead.accept(canonicalParentFile);
+                return readPom(canonicalParentFile);
             }
+        } catch (Exception e) {
+            LOGGER.error("{} An error occurred retrieving the parent pom of {}", LOG_PREFIX, mid, e);
         }
         return null;
+    }
+
+    /**
+     * Locates the parent pom in the repository layout the artifact sits in.
+     */
+    private static File parentPomFile(final File artifactDir, final Parent parent, final ModuleVersionIdentifier mid) {
+        // Navigate out of version, artifactId, and first (possibly only) level of
+        // groupId
+        final StringBuilder getout = new StringBuilder("../../../");
+        final int periods =
+                mid.getGroup().length() - mid.getGroup().replace(".", "").length();
+        for (int i = 0; i < periods; i++) {
+            getout.append("../");
+        }
+        return new File(
+                artifactDir,
+                getout + parent.getGroupId().replace(".", "/") + "/" + parent.getArtifactId() + "/"
+                        + parent.getVersion() + "/" + parent.getArtifactId() + "-" + parent.getVersion() + ".pom");
     }
 
     /**
@@ -328,12 +421,13 @@ class MavenHelper {
                     LOGGER.debug("{} Skipping pom extraction of non jar artifact: {}", LOG_PREFIX, artifact.getName());
                     return null;
                 }
-                final JarFile jarFile = new JarFile(artifact);
-                final JarEntry entry =
-                        jarFile.getJarEntry("META-INF/maven/" + mid.getGroup() + "/" + mid.getName() + "/pom.xml");
-                if (entry != null) {
-                    try (final InputStream input = jarFile.getInputStream(entry)) {
-                        return readPom(input);
+                try (final JarFile jarFile = new JarFile(artifact)) {
+                    final JarEntry entry =
+                            jarFile.getJarEntry("META-INF/maven/" + mid.getGroup() + "/" + mid.getName() + "/pom.xml");
+                    if (entry != null) {
+                        try (final InputStream input = jarFile.getInputStream(entry)) {
+                            return readPom(input);
+                        }
                     }
                 }
             } catch (IOException e) {
@@ -413,37 +507,11 @@ class MavenHelper {
         // execute the model building request
         final DefaultModelBuilderFactory factory = new DefaultModelBuilderFactory();
         final DefaultModelBuilder builder = factory.newInstance();
-        Model effectiveModel = null;
         try {
-            effectiveModel = builder.build(req).getEffectiveModel();
+            return builder.build(req).getEffectiveModel();
         } catch (ModelBuildingException e) {
             throw new IllegalStateException("An error occurred attempting to resolve effective POM", e);
         }
-        return effectiveModel;
-    }
-
-    /**
-     * Returns true for any artifact type which will positively have a POM that
-     * describes the artifact.
-     *
-     * @param artifact
-     *            the artifact
-     * @return true if artifact will have a POM, false if not
-     */
-    boolean isDescribedArtifact(final Artifact artifact) {
-        return artifact.getType().equalsIgnoreCase("jar");
-    }
-
-    /**
-     * Returns true for any artifact type which will positively have a POM that
-     * describes the artifact.
-     *
-     * @param artifact
-     *            the artifact
-     * @return true if artifact will have a POM, false if not
-     */
-    static boolean isDescribedArtifact(final ResolvedArtifact artifact) {
-        return artifact.getType().equalsIgnoreCase("jar");
     }
 
     boolean isModified(final @Nullable ResolvedArtifact artifact) {
