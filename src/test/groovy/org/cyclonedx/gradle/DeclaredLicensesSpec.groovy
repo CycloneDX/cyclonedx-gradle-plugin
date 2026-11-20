@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.cyclonedx.Version
 import org.cyclonedx.model.Bom
 import org.cyclonedx.model.Component
+import org.cyclonedx.model.license.Acknowledgement
 import org.cyclonedx.parsers.JsonParser
 import org.cyclonedx.parsers.XmlParser
 import org.gradle.api.JavaVersion
@@ -59,6 +60,11 @@ class DeclaredLicensesSpec extends Specification {
         and: "a name no SPDX id matches cannot join an expression, so the expression becomes a named license beside it"
         licenseNames(component(bom, 'expression-and-name')) ==
             ['(CDDL-1.0 OR GPL-2.0-with-classpath-exception)', 'Some Bespoke License']
+
+        and: "all of it is what the pom states, so it is declared, whichever shape it took"
+        component(bom, 'expression-last').licenses.items*.expression*.acknowledgement == [Acknowledgement.DECLARED]
+        component(bom, 'expression-and-name').licenses.items*.license*.acknowledgement ==
+            [Acknowledgement.DECLARED, Acknowledgement.DECLARED]
     }
 
     private static Component component(Bom bom, String name) {

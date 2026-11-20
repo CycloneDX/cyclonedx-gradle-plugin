@@ -30,6 +30,7 @@ import org.cyclonedx.Version;
 import org.cyclonedx.model.License;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.LicenseItem;
+import org.cyclonedx.model.license.Acknowledgement;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -94,6 +95,22 @@ class MavenHelperTest {
         assertEquals(
                 Arrays.asList("Apache-2.0", "MIT"),
                 licenses(result).stream().map(License::getId).collect(Collectors.toList()));
+    }
+
+    @Test
+    void tagsEveryLicenseReadFromThePomAsDeclared() {
+        assertDeclared(resolve(pomLicense("Apache-2.0", null), pomLicense("MIT", null)));
+        assertDeclared(resolve(pomLicense("Apache-2.0", null), pomLicense(EXPRESSION_NAME, null)));
+        assertDeclared(resolve(pomLicense(EXPRESSION_NAME, null), pomLicense("Some Bespoke License", null)));
+    }
+
+    private static void assertDeclared(final LicenseChoice choice) {
+        for (LicenseItem item : choice.getItems()) {
+            final Acknowledgement acknowledgement = item.getExpression() != null
+                    ? item.getExpression().getAcknowledgement()
+                    : item.getLicense().getAcknowledgement();
+            assertEquals(Acknowledgement.DECLARED, acknowledgement, describe(choice));
+        }
     }
 
     private LicenseChoice resolve(final org.apache.maven.model.License... pomLicenses) {

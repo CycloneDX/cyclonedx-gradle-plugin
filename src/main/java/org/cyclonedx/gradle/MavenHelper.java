@@ -51,6 +51,7 @@ import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.LicenseItem;
+import org.cyclonedx.model.license.Acknowledgement;
 import org.cyclonedx.model.license.Expression;
 import org.cyclonedx.util.LicenseResolver;
 import org.gradle.api.Project;
@@ -224,7 +225,8 @@ class MavenHelper {
      * alternatives the user may choose among, and a CycloneDX list below 1.7 holds either license objects or one
      * expression, so once one of them resolves to an expression they are all joined into a single expression with
      * {@code OR}. A name that resolves to no SPDX id cannot join an expression, so in that case the licenses stay
-     * objects and the expression becomes one with the expression as its name.
+     * objects and the expression becomes one with the expression as its name. Whichever shape results, it is what the
+     * POM states, so every license is acknowledged as declared.
      */
     @Nullable LicenseChoice resolveMavenLicenses(final List<org.apache.maven.model.License> projectLicenses) {
         final List<LicenseItem> declared = new ArrayList<>();
@@ -245,6 +247,13 @@ class MavenHelper {
         } else {
             for (LicenseItem item : declared) {
                 licenseChoice.addLicense(item.getLicense() != null ? item.getLicense() : named(item.getExpression()));
+            }
+        }
+        for (LicenseItem item : licenseChoice.getItems()) {
+            if (item.getExpression() != null) {
+                item.getExpression().setAcknowledgement(Acknowledgement.DECLARED);
+            } else {
+                item.getLicense().setAcknowledgement(Acknowledgement.DECLARED);
             }
         }
         return licenseChoice;
