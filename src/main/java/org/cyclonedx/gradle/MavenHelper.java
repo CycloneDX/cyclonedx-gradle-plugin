@@ -283,14 +283,15 @@ class MavenHelper {
         if (resolved != null) {
             return new DeclaredLicense(resolved, url);
         }
-        if (name == null) {
+        // A license object needs a name, so an entry without one has nothing to be written with
+        if (name == null || name.trim().isEmpty()) {
             return null;
         }
         return new DeclaredLicense(LicenseItem.ofLicense(namedLicense(name, url)), url);
     }
 
     @Nullable private LicenseItem resolveSpdx(final @Nullable String nameOrUrl) {
-        if (nameOrUrl == null) {
+        if (nameOrUrl == null || nameOrUrl.trim().isEmpty()) {
             return null;
         }
         final LicenseChoice resolved = LicenseResolver.resolve(nameOrUrl, includeLicenseText);

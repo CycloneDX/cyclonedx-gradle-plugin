@@ -5,13 +5,14 @@ status: accepted
 # Join a POM's licenses into one expression only when one of them is an expression
 
 `MavenHelper.resolveMavenLicenses` turns the `<license>` entries of a component's POM into the component's licenses.
-Each entry is resolved through `cyclonedx-core-java`'s `LicenseResolver`, by name and then by URL, and an entry that
-resolves to neither is kept as a license with the declared name and URL. Most entries resolve to a license object with
-an SPDX identifier. A few names in Core's mapping, such as "CDDL + GPLv2 with classpath exception", resolve to an SPDX
-expression, and any mapping that needs a license exception has to, because an exception is not a license identifier.
-A CycloneDX 1.6 license list holds license objects or exactly one expression, never both. Until now an expression
-replaced every license resolved before it, so the component lost those licenses, and a license resolved after it was
-appended beside it, so the document failed the plugin's own schema validation and the task failed with it.
+Each entry is resolved through `cyclonedx-core-java`'s `LicenseResolver`, by name and then by URL; an entry with a
+name that resolves to neither is kept as a license with that name and URL, and an entry without a name is left out.
+Most entries resolve to a license object with an SPDX identifier. A few names in Core's mapping, such as "CDDL + GPLv2
+with classpath exception", resolve to an SPDX expression, and any mapping that needs a license exception has to,
+because an exception is not a license identifier. A CycloneDX 1.6 license list holds license objects or exactly one
+expression, never both. Until now an expression replaced every license resolved before it, so the component lost those
+licenses, and a license resolved after it was appended beside it, so the document failed the plugin's own schema
+validation and the task failed with it.
 
 When one entry resolves to an expression and the POM lists others, and every entry resolved to an SPDX identifier or
 expression, the licenses are now written as one expression joining the entries with `OR`. The Maven POM reference

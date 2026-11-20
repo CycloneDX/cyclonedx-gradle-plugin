@@ -124,6 +124,11 @@ class MavenHelperTest {
     }
 
     @Test
+    void writesNothingForAnEntryWithABlankName() {
+        assertNull(helper.resolveMavenLicenses(Arrays.asList(pomLicense("", "https://example.com/LICENSE"))));
+    }
+
+    @Test
     void tagsEveryLicenseReadFromThePomAsDeclared() {
         assertDeclared(resolve(pomLicense("Apache-2.0", null), pomLicense("MIT", null)));
         assertDeclared(resolve(pomLicense("Apache-2.0", null), pomLicense(EXPRESSION_NAME, null)));
