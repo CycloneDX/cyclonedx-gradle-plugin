@@ -6,7 +6,8 @@ status: accepted
 
 `MavenHelper.resolveMavenLicenses` turns the `<license>` entries of a component's POM into the component's licenses.
 Each entry is resolved through `cyclonedx-core-java`'s `LicenseResolver`, by name and then by URL; an entry with a
-name that resolves to neither is kept as a license with that name and URL, and an entry without a name is left out.
+name that resolves to neither is kept as a license with that name and URL, and an entry with neither a name nor a
+recognized URL is left out.
 Most entries resolve to a license object with an SPDX identifier. A few names in Core's mapping, such as "CDDL + GPLv2
 with classpath exception", resolve to an SPDX expression, and any mapping that needs a license exception has to,
 because an exception is not a license identifier. A CycloneDX 1.6 license list holds license objects or exactly one
