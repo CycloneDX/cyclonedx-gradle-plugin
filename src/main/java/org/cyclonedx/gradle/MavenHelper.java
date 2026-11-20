@@ -376,12 +376,13 @@ class MavenHelper {
                     LOGGER.debug("{} Skipping pom extraction of non jar artifact: {}", LOG_PREFIX, artifact.getName());
                     return null;
                 }
-                final JarFile jarFile = new JarFile(artifact);
-                final JarEntry entry =
-                        jarFile.getJarEntry("META-INF/maven/" + mid.getGroup() + "/" + mid.getName() + "/pom.xml");
-                if (entry != null) {
-                    try (final InputStream input = jarFile.getInputStream(entry)) {
-                        return readPom(input);
+                try (final JarFile jarFile = new JarFile(artifact)) {
+                    final JarEntry entry =
+                            jarFile.getJarEntry("META-INF/maven/" + mid.getGroup() + "/" + mid.getName() + "/pom.xml");
+                    if (entry != null) {
+                        try (final InputStream input = jarFile.getInputStream(entry)) {
+                            return readPom(input);
+                        }
                     }
                 }
             } catch (IOException e) {
