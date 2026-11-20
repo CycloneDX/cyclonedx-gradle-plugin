@@ -76,12 +76,16 @@ class MavenHelperTest {
     @Test
     void namesTheExpressionWhenAnotherLicenseResolvesToNoSpdxId() {
         final LicenseChoice result = resolve(
-                pomLicense(EXPRESSION_NAME, null), pomLicense("Some Bespoke License", "https://example.com/LICENSE"));
+                pomLicense(EXPRESSION_NAME, "https://github.com/javaee/javax.annotation/blob/master/LICENSE"),
+                pomLicense("Some Bespoke License", "https://example.com/LICENSE"));
 
         final List<License> licenses = licenses(result);
         assertEquals(2, licenses.size());
         assertNull(licenses.get(0).getId());
         assertEquals(EXPRESSION, licenses.get(0).getName());
+        assertEquals(
+                "https://github.com/javaee/javax.annotation/blob/master/LICENSE",
+                licenses.get(0).getUrl());
         assertNull(licenses.get(1).getId());
         assertEquals("Some Bespoke License", licenses.get(1).getName());
         assertEquals("https://example.com/LICENSE", licenses.get(1).getUrl());
@@ -107,7 +111,7 @@ class MavenHelperTest {
     }
 
     @Test
-    void joinedExpressionCarriesNoLicenseTextEvenWhenAsked() {
+    void writesOnlyTheJoinedExpressionEvenWhenLicenseTextIsAsked() {
         final MavenHelper withText = new MavenHelper(true);
         final LicenseChoice objects = withText.resolveMavenLicenses(Arrays.asList(pomLicense("Apache-2.0", null)));
         final LicenseChoice joined = withText.resolveMavenLicenses(
