@@ -124,6 +124,15 @@ class MavenHelperTest {
     }
 
     @Test
+    void keepsAnEntryWithoutANameWhenItsUrlResolves() {
+        final LicenseChoice result = resolve(pomLicense(null, "https://opensource.org/license/MIT"));
+
+        assertEquals(
+                Arrays.asList("MIT"),
+                licenses(result).stream().map(License::getId).collect(Collectors.toList()));
+    }
+
+    @Test
     void writesNothingForAnEntryWithABlankName() {
         assertNull(helper.resolveMavenLicenses(Arrays.asList(pomLicense("", "https://example.com/LICENSE"))));
     }
