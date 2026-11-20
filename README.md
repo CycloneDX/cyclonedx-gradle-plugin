@@ -346,6 +346,18 @@ tasks.cyclonedxDirectBom {
 To read one variable directly, set the property to its name, for example `"BUILD_URL"` in Kotlin or `'BUILD_URL'` in
 Groovy.
 
+### Component licenses
+
+Each component's licenses come from its POM, including the POMs it inherits from. A `<license>` whose name or URL
+`cyclonedx-core-java` recognizes is written with its SPDX id; any other is written with its declared name and URL.
+Every license read from a POM carries `acknowledgement: declared` under CycloneDX 1.6 and newer.
+
+Maven treats several `<license>` entries as alternatives. When one of them resolves to an SPDX expression, such as
+`CDDL + GPLv2 with classpath exception`, the entries are written as one expression joined with `OR`, in the POM's
+order, because a license list below CycloneDX 1.7 holds license objects or one expression, never both. An entry that
+resolves to no SPDX id cannot join an expression, so in that case the list stays license objects and the expression
+becomes a named license. A joined expression carries no license URL and no license text.
+
 ## Configuration reference
 
 ### Properties shared by both tasks
