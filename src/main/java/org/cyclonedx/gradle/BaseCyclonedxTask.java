@@ -195,6 +195,21 @@ public abstract class BaseCyclonedxTask extends DefaultTask {
     @Input
     public abstract Property<Boolean> getIncludeLicenseText();
 
+    /**
+     * <p>The time written as {@code metadata.timestamp}: an ISO 8601 date-time with an offset, such as
+     * {@code 2026-01-02T03:04:05Z}, or the seconds since the epoch, such as {@code 1767323045}, which is the form of
+     * {@code SOURCE_DATE_EPOCH}.</p>
+     * <p>Setting it makes the document reproducible: the same inputs and plugin version give the same bytes, and the
+     * serial number, when included, is derived from the document's content instead of generated at random.
+     * If not set, the timestamp is the time of generation and the serial number is random.</p>
+     *
+     * @return the timestamp of the document
+     * @see #getIncludeBomSerialNumber()
+     */
+    @Input
+    @Optional
+    public abstract Property<String> getTimestamp();
+
     public BaseCyclonedxTask() {
         super();
         getComponentGroup().convention(getProject().getProviders().provider(() -> getProject()
