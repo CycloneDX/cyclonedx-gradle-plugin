@@ -173,8 +173,11 @@ class SbomBuilder<T extends BaseCyclonedxTask> {
         addBuildSystemMetaData(component);
         if (task.getExternalReferences().isPresent()) {
             task.getExternalReferences().get().forEach(component::addExternalReference);
+        } else {
+            // only apply the default (git-derived VCS reference) when the user left the property unset;
+            // an explicitly assigned list - including an empty one - is respected as-is
+            ExternalReferencesUtil.complementByEnvironment(component);
         }
-        ExternalReferencesUtil.complementByEnvironment(component);
         return component;
     }
 
