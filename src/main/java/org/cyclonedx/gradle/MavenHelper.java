@@ -359,15 +359,15 @@ class MavenHelper {
         if (parent == null) {
             return null;
         }
-        final File parentFile = parentPomFile(artifact.getParentFile(), parent, mid);
-        if (parentFile.exists() && parentFile.isFile()) {
-            try {
+        try {
+            final File parentFile = parentPomFile(artifact.getParentFile(), parent, mid);
+            if (parentFile.exists() && parentFile.isFile()) {
                 final File canonicalParentFile = parentFile.getCanonicalFile();
                 onPomRead.accept(canonicalParentFile);
                 return readPom(canonicalParentFile);
-            } catch (Exception e) {
-                LOGGER.error("{} An error occurred retrieving an artifacts parent pom", LOG_PREFIX, e);
             }
+        } catch (Exception e) {
+            LOGGER.error("{} An error occurred retrieving an artifacts parent pom", LOG_PREFIX, e);
         }
         return null;
     }
