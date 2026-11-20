@@ -24,8 +24,9 @@ their shape. The same rule applies under every schema version, although 1.7 allo
 list, so that a document means the same whichever schema the build selects.
 
 Every license read from a POM is a **Declared License** and is tagged `acknowledgement: declared`, which the 1.6
-schema defines as the initial intentions of the authors regarding the licensing terms of their code. The license of the main component configured
-through the task's `licenseChoice` is the build author's statement, not the POM's, and is left as configured.
+schema defines as the initial intentions of the authors regarding the licensing terms of their code. The license of
+the main component configured through the task's `licenseChoice` is the build author's statement, not the POM's, and
+is left as configured.
 
 ## Considered options
 
@@ -45,9 +46,9 @@ through the task's `licenseChoice` is the build author's statement, not the POM'
 
 ## Consequences
 
-- Under ADR 0004 the joining is a correction: it restores licenses that were dropped and a valid document where the task
-  failed, so it ships in a minor version. The acknowledgement is optional metadata valid under the configured schema; Core omits it
-  below 1.6.
+- Under ADR 0004 the joining is a correction: it restores licenses that were dropped and a valid document where the
+  task failed, so it ships in a minor version. The acknowledgement is optional metadata valid under the configured
+  schema; Core omits it below 1.6.
 - A joined expression carries no license URL and no license text, since an expression has neither, and the
   `includeLicenseText` documentation says so. Both follow from the SPDX identifiers in the expression.
 - The plugin does not rewrite what Core returns. A deprecated SPDX identifier in Core's mapping lands in the expression
