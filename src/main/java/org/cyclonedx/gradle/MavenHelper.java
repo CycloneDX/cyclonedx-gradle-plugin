@@ -282,6 +282,7 @@ class MavenHelper {
         }
         // A license object needs a name, so an entry without one has nothing to be written with
         if (name == null || name.trim().isEmpty()) {
+            LOGGER.debug("{} Skipping a license without a name whose url {} is not a known license", LOG_PREFIX, url);
             return null;
         }
         return new DeclaredLicense(LicenseItem.ofLicense(namedLicense(name, url)), url);
@@ -367,7 +368,7 @@ class MavenHelper {
                 return readPom(canonicalParentFile);
             }
         } catch (Exception e) {
-            LOGGER.error("{} An error occurred retrieving an artifacts parent pom", LOG_PREFIX, e);
+            LOGGER.error("{} An error occurred retrieving the parent pom of {}", LOG_PREFIX, mid, e);
         }
         return null;
     }

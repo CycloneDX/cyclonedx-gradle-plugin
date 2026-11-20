@@ -18,20 +18,28 @@
  */
 package org.cyclonedx.gradle;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.Parent;
+import org.apache.maven.project.MavenProject;
 import org.cyclonedx.Version;
+import org.cyclonedx.model.Component;
 import org.cyclonedx.model.License;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.LicenseItem;
 import org.cyclonedx.model.license.Acknowledgement;
+import org.gradle.api.internal.artifacts.DefaultModuleVersionIdentifier;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for how {@link MavenHelper} turns the license list of a POM into the licenses of a component.
@@ -130,6 +138,21 @@ class MavenHelperTest {
         assertEquals(
                 Arrays.asList("MIT"),
                 licenses(result).stream().map(License::getId).collect(Collectors.toList()));
+    }
+
+    @Test
+    void logsInsteadOfFailingWhenTheParentPomPathCannotBeBuilt(@TempDir final File repository) {
+        final Parent parent = new Parent();
+        parent.setArtifactId("parent");
+        parent.setVersion("1.0");
+        final Model model = new Model();
+        model.setParent(parent);
+
+        assertDoesNotThrow(() -> helper.getClosestMetadata(
+                new File(repository, "child-1.0.jar"),
+                new MavenProject(model),
+                new Component(),
+                DefaultModuleVersionIdentifier.newId("com.test", "child", "1.0")));
     }
 
     @Test
