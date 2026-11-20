@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import org.apache.maven.artifact.Artifact;
 import org.apache.maven.model.MailingList;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
@@ -132,7 +131,7 @@ class MavenHelper {
             component.setDescription(project.getDescription());
         }
         if (project.getOrganization() != null && project.getOrganization().getUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.WEBSITE)) {
+            if (lacksExternalReference(component, ExternalReference.Type.WEBSITE)) {
                 addExternalReference(
                         ExternalReference.Type.WEBSITE,
                         project.getOrganization().getUrl(),
@@ -140,7 +139,7 @@ class MavenHelper {
             }
         }
         if (project.getCiManagement() != null && project.getCiManagement().getUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.BUILD_SYSTEM)) {
+            if (lacksExternalReference(component, ExternalReference.Type.BUILD_SYSTEM)) {
                 addExternalReference(
                         ExternalReference.Type.BUILD_SYSTEM,
                         project.getCiManagement().getUrl(),
@@ -149,7 +148,7 @@ class MavenHelper {
         }
         if (project.getDistributionManagement() != null
                 && project.getDistributionManagement().getDownloadUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
+            if (lacksExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
                 addExternalReference(
                         ExternalReference.Type.DISTRIBUTION,
                         project.getDistributionManagement().getDownloadUrl(),
@@ -159,7 +158,7 @@ class MavenHelper {
         if (project.getDistributionManagement() != null
                 && project.getDistributionManagement().getRepository() != null
                 && project.getDistributionManagement().getRepository().getUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
+            if (lacksExternalReference(component, ExternalReference.Type.DISTRIBUTION)) {
                 addExternalReference(
                         ExternalReference.Type.DISTRIBUTION,
                         project.getDistributionManagement().getRepository().getUrl(),
@@ -167,28 +166,28 @@ class MavenHelper {
             }
         }
         if (project.getIssueManagement() != null && project.getIssueManagement().getUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.ISSUE_TRACKER)) {
+            if (lacksExternalReference(component, ExternalReference.Type.ISSUE_TRACKER)) {
                 addExternalReference(
                         ExternalReference.Type.ISSUE_TRACKER,
                         project.getIssueManagement().getUrl(),
                         component);
             }
         }
-        if (project.getMailingLists() != null && project.getMailingLists().size() > 0) {
+        if (project.getMailingLists() != null && !project.getMailingLists().isEmpty()) {
             for (MailingList list : project.getMailingLists()) {
                 if (list.getArchive() != null) {
-                    if (!doesComponentHaveExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
+                    if (lacksExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
                         addExternalReference(ExternalReference.Type.MAILING_LIST, list.getArchive(), component);
                     }
                 } else if (list.getSubscribe() != null) {
-                    if (!doesComponentHaveExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
+                    if (lacksExternalReference(component, ExternalReference.Type.MAILING_LIST)) {
                         addExternalReference(ExternalReference.Type.MAILING_LIST, list.getSubscribe(), component);
                     }
                 }
             }
         }
         if (project.getScm() != null && project.getScm().getUrl() != null) {
-            if (!doesComponentHaveExternalReference(component, ExternalReference.Type.VCS)) {
+            if (lacksExternalReference(component, ExternalReference.Type.VCS)) {
                 addExternalReference(
                         ExternalReference.Type.VCS, project.getScm().getUrl(), component);
             }
@@ -208,16 +207,16 @@ class MavenHelper {
         }
     }
 
-    private boolean doesComponentHaveExternalReference(final Component component, final ExternalReference.Type type) {
+    private boolean lacksExternalReference(final Component component, final ExternalReference.Type type) {
         if (component.getExternalReferences() != null
                 && !component.getExternalReferences().isEmpty()) {
             for (final ExternalReference ref : component.getExternalReferences()) {
                 if (type == ref.getType()) {
-                    return true;
+                    return false;
                 }
             }
         }
-        return false;
+        return true;
     }
 
     /**
@@ -330,32 +329,39 @@ class MavenHelper {
         if (artifact == null || artifact.getParentFile() == null) {
             return null;
         }
-        final Model model = project.getModel();
-        if (model.getParent() != null) {
-            final Parent parent = model.getParent();
-            // Navigate out of version, artifactId, and first (possibly only) level of
-            // groupId
-            final StringBuilder getout = new StringBuilder("../../../");
-            final int periods =
-                    mid.getGroup().length() - mid.getGroup().replace(".", "").length();
-            for (int i = 0; i < periods; i++) {
-                getout.append("../");
-            }
-            final File parentFile = new File(
-                    artifact.getParentFile(),
-                    getout + parent.getGroupId().replace(".", "/") + "/" + parent.getArtifactId() + "/"
-                            + parent.getVersion() + "/" + parent.getArtifactId() + "-" + parent.getVersion() + ".pom");
-            if (parentFile.exists() && parentFile.isFile()) {
-                try {
-                    final File canonicalParentFile = parentFile.getCanonicalFile();
-                    onPomRead.accept(canonicalParentFile);
-                    return readPom(canonicalParentFile);
-                } catch (Exception e) {
-                    LOGGER.error("{} An error occurred retrieving an artifacts parent pom", LOG_PREFIX, e);
-                }
+        final Parent parent = project.getModel().getParent();
+        if (parent == null) {
+            return null;
+        }
+        final File parentFile = parentPomFile(artifact.getParentFile(), parent, mid);
+        if (parentFile.exists() && parentFile.isFile()) {
+            try {
+                final File canonicalParentFile = parentFile.getCanonicalFile();
+                onPomRead.accept(canonicalParentFile);
+                return readPom(canonicalParentFile);
+            } catch (Exception e) {
+                LOGGER.error("{} An error occurred retrieving an artifacts parent pom", LOG_PREFIX, e);
             }
         }
         return null;
+    }
+
+    /**
+     * Locates the parent pom in the repository layout the artifact sits in.
+     */
+    private static File parentPomFile(final File artifactDir, final Parent parent, final ModuleVersionIdentifier mid) {
+        // Navigate out of version, artifactId, and first (possibly only) level of
+        // groupId
+        final StringBuilder getout = new StringBuilder("../../../");
+        final int periods =
+                mid.getGroup().length() - mid.getGroup().replace(".", "").length();
+        for (int i = 0; i < periods; i++) {
+            getout.append("../");
+        }
+        return new File(
+                artifactDir,
+                getout + parent.getGroupId().replace(".", "/") + "/" + parent.getArtifactId() + "/"
+                        + parent.getVersion() + "/" + parent.getArtifactId() + "-" + parent.getVersion() + ".pom");
     }
 
     /**
@@ -462,37 +468,11 @@ class MavenHelper {
         // execute the model building request
         final DefaultModelBuilderFactory factory = new DefaultModelBuilderFactory();
         final DefaultModelBuilder builder = factory.newInstance();
-        Model effectiveModel = null;
         try {
-            effectiveModel = builder.build(req).getEffectiveModel();
+            return builder.build(req).getEffectiveModel();
         } catch (ModelBuildingException e) {
             throw new IllegalStateException("An error occurred attempting to resolve effective POM", e);
         }
-        return effectiveModel;
-    }
-
-    /**
-     * Returns true for any artifact type which will positively have a POM that
-     * describes the artifact.
-     *
-     * @param artifact
-     *            the artifact
-     * @return true if artifact will have a POM, false if not
-     */
-    boolean isDescribedArtifact(final Artifact artifact) {
-        return artifact.getType().equalsIgnoreCase("jar");
-    }
-
-    /**
-     * Returns true for any artifact type which will positively have a POM that
-     * describes the artifact.
-     *
-     * @param artifact
-     *            the artifact
-     * @return true if artifact will have a POM, false if not
-     */
-    static boolean isDescribedArtifact(final ResolvedArtifact artifact) {
-        return artifact.getType().equalsIgnoreCase("jar");
     }
 
     boolean isModified(final @Nullable ResolvedArtifact artifact) {
