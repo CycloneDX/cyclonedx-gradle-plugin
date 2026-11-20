@@ -359,7 +359,7 @@ Groovy.
 | `projectType` | `Component.Type` | `LIBRARY` | CycloneDX type of the main component. Kotlin requires an enum value such as `Component.Type.APPLICATION`; Groovy also accepts a type name such as `'application'`. |
 | `schemaVersion` | `Version` | `VERSION_16` | CycloneDX schema used for serialization. Set `Version.VERSION_17` to opt in to CycloneDX 1.7. |
 | `includeBomSerialNumber` | `Boolean` | `true` | Add a generated `urn:uuid:` serial number. |
-| `includeLicenseText` | `Boolean` | `false` | Include complete license text when it can be resolved. |
+| `includeLicenseText` | `Boolean` | `false` | Include complete license text when it can be resolved. A component whose POM licenses are written as one SPDX expression carries no text, since an expression has no place for it. |
 | `includeBuildSystem` | `Boolean` | `true` | Add a `BUILD_SYSTEM` external reference when the build URL can be detected. |
 | `buildSystemEnvironmentVariable` | `String` | Not set | Environment-variable name or `${NAME}` template used instead of automatic CI detection. |
 | `organizationalEntity` | `OrganizationalEntity` | Not set | Manufacturer or organizational metadata for the SBOM. |

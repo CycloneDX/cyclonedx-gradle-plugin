@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.test</groupId>
+    <artifactId>expression-last</artifactId>
+    <version>1.0.0</version>
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+        </license>
+        <license>
+            <name>CDDL + GPLv2 with classpath exception</name>
+        </license>
+    </licenses>
+</project>

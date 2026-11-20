@@ -26,6 +26,12 @@ Additional descriptive evidence, such as licenses and organizational details, at
 resolved identity and dependency relationships.
 _Avoid_: Dependency resolution
 
+**Declared License**:
+A license that a component's authors state for it in its published metadata, such as its POM or the POMs it inherits
+from. Part of the **Metadata Enrichment**. Distinct from a license concluded by analysis, which the plugin does not
+produce, and from the license a build configures for its own main component.
+_Avoid_: POM license, component license (unqualified)
+
 **Unresolved Metadata**:
 A component whose **Metadata Enrichment** could not be performed, because the repositories returned no usable POM, the
 POM could not be read, or the effective model could not be completed. Distinct from a component that resolves and
@@ -102,6 +108,8 @@ _Avoid_: Test dependency, test scope (unqualified), test source set
   set of **Contributing Projects**.
 - A SLSA Build level applies to an artifact's build provenance and build platform, not to its SBOM. Say “an artifact
   with SLSA Build provenance and an attested CycloneDX SBOM”; avoid “SLSA-compliant SBOM.”
+- Several **Declared Licenses** of one component are alternatives in Maven's model, but some POMs mean that all of
+  them apply. Say which reading is meant when it matters.
 
 ## Example dialogue
 

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.test</groupId>
+    <artifactId>expression-and-name</artifactId>
+    <version>1.0.0</version>
+    <licenses>
+        <license>
+            <name>CDDL + GPLv2 with classpath exception</name>
+        </license>
+        <license>
+            <name>Some Bespoke License</name>
+            <url>https://example.com/LICENSE</url>
+        </license>
+    </licenses>
+</project>

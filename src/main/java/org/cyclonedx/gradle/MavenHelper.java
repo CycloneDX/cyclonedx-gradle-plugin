@@ -26,7 +26,10 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -47,6 +50,8 @@ import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
+import org.cyclonedx.model.LicenseItem;
+import org.cyclonedx.model.license.Expression;
 import org.cyclonedx.util.LicenseResolver;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
@@ -214,58 +219,92 @@ class MavenHelper {
         return false;
     }
 
+    /**
+     * Resolves the licenses a POM declares into the licenses of a component. Maven reads several licenses as
+     * alternatives the user may choose among, and a CycloneDX list below 1.7 holds either license objects or one
+     * expression, so once one of them resolves to an expression they are all joined into a single expression with
+     * {@code OR}. A name that resolves to no SPDX id cannot join an expression, so in that case the licenses stay
+     * objects and the expression becomes one with the expression as its name.
+     */
     @Nullable LicenseChoice resolveMavenLicenses(final List<org.apache.maven.model.License> projectLicenses) {
-        final LicenseChoice licenseChoice = new LicenseChoice();
+        final List<LicenseItem> declared = new ArrayList<>();
         for (org.apache.maven.model.License artifactLicense : projectLicenses) {
-            boolean resolved = false;
-            if (artifactLicense.getName() != null) {
-                final LicenseChoice resolvedByName =
-                        LicenseResolver.resolve(artifactLicense.getName(), includeLicenseText);
-                if (resolvedByName != null) {
-                    if (resolvedByName.getLicenses() != null
-                            && !resolvedByName.getLicenses().isEmpty()) {
-                        resolved = true;
-                        licenseChoice.addLicense(resolvedByName.getLicenses().get(0));
-                    } else if (resolvedByName.getExpression() != null) {
-                        resolved = true;
-                        licenseChoice.setExpression(resolvedByName.getExpression());
-                    }
-                }
-            }
-            if (artifactLicense.getUrl() != null && !resolved) {
-                final LicenseChoice resolvedByUrl =
-                        LicenseResolver.resolve(artifactLicense.getUrl(), includeLicenseText);
-                if (resolvedByUrl != null) {
-                    if (resolvedByUrl.getLicenses() != null
-                            && !resolvedByUrl.getLicenses().isEmpty()) {
-                        resolved = true;
-                        licenseChoice.addLicense(resolvedByUrl.getLicenses().get(0));
-                    } else if (resolvedByUrl.getExpression() != null) {
-                        resolved = true;
-                        licenseChoice.setExpression(resolvedByUrl.getExpression());
-                    }
-                }
-            }
-            if (artifactLicense.getName() != null && !resolved) {
-                final org.cyclonedx.model.License license = new org.cyclonedx.model.License();
-                ;
-                license.setName(artifactLicense.getName().trim());
-                final String licenseUrl = artifactLicense.getUrl();
-                if (licenseUrl != null && !licenseUrl.trim().isEmpty()) {
-                    try {
-                        final URI uri = new URI(licenseUrl.trim());
-                        license.setUrl(uri.toString());
-                    } catch (URISyntaxException e) {
-                        // throw it away
-                    }
-                }
-                licenseChoice.addLicense(license);
+            final LicenseItem item = resolveMavenLicense(artifactLicense);
+            if (item != null) {
+                declared.add(item);
             }
         }
-        if (licenseChoice.getLicenses() == null && licenseChoice.getExpression() == null) {
+        if (declared.isEmpty()) {
             return null;
         }
+        final LicenseChoice licenseChoice = new LicenseChoice();
+        if (declared.stream().noneMatch(item -> item.getExpression() != null)) {
+            licenseChoice.setItems(declared);
+        } else if (declared.stream().allMatch(MavenHelper::hasSpdxTerm)) {
+            licenseChoice.addExpression(new Expression(joinAlternatives(declared)));
+        } else {
+            for (LicenseItem item : declared) {
+                licenseChoice.addLicense(item.getLicense() != null ? item.getLicense() : named(item.getExpression()));
+            }
+        }
         return licenseChoice;
+    }
+
+    @Nullable private LicenseItem resolveMavenLicense(final org.apache.maven.model.License artifactLicense) {
+        LicenseItem resolved = resolveSpdx(artifactLicense.getName());
+        if (resolved == null) {
+            resolved = resolveSpdx(artifactLicense.getUrl());
+        }
+        if (resolved != null || artifactLicense.getName() == null) {
+            return resolved;
+        }
+        final org.cyclonedx.model.License license = new org.cyclonedx.model.License();
+        license.setName(artifactLicense.getName().trim());
+        final String licenseUrl = artifactLicense.getUrl();
+        if (licenseUrl != null && !licenseUrl.trim().isEmpty()) {
+            try {
+                final URI uri = new URI(licenseUrl.trim());
+                license.setUrl(uri.toString());
+            } catch (URISyntaxException e) {
+                // throw it away
+            }
+        }
+        return LicenseItem.ofLicense(license);
+    }
+
+    @Nullable private LicenseItem resolveSpdx(final @Nullable String nameOrUrl) {
+        if (nameOrUrl == null) {
+            return null;
+        }
+        final LicenseChoice resolved = LicenseResolver.resolve(nameOrUrl, includeLicenseText);
+        if (resolved == null
+                || resolved.getItems() == null
+                || resolved.getItems().isEmpty()) {
+            return null;
+        }
+        return resolved.getItems().get(0);
+    }
+
+    private static boolean hasSpdxTerm(final LicenseItem item) {
+        return item.getExpression() != null
+                || (item.getLicense() != null && item.getLicense().getId() != null);
+    }
+
+    private static String joinAlternatives(final List<LicenseItem> items) {
+        final Set<String> alternatives = new LinkedHashSet<>();
+        for (LicenseItem item : items) {
+            alternatives.add(
+                    item.getExpression() != null
+                            ? item.getExpression().getValue()
+                            : item.getLicense().getId());
+        }
+        return String.join(" OR ", alternatives);
+    }
+
+    private static org.cyclonedx.model.License named(final Expression expression) {
+        final org.cyclonedx.model.License license = new org.cyclonedx.model.License();
+        license.setName(expression.getValue());
+        return license;
     }
 
     /**
