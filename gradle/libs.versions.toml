@@ -11,7 +11,7 @@ spock = "2.4-M6-groovy-4.0"
 junit = "5.13.4"
 system-lambda = "1.2.1"
 nullaway = "0.14.3"
-errorprone-core = "2.52.0"
+errorprone-core = "2.53.0"
 
 [libraries]
 cyclonedx-core-java = { module = "org.cyclonedx:cyclonedx-core-java", version.ref = "cyclonedx-core-java" }
