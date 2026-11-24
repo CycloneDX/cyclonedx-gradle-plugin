@@ -78,6 +78,16 @@ class SbomGraphMetadataEnrichmentTest {
     }
 
     @Test
+    void licenseCommentsArePartOfTheLine() {
+        License commented = license("MIT", "https://mit");
+        commented.setComments("Applies to one copied file only.");
+
+        assertNotEquals(
+                enrichment(null, Collections.singletonList(license("MIT", "https://mit")), null),
+                enrichment(null, Collections.singletonList(commented), null));
+    }
+
+    @Test
     void whatCouldNotBeReadIsPartOfTheLine() {
         // Two components that carry the same licenses and differ only in what the document says went wrong
         assertNotEquals(

@@ -26,6 +26,11 @@ Additional descriptive evidence, such as licenses and organizational details, at
 resolved identity and dependency relationships.
 _Avoid_: Dependency resolution
 
+**License Comment**:
+The addendum a POM attaches to one of the licenses it declares. It is carried into the **Direct SBOM** as text and never
+interpreted; whether it changes what the license list means is for the reader of the document to judge.
+_Avoid_: License note, license remark, license annotation
+
 **Unresolved Metadata**:
 A component whose **Metadata Enrichment** could not be performed, because the repositories returned no usable POM, the
 POM could not be read, or the effective model could not be completed. Distinct from a component that resolves and
@@ -85,6 +90,8 @@ _Avoid_: Test dependency, test scope (unqualified), test source set
 
 - Prefer **SBOM** in explanatory prose. **BOM** remains correct when referring to CycloneDX specification concepts or
   public API names such as `cyclonedxBom`.
+- The Maven model defines a POM's license list as a choice between its entries, and a **License Comment** can say
+  otherwise. The plugin resolves neither; it reports the list and the comment as declared.
 - Unqualified **dependency** can mean a declaration, a resolved component, or a relationship between components.
   Qualify the term when the distinction matters.
 - The **SBOM Output Contract** covers parsed CycloneDX meaning, not byte-for-byte serialization. Formatting and ordering
