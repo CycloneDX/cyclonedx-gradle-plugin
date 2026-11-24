@@ -1,7 +1,7 @@
 [versions]
 release-sbom-generator = "3.6.1"
 plugin-publish = "2.2.1"
-spotless = "8.11.0"
+spotless = "8.12.0"
 errorprone-gradle-plugin = "5.2.0"
 cyclonedx-core-java = "13.5.0"
 packageurl-java = "1.5.0"
