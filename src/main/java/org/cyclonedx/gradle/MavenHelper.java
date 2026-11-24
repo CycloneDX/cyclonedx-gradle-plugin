@@ -47,6 +47,7 @@ import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.ExternalReference;
 import org.cyclonedx.model.LicenseChoice;
+import org.cyclonedx.model.Property;
 import org.cyclonedx.util.LicenseResolver;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
@@ -61,6 +62,9 @@ import org.jspecify.annotations.Nullable;
 class MavenHelper {
 
     private static final Logger LOGGER = Logging.getLogger(MavenHelper.class);
+    /** The POM's {@code <license><comments>}, which the CycloneDX license object has no field for. */
+    static final String LICENSE_COMMENTS_PROPERTY = "cdx:maven:license:comments";
+
     private final Boolean includeLicenseText;
     private final Consumer<File> onPomRead;
 
@@ -225,7 +229,8 @@ class MavenHelper {
                     if (resolvedByName.getLicenses() != null
                             && !resolvedByName.getLicenses().isEmpty()) {
                         resolved = true;
-                        licenseChoice.addLicense(resolvedByName.getLicenses().get(0));
+                        licenseChoice.addLicense(
+                                addCommentsProperty(resolvedByName.getLicenses().get(0), artifactLicense));
                     } else if (resolvedByName.getExpression() != null) {
                         resolved = true;
                         licenseChoice.setExpression(resolvedByName.getExpression());
@@ -239,7 +244,8 @@ class MavenHelper {
                     if (resolvedByUrl.getLicenses() != null
                             && !resolvedByUrl.getLicenses().isEmpty()) {
                         resolved = true;
-                        licenseChoice.addLicense(resolvedByUrl.getLicenses().get(0));
+                        licenseChoice.addLicense(
+                                addCommentsProperty(resolvedByUrl.getLicenses().get(0), artifactLicense));
                     } else if (resolvedByUrl.getExpression() != null) {
                         resolved = true;
                         licenseChoice.setExpression(resolvedByUrl.getExpression());
@@ -248,7 +254,6 @@ class MavenHelper {
             }
             if (artifactLicense.getName() != null && !resolved) {
                 final org.cyclonedx.model.License license = new org.cyclonedx.model.License();
-                ;
                 license.setName(artifactLicense.getName().trim());
                 final String licenseUrl = artifactLicense.getUrl();
                 if (licenseUrl != null && !licenseUrl.trim().isEmpty()) {
@@ -259,13 +264,32 @@ class MavenHelper {
                         // throw it away
                     }
                 }
-                licenseChoice.addLicense(license);
+                licenseChoice.addLicense(addCommentsProperty(license, artifactLicense));
             }
         }
         if (licenseChoice.getLicenses() == null && licenseChoice.getExpression() == null) {
             return null;
         }
         return licenseChoice;
+    }
+
+    /**
+     * Adds a POM license's {@code <comments>} as the {@value #LICENSE_COMMENTS_PROPERTY} property, since the text can
+     * change what the license list means (all licenses applying instead of a choice). Every run of whitespace is
+     * collapsed to one space: the newlines and indentation inside the element belong to the POM file, not to the
+     * statement, and the JSON generator collapses them anyway, so the XML output agrees with it. A blank comment adds
+     * nothing. Serializers drop license properties for schema versions before 1.5.
+     */
+    private static org.cyclonedx.model.License addCommentsProperty(
+            final org.cyclonedx.model.License license, final org.apache.maven.model.License artifactLicense) {
+        final String comments = artifactLicense.getComments();
+        if (comments != null && !comments.trim().isEmpty()) {
+            final Property property = new Property();
+            property.setName(LICENSE_COMMENTS_PROPERTY);
+            property.setValue(comments.trim().replaceAll("\\s+", " "));
+            license.addProperty(property);
+        }
+        return license;
     }
 
     /**

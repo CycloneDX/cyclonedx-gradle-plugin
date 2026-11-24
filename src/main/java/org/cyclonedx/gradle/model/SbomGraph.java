@@ -190,6 +190,7 @@ public class SbomGraph implements Serializable {
         for (final License license : component.getLicenses()) {
             field(description, "license.name", license.getName());
             field(description, "license.url", license.getUrl());
+            field(description, "license.comments", license.getComments());
         }
         component.getSbomMetaData().ifPresent(metaData -> {
             field(description, "publisher", metaData.getPublisher());

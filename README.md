@@ -375,7 +375,7 @@ Groovy.
 | `includeConfigs` | `List<String>` | `[]` | Full-match regular expressions for configurations to scan. Empty means every resolvable configuration. |
 | `skipConfigs` | `List<String>` | `[]` | Full-match regular expressions for configurations to exclude. Exclusion takes precedence over inclusion. |
 | `testConfigs` | `List<String>` | `["^test.*"]` | Full-match regular expressions that classify Test Configurations for `cdx:maven:package:test`. Empty means no configuration is a Test Configuration. |
-| `includeMetadataResolution` | `Boolean` | `true` | Resolve additional dependency metadata such as descriptions, publishers, external references, and licenses. |
+| `includeMetadataResolution` | `Boolean` | `true` | Resolve additional dependency metadata such as descriptions, publishers, external references, and licenses. A POM license's `<comments>` is kept, whitespace collapsed, as the `cdx:maven:license:comments` property of that license (schema 1.5 and later); an entry that resolves to an SPDX expression carries no comment, since expressions have no properties. |
 | `includeBuildEnvironment` | `Boolean` | `false` | Also scan resolvable buildscript configurations. The include and skip patterns apply to them too. |
 | `failOnUnresolvedDependencies` | `Boolean` | `false` | Fail the task when a dependency or artifact of a scanned configuration did not resolve, instead of writing a document that omits it. Unresolved metadata never fails the task. |
 
