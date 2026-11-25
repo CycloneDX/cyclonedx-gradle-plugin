@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.test</groupId>
+        <artifactId>no-such-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <groupId>com.test</groupId>
+    <artifactId>orphan-declaring</artifactId>
+    <version>1.0.0</version>
+    <organization>
+        <name>Orphan Org</name>
+        <url>https://orphan.example.org</url>
+    </organization>
+    <scm>
+        <url>https://git.example.org/orphan</url>
+    </scm>
+</project>

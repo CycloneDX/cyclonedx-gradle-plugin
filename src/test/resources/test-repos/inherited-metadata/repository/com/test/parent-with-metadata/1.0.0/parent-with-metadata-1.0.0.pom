@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.test</groupId>
+    <artifactId>parent-with-metadata</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <description>Modules of the example project</description>
+    <organization>
+        <name>Example Parent Org</name>
+        <url>https://example.org</url>
+    </organization>
+    <scm>
+        <url>https://git.example.org/project</url>
+    </scm>
+    <issueManagement>
+        <url>https://issues.example.org/project</url>
+    </issueManagement>
+    <ciManagement>
+        <url>https://ci.example.org/project</url>
+    </ciManagement>
+    <mailingLists>
+        <mailingList>
+            <name>dev</name>
+            <archive>https://lists.example.org/project/dev</archive>
+        </mailingList>
+    </mailingLists>
+    <distributionManagement>
+        <downloadUrl>https://downloads.example.org/project</downloadUrl>
+    </distributionManagement>
+</project>

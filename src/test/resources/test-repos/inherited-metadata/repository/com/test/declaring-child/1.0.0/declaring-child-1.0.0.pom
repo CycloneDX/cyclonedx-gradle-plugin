@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.test</groupId>
+        <artifactId>parent-with-metadata</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <groupId>com.test</groupId>
+    <artifactId>declaring-child</artifactId>
+    <version>1.0.0</version>
+    <description>A module describing itself</description>
+    <organization>
+        <name>Declaring Org</name>
+        <url>https://declaring.example.org</url>
+    </organization>
+    <scm>
+        <url>https://git.example.org/declaring</url>
+    </scm>
+</project>

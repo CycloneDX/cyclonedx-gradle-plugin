@@ -23,15 +23,22 @@ _Avoid_: Project dependency, application dependency
 
 **Metadata Enrichment**:
 Additional descriptive evidence, such as licenses and organizational details, attached to a component beyond its
-resolved identity and dependency relationships.
+resolved identity and dependency relationships. It is read from the POM the component's artifact embeds, where it
+embeds one, and from the component's **Effective POM**, which supplies whatever the embedded POM leaves unsaid.
 _Avoid_: Dependency resolution
+
+**Effective POM**:
+A component's POM with everything it inherits from its parents and imports resolved, as Maven computes it. Through it
+a value a component inherits counts as its own for **Metadata Enrichment**, except a description, which is only ever
+the component's own because a parent's description describes the parent.
+_Avoid_: Parent metadata, effective model
 
 **Unresolved Metadata**:
 A component whose **Metadata Enrichment** could not be performed, because the repositories returned no usable POM, the
-POM could not be read, or the effective model could not be completed. Distinct from a component that resolves and
+POM could not be read, or the **Effective POM** could not be completed. Distinct from a component that resolves and
 declares nothing, which the document would otherwise present identically, and from an **Unresolved Dependency**.
 Recorded on the component, which still reports whatever its own POM declared, since Maven replaces the inherited values
-instead of merging into them; which input broke the effective model is not reported by Maven, so the parent is named
+instead of merging into them; which input broke the **Effective POM** is not reported by Maven, so the parent is named
 only where the reported failure identifies it, and every other failure is recorded as an incomplete model.
 _Avoid_: Missing licenses
 
