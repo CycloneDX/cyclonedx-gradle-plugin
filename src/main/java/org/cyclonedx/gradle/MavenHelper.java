@@ -39,6 +39,7 @@ import org.apache.maven.model.building.DefaultModelBuilderFactory;
 import org.apache.maven.model.building.DefaultModelBuildingRequest;
 import org.apache.maven.model.building.ModelBuildingException;
 import org.apache.maven.model.building.ModelBuildingRequest;
+import org.apache.maven.model.building.ModelBuildingResult;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.resolution.ModelResolver;
 import org.apache.maven.project.MavenProject;
@@ -344,19 +345,15 @@ class MavenHelper {
     }
 
     /**
-     * Reads a POM and creates a MavenProject from it.
+     * Reads a POM and creates a MavenProject from it. The POM is read strictly, so that an error page served in its
+     * place is rejected instead of being read as an empty model; a POM with elements Maven does not know is rejected
+     * with it.
      *
      * @param file
      *            the file object of the POM to read
      * @return a MavenProject
-     *             oops
      */
-    @Nullable static MavenProject readPom(final @Nullable File file) {
-
-        if (file == null) {
-            return null;
-        }
-
+    static MavenProject readPom(final File file) {
         try {
             final MavenXpp3Reader mavenreader = new MavenXpp3Reader();
             try (final Reader reader = ReaderFactory.newXmlReader(file)) {
@@ -398,9 +395,9 @@ class MavenHelper {
      *            the current gradle project which gets used as the base resolver
      * @param onPomRead
      *            receives every parent and imported POM file resolved while building the model
-     * @return model for effective pom
+     * @return the outcome of building the model, carrying the effective model along with the raw one
      */
-    static @Nullable Model resolveEffectivePom(
+    static ModelBuildingResult resolveEffectivePom(
             final @Nullable File pomFile, final Project gradleProject, final Consumer<File> onPomRead) {
         // force the parent POMs and BOMs to be resolved
         final ModelResolver modelResolver = new GradleAssistedMavenModelResolverImpl(gradleProject, onPomRead);
@@ -413,13 +410,11 @@ class MavenHelper {
         // execute the model building request
         final DefaultModelBuilderFactory factory = new DefaultModelBuilderFactory();
         final DefaultModelBuilder builder = factory.newInstance();
-        Model effectiveModel = null;
         try {
-            effectiveModel = builder.build(req).getEffectiveModel();
+            return builder.build(req);
         } catch (ModelBuildingException e) {
             throw new IllegalStateException("An error occurred attempting to resolve effective POM", e);
         }
-        return effectiveModel;
     }
 
     /**

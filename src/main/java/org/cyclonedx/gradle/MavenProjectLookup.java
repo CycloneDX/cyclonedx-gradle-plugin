@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
+import org.apache.maven.model.building.ModelBuildingResult;
 import org.apache.maven.project.MavenProject;
 import org.cyclonedx.gradle.model.UnresolvedMetadata;
 import org.gradle.api.Project;
@@ -106,37 +107,64 @@ class MavenProjectLookup {
         }
         recordPomFile(pomFile);
 
+        LOGGER.debug("{} Parse queried pom file for component {}", LOG_PREFIX, result.getId());
+        final ModelBuildingResult built;
+        try {
+            built = MavenHelper.resolveEffectivePom(pomFile, project, this::recordPomFile);
+        } catch (Exception err) {
+            return ownDeclarations(pomFile, result, err);
+        }
+        // The Effective POM holds what the component inherits along with what it declares, with Maven's
+        // inheritance rules applied and its properties interpolated. A module whose organization, scm or
+        // licenses live in its parent is described by it, not by its own POM
+        return MavenMetadata.of(new MavenProject(descriptiveSections(built)));
+    }
+
+    /**
+     * The component's own POM, for a component whose Effective POM could not be built. What it declares stands: a
+     * component's own declarations replace what it would inherit instead of merging with it, so they are complete
+     * even where the rest of the model is not. A POM that cannot be read at all is reported as such instead. The POM is
+     * parsed strictly here, which is what tells an error page from a POM, while Maven's model builder skips elements it
+     * does not know: such a POM is read when its model builds and reported unparseable when its model fails.
+     */
+    private MavenMetadata ownDeclarations(
+            final File pomFile, final ResolvedComponentResult result, final Exception err) {
         final MavenProject mavenProject;
         try {
             mavenProject = MavenHelper.readPom(pomFile);
-        } catch (Exception err) {
-            LOGGER.warn("{} Unable to read POM {} of component {}", LOG_PREFIX, pomFile, result.getId(), err);
+        } catch (Exception readErr) {
+            LOGGER.warn("{} Unable to read POM {} of component {}", LOG_PREFIX, pomFile, result.getId(), readErr);
             return MavenMetadata.unresolved(UnresolvedMetadata.POM_UNPARSEABLE);
         }
-        if (mavenProject == null) {
-            LOGGER.warn("{} POM {} of component {} is not readable", LOG_PREFIX, pomFile, result.getId());
-            return MavenMetadata.unresolved(UnresolvedMetadata.POM_UNPARSEABLE);
-        }
+        LOGGER.warn(
+                "{} Unable to build the effective model of component {}, reporting what its own POM declares",
+                LOG_PREFIX,
+                result.getId(),
+                err);
+        return MavenMetadata.incomplete(mavenProject, unresolvedModel(mavenProject, err));
+    }
 
-        LOGGER.debug("{} Parse queried pom file for component {}", LOG_PREFIX, result.getId());
-        final Model model;
-        try {
-            model = MavenHelper.resolveEffectivePom(pomFile, project, this::recordPomFile);
-        } catch (Exception err) {
-            LOGGER.warn(
-                    "{} Unable to build the effective model of component {}, reporting what its own POM declares",
-                    LOG_PREFIX,
-                    result.getId(),
-                    err);
-            // What was read stands: a component's own declarations replace what it would inherit instead of
-            // merging with it, so they are complete even where the rest of the model is not
-            return MavenMetadata.incomplete(mavenProject, unresolvedModel(mavenProject, err));
+    /**
+     * The Effective POM reduced to what Metadata Enrichment reads. The managed dependencies, with every imported BOM
+     * expanded into them, are the bulk of the model and go along with the other build sections, since the model is
+     * kept until the whole graph is traversed. The description is kept only where the component's own POM declares
+     * one: a parent's description describes the parent, and the parents most modules share describe a foundation.
+     */
+    private static Model descriptiveSections(final ModelBuildingResult built) {
+        final Model model = built.getEffectiveModel();
+        if (built.getRawModel().getDescription() == null) {
+            model.setDescription(null);
         }
-        if (model != null) {
-            mavenProject.setLicenses(model.getLicenses());
-        }
-
-        return MavenMetadata.of(mavenProject);
+        model.setDependencyManagement(null);
+        model.setDependencies(null);
+        model.setBuild(null);
+        model.setProfiles(null);
+        model.setRepositories(null);
+        model.setPluginRepositories(null);
+        model.setReporting(null);
+        model.setProperties(null);
+        model.setModules(null);
+        return model;
     }
 
     /**
